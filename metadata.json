@@ -1,0 +1,6 @@
+{
+  "name": "Akash Sharma Job Acquisition OS",
+  "description": "Executive job acquisition command center and AI scoring engine targeting ₹18+ LPA roles in Strategic Operations, Legal Ops, CLM & Enterprise AI Enablement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
