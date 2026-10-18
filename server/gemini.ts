@@ -1,11 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { resolveGeminiKey } from "./userKey.js";
 import { masterResume } from "../src/data/masterResume.js";
 
 // Initialize Gemini Client
 const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = resolveGeminiKey();
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is missing.");
+    throw new Error("No Gemini API key: set GEMINI_API_KEY or enter your key in the app (API key button).");
   }
   return new GoogleGenAI({
     apiKey,

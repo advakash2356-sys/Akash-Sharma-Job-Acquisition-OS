@@ -1,4 +1,5 @@
 import express from "express";
+import { userKeyMiddleware } from "./server/userKey.js";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { 
@@ -13,6 +14,7 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: "5mb" }));
+  app.use(userKeyMiddleware);
 
   // API endpoints
   app.get("/api/health", (req, res) => {
