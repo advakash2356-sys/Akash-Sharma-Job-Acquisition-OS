@@ -1,0 +1,93 @@
+import React, { useRef, useState } from 'react';
+import { Upload, Download, FileJson, Trash2, UserRound } from 'lucide-react';
+import { Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
+import { useApp } from '../lib/state';
+import { sampleProfile } from '../data/sampleProfile';
+import { emptyProfile, type Profile } from '../types';
+
+export default function ResumePage() {
+  const { profile, setProfile, jobs, setJobs, hasResume } = useApp();
+  const [msg, setMsg] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+  const set = (k: keyof Profile) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setProfile({ ...profile, [k]: e.target.value });
+
+  const onResumeFile = async (f?: File) => {
+    if (!f) return;
+    if (!/\.(txt|md|markdown)$/i.test(f.name) && !f.type.startsWith('text/')) {
+      setMsg('Upload a .txt or .md file, or paste your resume text. For a PDF or Word file, open it and copy the text.');
+      return;
+    }
+    setProfile({ ...profile, resumeText: await f.text() });
+    setMsg(`Loaded ${f.name}.`);
+  };
+
+  const exportJson = () => {
+    const blob = new Blob([JSON.stringify({ version: 1, profile, jobs }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'job-os-backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const importJson = async (f?: File) => {
+    if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (!d || typeof d.profile !== 'object') throw new Error('bad');
+      setProfile({ ...emptyProfile, ...d.profile });
+      if (Array.isArray(d.jobs)) setJobs(d.jobs);
+      setMsg('Backup imported.');
+    } catch { setMsg('That file is not a valid Job OS backup.'); }
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="My resume"
+        subtitle="Your resume is saved only in this browser. Every AI feature (score, tailor, cover letter, outreach) reads it."
+        action={<Button variant="outline" onClick={() => { setProfile(sampleProfile); setMsg('Sample profile loaded. Replace it with your own.'); }}><UserRound size={16} /> Load sample profile</Button>}
+      />
+      {msg && <p role="status" className="mb-4 rounded-lg bg-accent px-3 py-2 text-sm text-primary">{msg}</p>}
+
+      <div className="grid gap-5">
+        <Card className="grid gap-4 sm:grid-cols-2">
+          <div><Label htmlFor="n">Full name</Label><Input id="n" value={profile.name} onChange={set('name')} placeholder="Your name" /></div>
+          <div><Label htmlFor="h">Headline</Label><Input id="h" value={profile.headline} onChange={set('headline')} placeholder="e.g. Senior Operations Manager" /></div>
+          <div><Label htmlFor="e">Email</Label><Input id="e" type="email" value={profile.email} onChange={set('email')} /></div>
+          <div><Label htmlFor="p">Phone</Label><Input id="p" value={profile.phone} onChange={set('phone')} /></div>
+          <div><Label htmlFor="l">Location</Label><Input id="l" value={profile.location} onChange={set('location')} /></div>
+          <div><Label htmlFor="k">Links</Label><Input id="k" value={profile.links} onChange={set('links')} placeholder="LinkedIn, portfolio" /></div>
+          <div><Label htmlFor="t" hint="optional">Target roles</Label><Input id="t" value={profile.targetRoles} onChange={set('targetRoles')} placeholder="e.g. Product Manager, Ops Lead" /></div>
+          <div><Label htmlFor="c" hint="optional">Minimum pay</Label><Input id="c" value={profile.minCtc} onChange={set('minCtc')} placeholder="e.g. 18 LPA" /></div>
+        </Card>
+
+        <Card>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <Label htmlFor="r">Resume text</Label>
+            <div className="flex gap-2">
+              <input ref={fileRef} type="file" accept=".txt,.md,text/plain" hidden onChange={(e) => { onResumeFile(e.target.files?.[0]); e.target.value = ''; }} />
+              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload size={14} /> Upload .txt / .md</Button>
+            </div>
+          </div>
+          <Textarea id="r" rows={18} value={profile.resumeText} onChange={set('resumeText')} placeholder="Paste your full resume here: summary, experience, skills, education." className="font-mono text-[13px]" />
+          <p className="mt-2 text-sm text-muted-foreground">
+            {hasResume ? `${profile.resumeText.trim().split(/\s+/).length} words saved. Edits save automatically.` : 'Paste at least a few lines so the AI has something real to work from.'}
+          </p>
+        </Card>
+
+        <Card>
+          <h2 className="mb-1 text-xl font-medium">Backup</h2>
+          <p className="mb-4 text-sm text-muted-foreground">Export your resume and jobs as a JSON file, or restore them on another device.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={exportJson}><Download size={16} /> Export JSON</Button>
+            <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={(e) => { importJson(e.target.files?.[0]); e.target.value = ''; }} />
+            <Button variant="outline" onClick={() => importRef.current?.click()}><FileJson size={16} /> Import JSON</Button>
+            <Button variant="danger" onClick={() => { if (confirm('Delete your resume and all jobs from this browser?')) { setProfile(emptyProfile); setJobs([]); setMsg('All data cleared.'); } }}><Trash2 size={16} /> Clear all data</Button>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
+}

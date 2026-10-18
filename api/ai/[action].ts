@@ -1,0 +1,12 @@
+import { handleAction, keyFromHeaders, ApiError } from "../../server/handlers.js";
+
+export default async function handler(req: any, res: any) {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  try {
+    const out = await handleAction(String(req.query.action), req.body || {}, keyFromHeaders(req.headers));
+    res.status(200).json(out);
+  } catch (e: any) {
+    const status = e instanceof ApiError ? e.status : 500;
+    res.status(status).json({ error: e.message || "Failed", code: e.code });
+  }
+}

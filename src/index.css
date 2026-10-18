@@ -1,1 +1,61 @@
 @import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/fraunces";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-serif: "Fraunces Variable", ui-serif, Georgia, serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-gold: var(--gold);
+  --color-danger: var(--danger);
+  --radius-card: 16px;
+}
+
+:root {
+  --background: #fafaf9;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --muted: #f1f5f4;
+  --muted-foreground: #526071;
+  --border: #e2e8e6;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --accent: #e6f4f1;
+  --gold: #a16207;
+  --danger: #b91c1c;
+}
+.dark {
+  --background: #080c14;
+  --foreground: #f1f5f9;
+  --card: #0f172a;
+  --muted: #162033;
+  --muted-foreground: #9aa8bb;
+  --border: rgba(255, 255, 255, 0.1);
+  --primary: #2dd4bf;
+  --primary-foreground: #04201c;
+  --accent: rgba(45, 212, 191, 0.12);
+  --gold: #f59e0b;
+  --danger: #f87171;
+}
+
+html { color-scheme: light dark; }
+body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.dark body, html.dark { color-scheme: dark; }
+h1, h2 { font-family: var(--font-serif); letter-spacing: -0.01em; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up 400ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } * { transition: none !important; } }
