@@ -26,6 +26,7 @@ import { BatchEmailPackageModal } from './components/BatchEmailPackageModal';
 import { PlatformApplyTrackerModal } from './components/PlatformApplyTrackerModal';
 import { ApplicationAuditOverlay } from './components/ApplicationAuditOverlay';
 import { GmailMcpConnectorModal } from './components/GmailMcpConnectorModal';
+import { CONTACT_EMAIL } from './config';
 import { SimpleOverviewView } from './components/SimpleOverviewView';
 import { 
   AdminAccessGate, 
@@ -485,7 +486,7 @@ export default function App() {
           isOpen={isBatchEmailModalOpen}
           onClose={() => setIsBatchEmailModalOpen(false)}
           onMarkJobApplied={handleMarkJobApplied}
-          activeSenderEmail={activeUserEmail || 'Adv.Akash2356@gmail.com'}
+          activeSenderEmail={activeUserEmail || CONTACT_EMAIL}
           onOpenGmailConnectorModal={() => setIsGmailConnectorModalOpen(true)}
         />
 
@@ -510,7 +511,7 @@ export default function App() {
         <GmailMcpConnectorModal
           isOpen={isGmailConnectorModalOpen}
           onClose={() => setIsGmailConnectorModalOpen(false)}
-          activeSenderEmail={activeUserEmail || 'Adv.Akash2356@gmail.com'}
+          activeSenderEmail={activeUserEmail || CONTACT_EMAIL}
           onUpdateSenderEmail={(newEmail) => handleLogin(newEmail)}
         />
 

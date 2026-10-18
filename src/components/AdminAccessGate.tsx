@@ -17,7 +17,9 @@ import {
   Users 
 } from 'lucide-react';
 
-export const PRIMARY_ADMIN_EMAIL = 'Adv.akash2356@gmail.com';
+import { CONTACT_EMAIL } from '../config';
+
+export const PRIMARY_ADMIN_EMAIL = CONTACT_EMAIL;
 const STORAGE_KEY_WHITELIST = 'whitelisted_users_v2';
 const STORAGE_KEY_ACTIVE_USER = 'active_user_email_v2';
 
@@ -101,7 +103,7 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({
       setErrorMsg(null);
       onLogin(email);
     } else {
-      setErrorMsg(`Access Restricted: '${email}' is not on the authorized whitelist. Only Super Admin Adv.akash2356@gmail.com can grant access.`);
+      setErrorMsg(`Access Restricted: '${email}' is not on the authorized whitelist. Only Super Admin ${PRIMARY_ADMIN_EMAIL} can grant access.`);
     }
   };
 
@@ -132,7 +134,7 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({
             Executive Portal Lock
           </h1>
           <p className="text-xs text-[#a0a0b8] mt-1">
-            Access strictly locked to authorized accounts. Primary Admin: <strong className="text-amber-300 font-mono">Adv.akash2356@gmail.com</strong>
+            Access strictly locked to authorized accounts. Primary Admin: <strong className="text-amber-300 font-mono">{PRIMARY_ADMIN_EMAIL}</strong>
           </p>
         </div>
 
@@ -158,7 +160,7 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({
                 value={inputEmail}
                 onChange={(e) => setInputEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleVerifyLogin()}
-                placeholder="Adv.akash2356@gmail.com"
+                placeholder={PRIMARY_ADMIN_EMAIL}
                 className="w-full bg-[#161824] border border-[#26283a] focus:border-amber-400 focus:ring-1 focus:ring-amber-400 text-white placeholder-[#555] rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none transition-all font-mono"
               />
             </div>
@@ -186,7 +188,7 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({
               className="w-full bg-[#181a28] hover:bg-[#202336] text-amber-300 border border-amber-500/40 text-xs font-bold font-mono py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>Sign-In as Adv.akash2356@gmail.com</span>
+              <span>Sign-In as {PRIMARY_ADMIN_EMAIL}</span>
             </button>
           </div>
         </div>
@@ -194,7 +196,7 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({
         {/* Footer info */}
         <div className="bg-[#0b0c12] border-t border-[#1a1c2a] p-4 text-center text-[10px] text-[#777788]">
           <span>Protected system. To request access, contact </span>
-          <a href="mailto:Adv.akash2356@gmail.com" className="text-amber-400 hover:underline font-mono">Adv.akash2356@gmail.com</a>
+          <a href={`mailto:${PRIMARY_ADMIN_EMAIL}`} className="text-amber-400 hover:underline font-mono">{PRIMARY_ADMIN_EMAIL}</a>
         </div>
       </div>
     </div>
@@ -258,7 +260,7 @@ export const WhitelistManagerModal: React.FC<WhitelistManagerModalProps> = ({
                 <span>Access Control & Whitelist Manager</span>
               </h2>
               <p className="text-xs text-[#a0a0b8]">
-                Managed by Super Admin <strong className="text-amber-300 font-mono">Adv.akash2356@gmail.com</strong>
+                Managed by Super Admin <strong className="text-amber-300 font-mono">{PRIMARY_ADMIN_EMAIL}</strong>
               </p>
             </div>
           </div>
@@ -335,7 +337,7 @@ export const WhitelistManagerModal: React.FC<WhitelistManagerModalProps> = ({
             </div>
           ) : (
             <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-xs text-amber-300">
-              Notice: Only primary admin <strong>Adv.akash2356@gmail.com</strong> can add or remove whitelisted user emails.
+              Notice: Only primary admin <strong>{PRIMARY_ADMIN_EMAIL}</strong> can add or remove whitelisted user emails.
             </div>
           )}
 

@@ -145,3 +145,7 @@ Executive job acquisition command center and AI scoring engine targeting ₹18+ 
         ├── TemplateLibraryModal.tsx
         ├── TimeToOfferProjection.tsx
         └── UsNightShiftTrackBanner.tsx
+
+## Configuration
+
+Owner email/phone are read from `VITE_CONTACT_EMAIL` and `VITE_CONTACT_PHONE` (see `.env.example`; set real values in `.env.local`). The first email acts as the primary admin.

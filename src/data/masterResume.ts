@@ -1,11 +1,12 @@
 import { MasterResumeData } from '../types';
+import { CONTACT_EMAIL, CONTACT_PHONE } from '../config';
 
 export const masterResume: MasterResumeData = {
   name: "Akash Sharma",
   title: "Team Lead, Operations & Process Architecture | Strategy & Governance Lead",
   contact: {
-    email: "adv.akash2356@gmail.com",
-    phone: "+91 9717469206",
+    email: CONTACT_EMAIL,
+    phone: CONTACT_PHONE,
     location: "Bijwasan, Southwest Delhi, India",
     linkedin: "linkedin.com/in/akash-sharma-ops",
   },
