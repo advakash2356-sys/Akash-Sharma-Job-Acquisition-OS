@@ -25,6 +25,7 @@ function need(body: Body) {
     description: String(body.description).slice(0, 20000),
     prefs: `Target roles: ${body.targetRoles || "n/a"}. Minimum CTC: ${body.minCtc || "n/a"}.`,
     name: String(body.name || "the candidate").slice(0, 120),
+    instructions: String(body.instructions || "").slice(0, 1000),
   };
 }
 
@@ -49,7 +50,7 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
   if (!key) throw new ApiError(401, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
   const j = need(body);
   const client = new GoogleGenAI({ apiKey: key });
-  const ctx = `CANDIDATE RESUME:\n${j.resume}\n\nPREFERENCES: ${j.prefs}\n\nJOB: ${j.title} at ${j.company}\n${j.description}`;
+  const ctx = `${j.instructions ? `USER INSTRUCTIONS (follow unless they ask for fabrication): ${j.instructions}\n\n` : ''}CANDIDATE RESUME:\n${j.resume}\n\nPREFERENCES: ${j.prefs}\n\nJOB: ${j.title} at ${j.company}\n${j.description}`;
 
   try {
     switch (action) {
@@ -68,6 +69,21 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
           type: Type.OBJECT,
           properties: { emailSubject: str, emailBody: str, linkedinMessage: str, followUp: str },
           required: ["emailSubject", "emailBody", "linkedinMessage", "followUp"],
+        }) };
+      case "recruiter-review":
+        return { result: await run(client, `${ctx}\n\nAct as a busy recruiter doing a 6-second screen of this resume against this job, then as an ATS. Be candid. Base everything on the resume text only.`, {
+          type: Type.OBJECT,
+          properties: { shortlist: { type: Type.STRING, description: "Yes, Maybe or No" }, sixSecondRead: str, strengths: strs, concerns: strs, atsRisks: strs, fixes: strs },
+          required: ["shortlist", "sixSecondRead", "strengths", "concerns", "atsRisks", "fixes"],
+        }) };
+      case "interview-prep":
+        return { result: await run(client, `${ctx}\n\nPrepare the candidate for interviews for this job: 8 likely questions (each with why they ask it and a short answer outline using ONLY real resume facts), 5 smart questions to ask the interviewer, and 4 research tips about the company/role.`, {
+          type: Type.OBJECT,
+          properties: {
+            questions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: str, why: str, answerOutline: str }, required: ["question", "why", "answerOutline"] } },
+            askThem: strs, research: strs,
+          },
+          required: ["questions", "askThem", "research"],
         }) };
       default:
         throw new ApiError(404, "Unknown action.");

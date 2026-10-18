@@ -1,10 +1,17 @@
-# Design tokens: Job OS (Oct 2026)
+# Design: Momentum (Oct 2026)
 
-Built per the shared `design-system` skill (shadcn/ui patterns, Tailwind 4, lucide icons, Geist + Fraunces).
+## Concept (3 lines)
+- **Subject:** a private job-search workspace: score, tailor, apply, interview, offer.
+- **Emotion:** ambition and forward momentum. The calm confidence of climbing toward a bright horizon.
+- **Signature visual:** a winding path up a ridge to a glowing summit/city at dawn, plus a dark walnut desk with a letterpress offer letter. Never space, never shop.
 
-- Surfaces: light `#fafaf9` / card `#fff`; dark `#080c14` / card `#0f172a`. Theme toggle in sidebar, follows system by default.
-- Accent: teal `#0f766e` (light) / `#2dd4bf` (dark). Gold (`--gold`) is used only for fit scores.
-- Type: Fraunces for page titles, Geist for UI (15px body), Geist Mono for numbers.
-- Radius: cards 16px, controls 8px. Motion: 400ms fade-up, disabled under prefers-reduced-motion.
-- Layout: grouped left sidebar (drawer on mobile), one primary action per page, honest empty states.
-- Dialogs: `role="dialog"`, `aria-modal`, close on Escape and backdrop click, focus restored.
+## Tokens
+- Palette: cream `#f3eee4` / ink `#0d0b0a`, warm text, **one hot accent**: ember orange (`#c23a06` light, `#ff6a2b` dark). Brass-gold only for scores and key numbers.
+- Type: Instrument Serif display (huge, 8-11vw on hero) against tiny tracked uppercase labels (11px, 0.16em); Geist body 15px; Geist Mono numbers.
+- Texture: film grain overlay, frosted glass (`blur(18px)`) on nav, rail, cards; faint ridge image behind the app.
+- Shape: pill buttons (one solid + one hairline), 20-28px cards.
+- Motion: GSAP ScrollTrigger pinned "path" scene, hero parallax, Lenis smooth scroll, marquee. All disabled under `prefers-reduced-motion` (static poster image, no pin, no marquee).
+- Assets in `public/`: `hero-loop.mp4` + `hero-poster.jpg` (generated), `ridges-path.jpg`, `desk-offer.jpg`.
+
+## Structure
+Landing (`#/`) is the immersive story. The app (`#/app`) is the dense, calm shell: floating glass rail (drawer on mobile), light + dark theme.

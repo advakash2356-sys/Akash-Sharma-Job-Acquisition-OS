@@ -18,7 +18,7 @@ export function useAiAction<T>(action: string, job: Job | undefined) {
     try {
       return await callAi<T>(action, {
         title: job.title, company: job.company, description: job.description,
-        resume: profile.resumeText, name: profile.name, targetRoles: profile.targetRoles, minCtc: profile.minCtc, ...extra,
+        resume: profile.resumeText, name: profile.name, targetRoles: profile.targetRoles, minCtc: profile.minCtc, instructions: profile.aiInstructions, ...extra,
       });
     } catch (e) {
       const err = e as AiError;

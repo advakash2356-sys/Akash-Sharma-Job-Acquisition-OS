@@ -4,15 +4,16 @@ import { Badge, Button, Card, Dialog, EmptyState, Input, Label, PageHeader, Sele
 import { AiError_, RunButton, useAiAction } from '../components/AiPanel';
 import { useApp } from '../lib/state';
 import { uid, today } from '../lib/utils';
-import { JOB_STATUSES, type Job, type JobScore, type JobStatus } from '../types';
+import { JOB_STATUSES, type Job, type JobScore, type JobStatus, type RecruiterReview } from '../types';
+import { SOURCES, keywordGap } from '../lib/insights';
 
 const num = (v: string) => (v.trim() && !isNaN(Number(v)) ? Number(v) : undefined);
 const scoreTone = (n: number) => (n >= 75 ? 'primary' : n >= 55 ? 'gold' : 'danger') as 'primary' | 'gold' | 'danger';
 
 function AddJob({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (j: Job) => void }) {
-  const [f, setF] = useState({ title: '', company: '', url: '', description: '' });
+  const [f, setF] = useState({ title: '', company: '', url: '', description: '', source: 'LinkedIn' });
   const [pay, setPay] = useState({ min: '', max: '' });
-  useEffect(() => { if (!open) { setF({ title: '', company: '', url: '', description: '' }); setPay({ min: '', max: '' }); } }, [open]);
+  useEffect(() => { if (!open) { setF({ title: '', company: '', url: '', description: '', source: 'LinkedIn' }); setPay({ min: '', max: '' }); } }, [open]);
   const ok = f.title.trim() && f.description.trim();
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +29,7 @@ function AddJob({ open, onClose, onAdd }: { open: boolean; onClose: () => void; 
           <div><Label htmlFor="jc">Company</Label><Input id="jc" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} /></div>
           <div><Label htmlFor="ju" hint="optional">Link</Label><Input id="ju" type="url" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} placeholder="https://" /></div>
         </div>
+        <div><Label htmlFor="src">Found on</Label><Select id="src" value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}>{SOURCES.map((x) => <option key={x}>{x}</option>)}</Select></div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div><Label htmlFor="sm" hint="optional, your unit e.g. LPA">Pay min</Label><Input id="sm" inputMode="decimal" value={pay.min} onChange={(e) => setPay({ ...pay, min: e.target.value })} /></div>
           <div><Label htmlFor="sx" hint="optional">Pay max</Label><Input id="sx" inputMode="decimal" value={pay.max} onChange={(e) => setPay({ ...pay, max: e.target.value })} /></div>
@@ -44,6 +46,9 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
   const ai = useAiAction<JobScore>('score-job', job);
   const patch = (p: Partial<Job>) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, ...p } : j)));
   const s = job.score;
+  const rv = useAiAction<RecruiterReview>('recruiter-review', job);
+  const { profile } = useApp();
+  const gap = hasResume ? keywordGap(profile.resumeText, job.description) : null;
   const score = async () => { const r = await ai.run(); if (r) patch({ score: r }); };
 
   return (
@@ -77,7 +82,34 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
         )}
       </section>
 
+      {gap && (
+        <section className="mb-5">
+          <h3 className="mb-1 text-lg font-medium">Keyword match <span className="font-mono text-gold">{gap.pct}%</span></h3>
+          <p className="mb-2 text-sm text-muted-foreground">Top terms in the posting that appear in your resume (green) or not (outlined). Add the missing ones only where true.</p>
+          <div className="flex flex-wrap gap-1.5">{gap.hit.map((k) => <Badge key={k} tone="primary">{k}</Badge>)}{gap.miss.map((k) => <span key={k} className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">{k}</span>)}</div>
+        </section>
+      )}
+
+      <section className="mb-5">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-lg font-medium">Recruiter's read</h3>
+          <RunButton loading={rv.loading} disabled={!hasResume} onClick={async () => { const r = await rv.run(); if (r) patch({ recruiterReview: r }); }}>{job.recruiterReview ? 'Re-run' : 'Simulate screen'}</RunButton>
+        </div>
+        <AiError_ error={rv.error} go={go} />
+        {job.recruiterReview && (() => { const r = job.recruiterReview!; return (
+          <div className="grid gap-3 text-sm">
+            <div className="flex items-center gap-2"><Badge tone={r.shortlist === 'Yes' ? 'primary' : r.shortlist === 'Maybe' ? 'gold' : 'danger'}>Shortlist: {r.shortlist}</Badge></div>
+            <p>{r.sixSecondRead}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div><div className="mb-1 font-medium">Concerns</div><ul className="list-disc space-y-1 pl-5">{r.concerns.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+              <div><div className="mb-1 font-medium">ATS risks</div><ul className="list-disc space-y-1 pl-5">{r.atsRisks.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+            </div>
+            <div><div className="mb-1 font-medium">Fixes</div><ul className="list-disc space-y-1 pl-5">{r.fixes.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+          </div>); })()}
+      </section>
+
       <div className="mb-5 flex flex-wrap gap-2">
+        {job.status === 'Saved' && <Button onClick={() => patch({ status: 'Applied', appliedAt: today() })}>Mark applied today</Button>}
         <Button variant="outline" onClick={() => go('tailor', job.id)}>Tailor resume & cover letter</Button>
         <Button variant="outline" onClick={() => go('outreach', job.id)}>Write outreach</Button>
       </div>
@@ -101,6 +133,7 @@ export default function Jobs() {
   const { jobs, setJobs } = useApp();
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [view, setView] = useState<'list' | 'board'>('list');
   const [filter, setFilter] = useState<'All' | JobStatus>('All');
   const shown = jobs.filter((j) => filter === 'All' || j.status === filter);
   const open = jobs.find((j) => j.id === openId);
@@ -120,6 +153,17 @@ export default function Jobs() {
               </button>
             ))}
           </div>
+          <div className="mb-4 flex gap-2">{(['list', 'board'] as const).map((v) => <button key={v} onClick={() => setView(v)} aria-pressed={view === v} className={`label rounded-full border px-3 py-1.5 cursor-pointer ${view === v ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}>{v}</button>)}</div>
+          {view === 'board' ? (
+            <div className="grid gap-3 overflow-x-auto md:grid-cols-5">
+              {JOB_STATUSES.map((st) => (
+                <div key={st} className="min-w-[200px]"><div className="label mb-2 text-muted-foreground">{st} · {jobs.filter((j) => j.status === st).length}</div>
+                  <div className="grid gap-2">{jobs.filter((j) => j.status === st).map((j) => (
+                    <button key={j.id} onClick={() => setOpenId(j.id)} className="glass rounded-2xl p-3 text-left cursor-pointer hover:border-primary"><div className="truncate text-sm font-medium">{j.title}</div><div className="truncate text-xs text-muted-foreground">{j.company}</div>{j.score && <div className="mt-1 font-mono text-gold">{j.score.score}</div>}</button>
+                  ))}</div></div>
+              ))}
+            </div>
+          ) : (
           <div className="grid gap-3">
             {shown.map((j) => (
               <Card key={j.id} className="flex flex-wrap items-center gap-3 p-4">
@@ -133,6 +177,7 @@ export default function Jobs() {
             ))}
             {shown.length === 0 && <p className="text-muted-foreground">No jobs with this status.</p>}
           </div>
+          )}
         </>
       )}
       <AddJob open={adding} onClose={() => setAdding(false)} onAdd={(j) => setJobs((js) => [j, ...js])} />

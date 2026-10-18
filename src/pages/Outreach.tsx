@@ -4,6 +4,7 @@ import { Button, Card, EmptyState, Input, Label, PageHeader, Select } from '../c
 import { AiError_, CopyButton, RunButton, useAiAction } from '../components/AiPanel';
 import { Download, Mail } from 'lucide-react';
 import { exportEml, fileBase, gmailComposeUrl } from '../lib/exporters';
+import { TEMPLATES, fillTemplate } from '../lib/insights';
 import { useApp } from '../lib/state';
 import type { Job } from '../types';
 
@@ -42,6 +43,24 @@ export default function Outreach() {
           </div>
         </Card>
       )}
+      <Card className="mb-4">
+        <h2 className="mb-1 text-3xl">Template library</h2>
+        <p className="mb-3 text-sm text-muted-foreground">Fill-in-the-blank messages. Placeholders use your profile and the selected job.</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {TEMPLATES.map((t) => {
+            const v = { Name: profile.name, Email: profile.email, Phone: profile.phone, JobTitle: job.title, Company: job.company, ContactName: contact.contactName || 'Hiring team' };
+            const body = fillTemplate(t.body, v), subject = fillTemplate(t.subject, v);
+            return (
+              <div key={t.id} className="rounded-2xl border border-border p-4">
+                <div className="label mb-1 text-primary">{t.channel}</div>
+                <div className="mb-2 font-medium">{t.title}</div>
+                <p className="mb-3 line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">{body}</p>
+                <div className="flex flex-wrap gap-2"><CopyButton text={subject ? `${subject}\n\n${body}` : body} />{t.channel !== 'LinkedIn' && <a href={gmailComposeUrl({ to, subject, body })} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-full border border-border px-3 text-sm hover:bg-muted"><Mail size={14} /> Gmail</a>}</div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
       <div className="grid gap-4">
         {blocks.map(([t, text]) => (
           <Card key={t}><div className="mb-2 flex items-center justify-between"><h2 className="text-lg font-medium">{t}</h2><CopyButton text={text} /></div><p className="whitespace-pre-wrap text-sm">{text}</p></Card>

@@ -7,6 +7,10 @@ export interface Profile {
   links: string;
   targetRoles: string;
   minCtc: string;
+  /** Applications the user wants to send per day. */
+  dailyTarget: string;
+  /** Extra instructions appended to every AI request (tone, constraints). */
+  aiInstructions: string;
   /** Plain-text resume. This is what every AI feature reads. */
   resumeText: string;
 }
@@ -21,6 +25,21 @@ export interface JobScore {
   gaps: string[];
   keywords: string[];
   recommendation: string;
+}
+
+export interface RecruiterReview {
+  shortlist: 'Yes' | 'Maybe' | 'No';
+  sixSecondRead: string;
+  strengths: string[];
+  concerns: string[];
+  atsRisks: string[];
+  fixes: string[];
+}
+
+export interface InterviewPrep {
+  questions: { question: string; why: string; answerOutline: string }[];
+  askThem: string[];
+  research: string[];
 }
 
 export interface Interview {
@@ -49,8 +68,12 @@ export interface Job {
   coverLetter?: string;
   outreach?: { emailSubject: string; emailBody: string; linkedinMessage: string; followUp: string };
   interviews: Interview[];
+  source?: string;
+  recruiterReview?: RecruiterReview;
+  interviewPrep?: InterviewPrep;
+  prepDone?: string[];
 }
 
 export const emptyProfile: Profile = {
-  name: '', headline: '', email: '', phone: '', location: '', links: '', targetRoles: '', minCtc: '', resumeText: '',
+  name: '', headline: '', email: '', phone: '', location: '', links: '', targetRoles: '', minCtc: '', dailyTarget: '5', aiInstructions: '', resumeText: '',
 };

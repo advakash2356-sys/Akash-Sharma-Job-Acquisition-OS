@@ -7,10 +7,10 @@ export function Button({ variant = 'primary', size = 'md', className, ...p }: Re
     <button
       {...p}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer',
+        'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer',
         size === 'sm' ? 'h-8 px-3 text-sm' : 'h-10 px-4 text-sm',
         variant === 'primary' && 'bg-primary text-primary-foreground hover:opacity-90',
-        variant === 'outline' && 'border border-border bg-card hover:bg-muted',
+        variant === 'outline' && 'border border-border bg-card-solid hover:bg-muted',
         variant === 'ghost' && 'hover:bg-muted',
         variant === 'danger' && 'border border-border text-danger hover:bg-muted',
         className,
@@ -20,10 +20,10 @@ export function Button({ variant = 'primary', size = 'md', className, ...p }: Re
 }
 
 export const Card = ({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div {...p} className={cn('rounded-[16px] border border-border bg-card p-5', className)} />
+  <div {...p} className={cn('rounded-[20px] glass p-5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]', className)} />
 );
 
-const field = 'w-full rounded-lg border border-border bg-card px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-primary';
+const field = 'w-full rounded-lg border border-border bg-card-solid/60 px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-primary';
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...p }, r) => (
   <input ref={r} {...p} className={cn(field, 'h-10', className)} />
 ));
@@ -53,7 +53,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3 fade-up">
       <div>
-        <h1 className="text-3xl font-medium">{title}</h1>
+        <h1 className="text-5xl sm:text-6xl">{title}</h1>
         {subtitle && <p className="mt-1 max-w-2xl text-muted-foreground">{subtitle}</p>}
       </div>
       {action}
@@ -63,7 +63,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function EmptyState({ icon, title, body, action }: { icon: React.ReactNode; title: string; body: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center rounded-[16px] border border-dashed border-border px-6 py-14 text-center">
+    <div className="flex flex-col items-center rounded-[20px] border border-dashed border-border px-6 py-14 text-center">
       <div className="mb-3 text-muted-foreground">{icon}</div>
       <h2 className="text-xl font-medium">{title}</h2>
       <p className="mt-1 max-w-md text-muted-foreground">{body}</p>
@@ -88,7 +88,7 @@ export function Dialog({ open, onClose, title, children, wide }: { open: boolean
       <div
         ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
-        className={cn('max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-6 shadow-2xl outline-none sm:rounded-2xl fade-up', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}
+        className={cn('max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card-solid p-6 shadow-2xl outline-none sm:rounded-2xl fade-up', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}
       >
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 className="text-2xl font-medium">{title}</h2>

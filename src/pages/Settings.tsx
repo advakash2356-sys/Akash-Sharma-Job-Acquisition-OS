@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react';
-import { Button, Card, Input, Label, PageHeader, Badge } from '../components/ui';
+import { Button, Card, Input, Label, PageHeader, Badge, Textarea } from '../components/ui';
+import { useApp } from '../lib/state';
 import { clearUserApiKey, getUserApiKey, setUserApiKey } from '../lib/userApiKey';
 
 export default function SettingsPage() {
+  const { profile, setProfile } = useApp();
   const [value, setValue] = useState('');
   const [show, setShow] = useState(false);
   const [saved, setSaved] = useState(() => !!getUserApiKey());
@@ -34,6 +36,12 @@ export default function SettingsPage() {
           <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />
           <p>The key stays in this browser's storage. It is never committed or logged. Each AI request sends it to this app's server, which forwards it to Google for that one request and does not store it.</p>
         </div>
+      </Card>
+      <Card className="mt-5 max-w-2xl">
+        <h2 className="mb-3 text-2xl">Preferences</h2>
+        <div className="mb-4 max-w-[180px]"><Label htmlFor="dt">Daily application target</Label><Input id="dt" inputMode="numeric" value={profile.dailyTarget} onChange={(e) => setProfile({ ...profile, dailyTarget: e.target.value.replace(/\D/g, '') })} /></div>
+        <Label htmlFor="ai" hint="optional, added to every AI request">AI instructions</Label>
+        <Textarea id="ai" rows={4} value={profile.aiInstructions} onChange={(e) => setProfile({ ...profile, aiInstructions: e.target.value })} placeholder="e.g. Keep a warm, direct tone. Never mention my current employer in outreach." />
       </Card>
     </>
   );
