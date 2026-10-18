@@ -1,7 +1,10 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, Menu, Sun, Moon, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
+import { watchAuth, type AuthUser } from './lib/firebase';
+import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
+import { setKeyNamespace } from './lib/userApiKey';
 import { useLocalState } from './lib/useLocalState';
 import { cn } from './lib/utils';
 import Overview from './pages/Overview';
@@ -14,24 +17,38 @@ const Insights = lazy(() => import('./pages/Insights'));
 const Landing = lazy(() => import('./pages/Landing'));
 const Salary = lazy(() => import('./pages/Salary'));
 import SettingsPage from './pages/Settings';
+import Privacy from './pages/Privacy';
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
   { group: 'Overview', items: [{ id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
   { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
   { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Tailor & cover letter', icon: Wand2 }] },
   { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
-  { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }] },
+  { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }, { id: 'privacy', label: 'Privacy & security', icon: ShieldCheck }] },
 ];
 
 export default function App() {
-  const [profile, setProfile] = useLocalState<Profile>('jaos_profile_v1', emptyProfile);
-  const [jobs, setJobs] = useLocalState<Job[]>('jaos_jobs_v1', []);
-  const [page, setPage] = useState<PageId>('overview');
+  const [auth, setAuth] = useState<{ ready: boolean; user: AuthUser | null }>({ ready: false, user: null });
+  useEffect(() => {
+    let off = () => {};
+    watchAuth((u) => setAuth({ ready: true, user: u })).then((f) => { off = f; });
+    return () => off();
+  }, []);
+  const uid = auth.user?.uid || 'guest';
+  setKeyNamespace(uid);
+  if (!auth.ready) return <div className="min-h-screen bg-background" />;
+  return <Workspace key={uid} uid={uid} user={auth.user} />;
+}
+
+function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
+  const [profile, setProfile] = useLocalState<Profile>(scoped(PROFILE_KEY, uid), emptyProfile);
+  const [jobs, setJobs] = useLocalState<Job[]>(scoped(JOBS_KEY, uid), []);
+  const [page, setPage] = useState<PageId>(() => (location.hash === '#/app/privacy' ? 'privacy' : 'overview'));
   const [selectedJobId, setSelectedJobId] = useState('');
   const [menu, setMenu] = useState(false);
   const [inApp, setInApp] = useState(() => location.hash.startsWith('#/app'));
   useEffect(() => {
-    const f = () => setInApp(location.hash.startsWith('#/app'));
+    const f = () => { setInApp(location.hash.startsWith('#/app')); if (location.hash === '#/app/privacy') setPage('privacy'); };
     window.addEventListener('hashchange', f);
     return () => window.removeEventListener('hashchange', f);
   }, []);
@@ -56,7 +73,7 @@ export default function App() {
   };
   const hasResume = profile.resumeText.trim().length >= 50;
 
-  const Page = { overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, settings: SettingsPage }[page];
+  const Page = { overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
@@ -80,7 +97,11 @@ export default function App() {
           ))}
         </div>
       ))}
-      <button onClick={() => setDark(!dark)} className="mt-auto flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-foreground/80 hover:bg-muted cursor-pointer">
+      <button onClick={() => go('settings')} className="mt-auto flex items-center gap-3 rounded-2xl border border-border px-3 py-2 text-left text-sm cursor-pointer hover:bg-muted">
+        {user?.photo ? <img src={user.photo} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs text-primary">{(user?.name || 'G')[0]}</span>}
+        <span className="min-w-0"><span className="block truncate">{user?.name || 'Guest mode'}</span><span className="label block text-muted-foreground">{user ? 'Google account' : 'Sign in in Settings'}</span></span>
+      </button>
+      <button onClick={() => setDark(!dark)} className=" flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-foreground/80 hover:bg-muted cursor-pointer">
         {dark ? <Sun size={17} /> : <Moon size={17} />} {dark ? 'Light theme' : 'Dark theme'}
       </button>
     </nav>
@@ -89,7 +110,7 @@ export default function App() {
   if (!inApp) return <Suspense fallback={<div className="min-h-screen bg-[#0d0b0a]" />}><Landing dark={dark} toggleTheme={toggleTheme} enter={enter} /></Suspense>;
 
   return (
-    <Ctx.Provider value={{ profile, setProfile, jobs, setJobs, page, go, selectedJobId, hasResume }}>
+    <Ctx.Provider value={{ profile, setProfile, jobs, setJobs, page, go, selectedJobId, hasResume, user }}>
       <div className="app-bg" aria-hidden="true" />
       <div className="min-h-screen lg:grid lg:grid-cols-[270px_1fr]">
         <aside className="sticky top-0 hidden h-screen p-4 lg:block"><div className="glass h-full overflow-hidden rounded-[28px]">{sidebar}</div></aside>
@@ -109,7 +130,7 @@ export default function App() {
         )}
 
         <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 lg:py-12">
-          <Suspense fallback={<p className="label text-muted-foreground">Loading…</p>}><Page /></Suspense>
+          <div key={page} className="stagger"><Suspense fallback={<p className="label text-muted-foreground">Loading…</p>}><Page /></Suspense></div>
         </main>
       </div>
     </Ctx.Provider>

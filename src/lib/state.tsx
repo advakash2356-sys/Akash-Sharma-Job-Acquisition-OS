@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import type { Job, Profile } from '../types';
 
-export type PageId = 'overview' | 'jobs' | 'interviews' | 'resume' | 'tailor' | 'outreach' | 'salary' | 'insights' | 'prep' | 'settings';
+export type PageId = 'overview' | 'jobs' | 'interviews' | 'resume' | 'tailor' | 'outreach' | 'salary' | 'insights' | 'prep' | 'privacy' | 'settings';
 
 export interface AppCtx {
   profile: Profile;
@@ -12,6 +12,7 @@ export interface AppCtx {
   go: (p: PageId, jobId?: string) => void;
   selectedJobId: string;
   hasResume: boolean;
+  user: import('./firebase').AuthUser | null;
 }
 
 export const Ctx = createContext<AppCtx>(null as unknown as AppCtx);

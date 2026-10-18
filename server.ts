@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { handleAction, keyFromHeaders, ApiError } from "./server/handlers.js";
+import { handleAction, keyFromHeaders, serverKeyConfigured, ApiError } from "./server/handlers.js";
 
 async function startServer() {
   const app = express();
@@ -10,6 +10,7 @@ async function startServer() {
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+  app.get("/api/status", (_req, res) => res.json({ serverKey: serverKeyConfigured() }));
   app.post("/api/ai/:action", async (req, res) => {
     try {
       res.json(await handleAction(req.params.action, req.body || {}, keyFromHeaders(req.headers)));

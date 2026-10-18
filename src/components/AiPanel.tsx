@@ -3,6 +3,7 @@ import { Loader2, Sparkles, Copy, Check, KeyRound, FileWarning } from 'lucide-re
 import { Button } from './ui';
 import { callAi, AiError } from '../lib/api';
 import { useApp } from '../lib/state';
+import { useAiReady } from '../lib/aiReady';
 import type { Job } from '../types';
 
 /** Shared "run an AI action for this job using the user's resume" runner with loading + clear errors. */
@@ -45,11 +46,17 @@ export function AiError_({ error, go }: { error: { message: string; code?: strin
 }
 
 export function RunButton({ loading, onClick, children, disabled }: { loading: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
+  const { ready, checking } = useAiReady();
+  const { go } = useApp();
+  const blocked = !ready && !checking;
   return (
-    <Button onClick={onClick} disabled={loading || disabled} aria-busy={loading}>
-      {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-      {loading ? 'Working…' : children}
-    </Button>
+    <span className="inline-flex flex-col items-start gap-1">
+      <Button onClick={onClick} disabled={loading || disabled || blocked} aria-busy={loading} aria-describedby={blocked ? 'need-key' : undefined}>
+        {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+        {loading ? 'Working…' : children}
+      </Button>
+      {blocked && <span id="need-key" className="text-xs text-muted-foreground">Needs your free API key. <button type="button" className="underline text-primary cursor-pointer" onClick={() => go('settings')}>Add it in Settings</button></span>}
+    </span>
   );
 }
 

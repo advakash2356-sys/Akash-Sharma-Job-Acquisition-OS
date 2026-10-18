@@ -48,6 +48,17 @@ async function run(client: GoogleGenAI, prompt: string, schema?: any) {
 export async function handleAction(action: string, body: Body, apiKey?: string) {
   const key = apiKey || process.env.GEMINI_API_KEY;
   if (!key) throw new ApiError(401, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
+  if (action === "test-key") {
+    try {
+      const r = await new GoogleGenAI({ apiKey: key }).models.generateContent({ model: MODEL, contents: "Reply with the single word: ok" });
+      if (!r.text) throw new Error("empty");
+      return { result: { ok: true } };
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      if (/429|quota|rate/i.test(msg)) throw new ApiError(429, "The key works but its free-tier limit is reached. Try again in a minute.", "RATE_LIMIT");
+      throw new ApiError(401, "Google rejected this key. Check that you copied it fully.", "BAD_API_KEY");
+    }
+  }
   const j = need(body);
   const client = new GoogleGenAI({ apiKey: key });
   const ctx = `${j.instructions ? `USER INSTRUCTIONS (follow unless they ask for fabrication): ${j.instructions}\n\n` : ''}CANDIDATE RESUME:\n${j.resume}\n\nPREFERENCES: ${j.prefs}\n\nJOB: ${j.title} at ${j.company}\n${j.description}`;
@@ -96,6 +107,8 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
     throw new ApiError(502, "The AI request failed. Try again.");
   }
 }
+
+export const serverKeyConfigured = () => !!process.env.GEMINI_API_KEY;
 
 export function keyFromHeaders(h: any): string | undefined {
   const raw = h?.["x-user-gemini-key"];

@@ -49,15 +49,22 @@ export const Badge = ({ children, tone = 'muted' }: { children: React.ReactNode;
     tone === 'danger' && 'bg-muted text-danger')}>{children}</span>
 );
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+const BANNERS = ['/ridges-path.jpg', '/hero-poster.jpg', '/desk-offer.jpg'];
+export function PageHeader({ title, subtitle, action, eyebrow }: { title: string; subtitle?: string; action?: React.ReactNode; eyebrow?: string }) {
+  const img = BANNERS[(title.length + title.charCodeAt(0)) % BANNERS.length];
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-3 fade-up">
-      <div>
-        <h1 className="text-5xl sm:text-6xl">{title}</h1>
-        {subtitle && <p className="mt-1 max-w-2xl text-muted-foreground">{subtitle}</p>}
+    <header className="grain relative mb-8 overflow-hidden rounded-[28px] fade-up">
+      <img src={img} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/25" />
+      <div className="relative flex flex-wrap items-end justify-between gap-4 px-6 pb-7 pt-20 text-[#f4ede2] sm:px-10 sm:pt-28">
+        <div>
+          {eyebrow && <p className="label mb-2 text-[#ffb089]">{eyebrow}</p>}
+          <h1 className="text-5xl leading-[0.95] sm:text-7xl">{title}</h1>
+          {subtitle && <p className="mt-3 max-w-2xl text-white/75">{subtitle}</p>}
+        </div>
+        {action}
       </div>
-      {action}
-    </div>
+    </header>
   );
 }
 

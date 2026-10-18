@@ -3,6 +3,7 @@ import { ArrowRight, Check, Circle, Flame } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { Button, Card, PageHeader } from '../components/ui';
 import FocusTimer from '../components/FocusTimer';
+import { useAiReady } from '../lib/aiReady';
 import { useApp } from '../lib/state';
 import { getUserApiKey } from '../lib/userApiKey';
 import { followUps, funnel, projection, sprintStats } from '../lib/insights';
@@ -10,6 +11,7 @@ import { followUps, funnel, projection, sprintStats } from '../lib/insights';
 export default function Overview() {
   const { profile, jobs, go, hasResume } = useApp();
   const hasKey = !!getUserApiKey();
+  const { ready, checking } = useAiReady();
   const scored = jobs.filter((j) => j.score).length;
   const steps = [
     { done: hasResume, label: 'Add your resume', page: 'resume' as const },
@@ -37,6 +39,15 @@ export default function Overview() {
           <p className="mt-3 max-w-xl text-white/75">{target ? `${sp.today} of ${target} applications today.` : 'Set a daily target in Settings.'} {sp.streak > 0 && `${sp.streak}-day streak.`}</p>
         </div>
       </section>
+
+      {!ready && !checking && (
+        <Card className="mb-6 border-primary/50 ring-1 ring-primary/30">
+          <div className="label mb-1 text-primary">Step one</div>
+          <h2 className="text-4xl">Add your free API key</h2>
+          <p className="mt-1 mb-4 max-w-2xl text-sm text-muted-foreground">A free Gemini key from Google AI Studio powers tailoring, the recruiter read, interview prep and outreach. Takes a minute, no card. Until then the AI buttons stay disabled.</p>
+          <div className="flex flex-wrap gap-2"><Button onClick={() => go('settings')}>Add my key <ArrowRight size={16} /></Button><a className="inline-flex h-10 items-center rounded-full border border-border px-4 text-sm hover:bg-muted" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">Get a free key</a></div>
+        </Card>
+      )}
 
       {next && (
         <Card className="mb-6">
