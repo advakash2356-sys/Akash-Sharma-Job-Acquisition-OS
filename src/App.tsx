@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, Menu, Sun, Moon, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, Menu, Sun, Moon, X } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
 import { useLocalState } from './lib/useLocalState';
@@ -10,11 +10,12 @@ import Interviews from './pages/Interviews';
 import ResumePage from './pages/Resume';
 import Tailor from './pages/Tailor';
 import Outreach from './pages/Outreach';
+import Salary from './pages/Salary';
 import SettingsPage from './pages/Settings';
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
   { group: 'Overview', items: [{ id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
-  { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }] },
+  { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'salary', label: 'Salary', icon: LineChart }] },
   { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Tailor & cover letter', icon: Wand2 }] },
   { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
   { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }] },
@@ -44,7 +45,7 @@ export default function App() {
   };
   const hasResume = profile.resumeText.trim().length >= 50;
 
-  const Page = { overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, settings: SettingsPage }[page];
+  const Page = { overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, settings: SettingsPage }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">

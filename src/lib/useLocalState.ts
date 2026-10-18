@@ -4,7 +4,10 @@ export function useLocalState<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
       const raw = localStorage.getItem(key);
-      return raw ? ({ ...(typeof initial === 'object' && !Array.isArray(initial) ? initial : {}), ...JSON.parse(raw) } as T) : initial;
+      if (!raw) return initial;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(initial)) return (Array.isArray(parsed) ? parsed : initial) as T;
+      return { ...(initial as object), ...parsed } as T;
     } catch { return initial; }
   });
   useEffect(() => {

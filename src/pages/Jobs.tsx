@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Briefcase, Trash2, ExternalLink } from 'lucide-react';
 import { Badge, Button, Card, Dialog, EmptyState, Input, Label, PageHeader, Select, Textarea } from '../components/ui';
 import { AiError_, RunButton, useAiAction } from '../components/AiPanel';
@@ -6,16 +6,18 @@ import { useApp } from '../lib/state';
 import { uid, today } from '../lib/utils';
 import { JOB_STATUSES, type Job, type JobScore, type JobStatus } from '../types';
 
+const num = (v: string) => (v.trim() && !isNaN(Number(v)) ? Number(v) : undefined);
 const scoreTone = (n: number) => (n >= 75 ? 'primary' : n >= 55 ? 'gold' : 'danger') as 'primary' | 'gold' | 'danger';
 
 function AddJob({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (j: Job) => void }) {
   const [f, setF] = useState({ title: '', company: '', url: '', description: '' });
+  const [pay, setPay] = useState({ min: '', max: '' });
+  useEffect(() => { if (!open) { setF({ title: '', company: '', url: '', description: '' }); setPay({ min: '', max: '' }); } }, [open]);
   const ok = f.title.trim() && f.description.trim();
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ok) return;
-    onAdd({ id: uid(), ...f, title: f.title.trim(), company: f.company.trim() || 'Unknown company', status: 'Saved', createdAt: today(), notes: '', interviews: [] });
-    setF({ title: '', company: '', url: '', description: '' });
+    onAdd({ id: uid(), ...f, title: f.title.trim(), company: f.company.trim() || 'Unknown company', status: 'Saved', createdAt: today(), notes: '', interviews: [], salaryMin: num(pay.min), salaryMax: num(pay.max) });
     onClose();
   };
   return (
@@ -25,6 +27,10 @@ function AddJob({ open, onClose, onAdd }: { open: boolean; onClose: () => void; 
         <div className="grid gap-4 sm:grid-cols-2">
           <div><Label htmlFor="jc">Company</Label><Input id="jc" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} /></div>
           <div><Label htmlFor="ju" hint="optional">Link</Label><Input id="ju" type="url" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} placeholder="https://" /></div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div><Label htmlFor="sm" hint="optional, your unit e.g. LPA">Pay min</Label><Input id="sm" inputMode="decimal" value={pay.min} onChange={(e) => setPay({ ...pay, min: e.target.value })} /></div>
+          <div><Label htmlFor="sx" hint="optional">Pay max</Label><Input id="sx" inputMode="decimal" value={pay.max} onChange={(e) => setPay({ ...pay, max: e.target.value })} /></div>
         </div>
         <div><Label htmlFor="jd">Job description</Label><Textarea id="jd" rows={8} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Paste the full job description" required /></div>
         <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" disabled={!ok}>Add job</Button></div>
@@ -76,6 +82,11 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
         <Button variant="outline" onClick={() => go('outreach', job.id)}>Write outreach</Button>
       </div>
 
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        {([['salaryMin', 'Pay min'], ['salaryMax', 'Pay max'], ['offerAmount', 'Offer received']] as const).map(([k, l]) => (
+          <div key={k}><Label htmlFor={k}>{l}</Label><Input id={k} inputMode="decimal" value={job[k] ?? ''} onChange={(e) => patch({ [k]: num(e.target.value) })} /></div>
+        ))}
+      </div>
       <div className="mb-5"><Label htmlFor="nt">Notes</Label><Textarea id="nt" rows={3} value={job.notes} onChange={(e) => patch({ notes: e.target.value })} /></div>
       <details className="mb-5 text-sm"><summary className="cursor-pointer text-muted-foreground">Job description</summary><p className="mt-2 whitespace-pre-wrap">{job.description}</p></details>
       <div className="flex justify-between">

@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { Send } from 'lucide-react';
 import { Button, Card, EmptyState, Input, Label, PageHeader, Select } from '../components/ui';
 import { AiError_, CopyButton, RunButton, useAiAction } from '../components/AiPanel';
+import { Download, Mail } from 'lucide-react';
+import { exportEml, fileBase, gmailComposeUrl } from '../lib/exporters';
 import { useApp } from '../lib/state';
 import type { Job } from '../types';
 
 export default function Outreach() {
-  const { jobs, setJobs, selectedJobId, go, hasResume, page } = useApp();
+  const { jobs, setJobs, selectedJobId, go, hasResume, page, profile } = useApp();
   const job = jobs.find((j) => j.id === selectedJobId) || jobs[0];
   const ai = useAiAction<NonNullable<Job['outreach']>>('generate-outreach', job);
+  const [to, setTo] = useState('');
   const [contact, setContact] = useState({ contactName: '', contactTitle: '' });
 
   if (!job) return <><PageHeader title="Outreach studio" /><EmptyState icon={<Send size={32} />} title="Add a job first" body="Outreach is written for a specific role and your resume." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} /></>;
@@ -28,6 +31,17 @@ export default function Outreach() {
         </div>
         <div className="sm:col-span-3 empty:hidden"><AiError_ error={ai.error} go={go} /></div>
       </Card>
+      {o && (
+        <Card className="mb-4">
+          <h2 className="mb-1 text-lg font-medium">Send it yourself</h2>
+          <p className="mb-3 text-sm text-muted-foreground">Nothing is sent for you and no account is connected. Open a pre-filled Gmail draft, or download an .eml draft for any mail app.</p>
+          <div className="mb-3 max-w-sm"><Label htmlFor="to" hint="optional">Recipient email</Label><Input id="to" type="email" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div className="flex flex-wrap gap-2">
+            <a href={gmailComposeUrl({ to, subject: o.emailSubject, body: o.emailBody })} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90"><Mail size={16} /> Open in Gmail</a>
+            <Button variant="outline" onClick={() => exportEml({ to, subject: o.emailSubject, body: o.emailBody }, fileBase(profile, job, 'outreach'))}><Download size={16} /> Download .eml</Button>
+          </div>
+        </Card>
+      )}
       <div className="grid gap-4">
         {blocks.map(([t, text]) => (
           <Card key={t}><div className="mb-2 flex items-center justify-between"><h2 className="text-lg font-medium">{t}</h2><CopyButton text={text} /></div><p className="whitespace-pre-wrap text-sm">{text}</p></Card>

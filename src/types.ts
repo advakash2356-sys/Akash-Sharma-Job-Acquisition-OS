@@ -40,6 +40,10 @@ export interface Job {
   createdAt: string;
   appliedAt?: string;
   notes: string;
+  /** Pay in the user's own unit (e.g. LPA). Optional. */
+  salaryMin?: number;
+  salaryMax?: number;
+  offerAmount?: number;
   score?: JobScore;
   tailoredResume?: string;
   coverLetter?: string;
