@@ -1,186 +1,79 @@
-export type ScoreTier = 'HIGH_PRIORITY' | 'MEDIUM_PRIORITY' | 'DISCARD';
-
-export type JobStatus = 
-  | 'Discovered'
-  | 'Scored'
-  | 'Tailored'
-  | 'Applied'
-  | 'Interviewing'
-  | 'Offer Received'
-  | 'Archived'
-  | 'Rejected';
-
-export interface SuccessProbabilityBreakdown {
-  overallPercentage: number; // e.g. 88 (0-100%)
-  keywordMatchConfidence: number; // e.g. 92% based on resume keyword overlap
-  historicalConversionRate: number; // e.g. 80% based on application channel performance
-  riskLevel: 'VERY_HIGH' | 'HIGH' | 'MODERATE' | 'LOW';
-  keyDrivers: string[];
+export interface Profile {
+  name: string;
+  headline: string;
+  email: string;
+  phone: string;
+  location: string;
+  links: string;
+  targetRoles: string;
+  minCtc: string;
+  /** Applications the user wants to send per day. */
+  dailyTarget: string;
+  /** Extra instructions appended to every AI request (tone, constraints). */
+  aiInstructions: string;
+  /** Plain-text resume. This is what every AI feature reads. */
+  resumeText: string;
 }
 
-export interface ScoreBreakdown {
-  salaryScore: number; // Max 25
-  titleSkillsScore: number; // Max 25
-  companyQualityScore: number; // Max 15
-  locationShiftScore: number; // Max 15
-  referralScore: number; // Max 10
-  postingAgeScore: number; // Max 10
-  totalScore: number; // Max 100
-  ctcFloorPassed: boolean; // Must be >= 18 LPA
-  tier: ScoreTier;
-  pros: string[];
-  redFlags: string[];
-  skillGaps: string[];
+export type JobStatus = 'Saved' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
+export const JOB_STATUSES: JobStatus[] = ['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
+
+export interface JobScore {
+  score: number;
+  verdict: string;
+  strengths: string[];
+  gaps: string[];
+  keywords: string[];
   recommendation: string;
-  successProbability?: SuccessProbabilityBreakdown;
 }
 
-export interface InterviewRound {
+export interface RecruiterReview {
+  shortlist: 'Yes' | 'Maybe' | 'No';
+  sixSecondRead: string;
+  strengths: string[];
+  concerns: string[];
+  atsRisks: string[];
+  fixes: string[];
+}
+
+export interface InterviewPrep {
+  questions: { question: string; why: string; answerOutline: string }[];
+  askThem: string[];
+  research: string[];
+}
+
+export interface Interview {
   id: string;
-  roundNumber: number;
-  roundTitle: string; // e.g. "Recruiter Screening", "Hiring Manager Technical", "Legal Ops Case Study", "Executive Leadership", "HR & Negotiation"
-  scheduledDate?: string; // e.g. "2026-08-02T14:30"
-  interviewerName?: string;
-  interviewerTitle?: string;
-  meetingLink?: string;
-  status: 'Scheduled' | 'Completed' | 'Passed' | 'Rejected' | 'Needs Follow-Up';
-  prepNotes?: string;
-  feedbackNotes?: string;
-  questionsAsked?: string[];
+  round: string;
+  date: string; // yyyy-mm-ddThh:mm
+  notes: string;
 }
 
-export type RoleCategory = 
-  | 'Legal Ops & CLM Transformation' 
-  | 'Strategic Operations Lead' 
-  | 'Enterprise AI & Process Automation' 
-  | 'General Manager / Director';
-
-export type CompanyCultureCategory = 
-  | 'Top-Tier Consulting (Deloitte / EY)' 
-  | 'High-Growth Tech & LegalTech' 
-  | 'Corporate GCC / MNC' 
-  | 'Gartner Alumni / Warm Network';
-
-export type TemplateChannel = 'LinkedIn InMail' | 'Cold Email' | '5-Day Follow-Up' | 'Warm Alumni Intro';
-
-export interface ColdEmailTemplate {
-  id: string;
-  title: string;
-  roleCategory: RoleCategory;
-  cultureCategory: CompanyCultureCategory;
-  channel: TemplateChannel;
-  subject: string;
-  body: string;
-  description: string;
-  conversionRateEstimate: string; // e.g. "55% Response Rate"
-  keyHighlights: string[];
-}
-
-export interface JobRole {
+export interface Job {
   id: string;
   title: string;
   company: string;
-  location: string;
-  workMode: 'Remote' | 'Hybrid NCR' | 'Onsite NCR' | 'Non-NCR Onsite';
-  shift: 'US/Night Shift' | 'Day Shift' | 'Flexible';
-  ctcMinLpa: number;
-  ctcMaxLpa: number;
-  salaryUnclear: boolean;
-  source: 'LinkedIn' | 'Naukri' | 'Gartner Alumni' | 'Legal Ops Community' | 'Company Page' | 'Referral';
-  jobUrl?: string;
+  url: string;
   description: string;
-  dateAdded: string;
-  appliedDate?: string;
-  followUpDate?: string;
   status: JobStatus;
-  scores: ScoreBreakdown;
-  tailoredResumeId?: string;
-  coverLetter?: string;
-  outreachMessage?: string;
-  contactPerson?: {
-    name: string;
-    title: string;
-    linkedinUrl?: string;
-    email?: string;
-  };
-  notes?: string;
-  estimatedHoursSpent?: number;
-  interviews?: InterviewRound[];
-}
-
-export interface MasterResumeData {
-  name: string;
-  title: string;
-  contact: {
-    email: string;
-    phone: string;
-    location: string;
-    linkedin: string;
-    github?: string;
-  };
-  executiveSummary: string;
-  corePositioning: string;
-  keyMetrics: {
-    tatReduction: string;
-    teamSize: string;
-    stakeholdersTrained: string;
-    playbooksAuthored: string;
-    liveAiProducts: string[];
-    yearsExp: string;
-    gartnerTenure: string;
-  };
-  skills: {
-    strategicOps: string[];
-    legalOpsClm: string[];
-    aiAutomation: string[];
-    leadership: string[];
-  };
-  experience: {
-    company: string;
-    role: string;
-    period: string;
-    location: string;
-    achievements: string[];
-  }[];
-  education: {
-    degree: string;
-    institution: string;
-    year: string;
-    details?: string;
-  }[];
-  aiProjects: {
-    name: string;
-    description: string;
-    techStack: string[];
-    impact: string;
-  }[];
-}
-
-export interface TargetConfig {
-  targetMinCtc: number; // Default 18
-  targetMaxCtc: number; // Default 28
-  targetRangeMode: '18-22 LPA' | '22-28 LPA Push';
-  shiftPreference: 'Pure Remote US-Shift' | 'Delhi-NCR Hybrid Acceptable' | 'Any Remote';
-  whitelistedCompanies: string[];
-  blacklistedCompanies: string[];
-  dailyAppTarget: number; // Default 15
-  workingHours: string; // e.g., "09:00 - 23:30"
-  targetDeadline: string; // "28 August 2026"
-}
-
-export interface OutreachMessage {
-  type: 'Hiring Manager Cold Mail' | 'Recruiter InMail' | 'Gartner Alumni Warm Intro';
-  subject: string;
-  body: string;
-}
-
-export interface DailyActivityLog {
-  date: string;
-  discovered: number;
-  scored: number;
-  applied: number;
-  outreachSent: number;
-  interviewsBooked: number;
-  offersReceived: number;
+  createdAt: string;
+  appliedAt?: string;
   notes: string;
+  /** Pay in the user's own unit (e.g. LPA). Optional. */
+  salaryMin?: number;
+  salaryMax?: number;
+  offerAmount?: number;
+  score?: JobScore;
+  tailoredResume?: string;
+  coverLetter?: string;
+  outreach?: { emailSubject: string; emailBody: string; linkedinMessage: string; followUp: string };
+  interviews: Interview[];
+  source?: string;
+  recruiterReview?: RecruiterReview;
+  interviewPrep?: InterviewPrep;
+  prepDone?: string[];
 }
+
+export const emptyProfile: Profile = {
+  name: '', headline: '', email: '', phone: '', location: '', links: '', targetRoles: '', minCtc: '', dailyTarget: '5', aiInstructions: '', resumeText: '',
+};

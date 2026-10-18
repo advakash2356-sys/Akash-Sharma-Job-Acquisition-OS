@@ -1,545 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import { JobRole, JobStatus, TargetConfig } from './types';
-import { initialJobs } from './data/initialJobs';
-import { Navbar } from './components/Navbar';
-import { BottomMobileNav } from './components/BottomMobileNav';
-import { DashboardOverview } from './components/DashboardOverview';
-import { ApplicationStatusScheduleChart } from './components/ApplicationStatusScheduleChart';
-import { JobPipelineView } from './components/JobPipelineView';
-import { ResumeTailorView } from './components/ResumeTailorView';
-import { OutreachStudioView } from './components/OutreachStudioView';
-import { DailyCadenceTracker } from './components/DailyCadenceTracker';
-import { MasterPromptConfigView } from './components/MasterPromptConfigView';
-import { RecruiterStrategyView } from './components/RecruiterStrategyView';
-import { AgentCeoBoard } from './components/AgentCeoBoard';
-import { SystemAuditView } from './components/SystemAuditView';
-import { INITIAL_RESUME_DATA, ResumeData } from './components/ResumeUpload';
-import { SkillGapHeatmap } from './components/SkillGapHeatmap';
-import { CareerTrajectoryVisualizer } from './components/CareerTrajectoryVisualizer';
-import { SalaryBenchmarking } from './components/SalaryBenchmarking';
-import { InterviewStageTracker } from './components/InterviewStageTracker';
-import { InterviewCalendar } from './components/InterviewCalendar';
-import { JobHistoryTimeline } from './components/JobHistoryTimeline';
-import { AiOutreachGenerator } from './components/AiOutreachGenerator';
-import { AddJobModal } from './components/AddJobModal';
-import { BatchEmailPackageModal } from './components/BatchEmailPackageModal';
-import { PlatformApplyTrackerModal } from './components/PlatformApplyTrackerModal';
-import { ApplicationAuditOverlay } from './components/ApplicationAuditOverlay';
-import { GmailMcpConnectorModal } from './components/GmailMcpConnectorModal';
-import { CONTACT_EMAIL } from './config';
-import { SimpleOverviewView } from './components/SimpleOverviewView';
-import { 
-  AdminAccessGate, 
-  WhitelistManagerModal, 
-  getStoredWhitelist, 
-  saveWhitelist, 
-  getActiveUserEmail, 
-  setActiveUserEmail, 
-  PRIMARY_ADMIN_EMAIL 
-} from './components/AdminAccessGate';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X } from 'lucide-react';
+import { emptyProfile, type Job, type Profile } from './types';
+import { Ctx, type PageId } from './lib/state';
+import { watchAuth, type AuthUser } from './lib/firebase';
+import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
+import { setKeyNamespace } from './lib/userApiKey';
+import { useLocalState } from './lib/useLocalState';
+import { cn } from './lib/utils';
+import Overview from './pages/Overview';
+import Jobs from './pages/Jobs';
+import Interviews from './pages/Interviews';
+import ResumePage from './pages/Resume';
+const Tailor = lazy(() => import('./pages/Tailor'));
+const Outreach = lazy(() => import('./pages/Outreach'));
+const Insights = lazy(() => import('./pages/Insights'));
+const Landing = lazy(() => import('./pages/Landing'));
+const Salary = lazy(() => import('./pages/Salary'));
+import SettingsPage from './pages/Settings';
+import Privacy from './pages/Privacy';
+
+const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
+  { group: 'Overview', items: [{ id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
+  { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
+  { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Tailor & cover letter', icon: Wand2 }] },
+  { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
+  { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }, { id: 'privacy', label: 'Privacy & security', icon: ShieldCheck }] },
+];
 
 export default function App() {
-  const [jobs, setJobs] = useState<JobRole[]>(initialJobs);
-  const [selectedJob, setSelectedJob] = useState<JobRole | null>(initialJobs[0]);
-  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
-  const [isBatchEmailModalOpen, setIsBatchEmailModalOpen] = useState(false);
-  const [isPlatformTrackerModalOpen, setIsPlatformTrackerModalOpen] = useState(false);
-  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
-  const [isGmailConnectorModalOpen, setIsGmailConnectorModalOpen] = useState(false);
-  const [isWhitelistModalOpen, setIsWhitelistModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('simple-overview');
-  const [isUsNightShiftTrackActive, setIsUsNightShiftTrackActive] = useState<boolean>(false);
-  const [isPanicMode, setIsPanicMode] = useState<boolean>(true); // Panic mode default true given 31 August 2026 urgency!
-  const [resumeData, setResumeData] = useState<ResumeData>(INITIAL_RESUME_DATA);
+  const [auth, setAuth] = useState<{ ready: boolean; user: AuthUser | null }>({ ready: false, user: null });
+  useEffect(() => {
+    let off = () => {};
+    watchAuth((u) => setAuth({ ready: true, user: u })).then((f) => { off = f; });
+    return () => off();
+  }, []);
+  const uid = auth.user?.uid || 'guest';
+  setKeyNamespace(uid);
+  if (!auth.ready) return <div className="min-h-screen bg-background" />;
+  return <Workspace key={uid} uid={uid} user={auth.user} />;
+}
 
-  const handleTogglePanicMode = () => {
-    setIsPanicMode(prev => {
-      const next = !prev;
-      setTargetConfig(tc => ({
-        ...tc,
-        dailyAppTarget: next ? 30 : 15
-      }));
-      return next;
-    });
-  };
-
-  // Admin Security Access & Whitelist State
-  const [whitelist, setWhitelist] = useState<string[]>(() => getStoredWhitelist());
-  const [activeUserEmail, setActiveUserEmailState] = useState<string | null>(() => {
-    const saved = getActiveUserEmail();
-    return saved || null; // First page of website is Login Gate
+function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
+  const [profile, setProfile] = useLocalState<Profile>(scoped(PROFILE_KEY, uid), emptyProfile);
+  const [jobs, setJobs] = useLocalState<Job[]>(scoped(JOBS_KEY, uid), []);
+  const [page, setPage] = useState<PageId>(() => (location.hash === '#/app/privacy' ? 'privacy' : 'overview'));
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [menu, setMenu] = useState(false);
+  const [inApp, setInApp] = useState(() => location.hash.startsWith('#/app'));
+  useEffect(() => {
+    const f = () => { setInApp(location.hash.startsWith('#/app')); if (location.hash === '#/app/privacy') setPage('privacy'); };
+    window.addEventListener('hashchange', f);
+    return () => window.removeEventListener('hashchange', f);
+  }, []);
+  const enter = () => { location.hash = '#/app'; window.scrollTo(0, 0); };
+  const leave = () => { location.hash = ''; window.scrollTo(0, 0); };
+  const [dark, setDark] = useState(() => {
+    const s = localStorage.getItem('jaos_theme');
+    return s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  const handleLogin = (email: string) => {
-    setActiveUserEmail(email);
-    setActiveUserEmailState(email);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    localStorage.setItem('jaos_theme', dark ? 'dark' : 'light');
+  }, [dark]);
+
+  const toggleTheme = () => setDark((d) => !d);
+  const go = (p: PageId, jobId?: string) => {
+    if (jobId) setSelectedJobId(jobId);
+    setPage(p);
+    setMenu(false);
+    window.scrollTo(0, 0);
   };
+  const hasResume = profile.resumeText.trim().length >= 50;
 
-  const handleLogout = () => {
-    setActiveUserEmail(null);
-    setActiveUserEmailState(null);
-  };
+  const Page = { overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage }[page];
 
-  const handleAddWhitelistedEmail = (email: string) => {
-    const updated = [...whitelist, email];
-    setWhitelist(updated);
-    saveWhitelist(updated);
-  };
+  const sidebar = (
+    <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
+      <div className="px-2 pt-1">
+        <button onClick={leave} className="display text-3xl leading-none cursor-pointer" aria-label="Back to home">Momentum</button>
+        <div className="label mt-1 text-muted-foreground">{profile.name || 'Your job search'}</div>
+      </div>
+      {NAV.map((g) => (
+        <div key={g.group}>
+          <div className="label mb-1 px-2 text-muted-foreground">{g.group}</div>
+          {g.items.map((it) => (
+            <button
+              key={it.id}
+              onClick={() => go(it.id)}
+              aria-current={page === it.id ? 'page' : undefined}
+              className={cn('flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm transition-colors cursor-pointer',
+                page === it.id ? 'bg-accent font-medium text-primary' : 'text-foreground/80 hover:bg-muted')}
+            >
+              <it.icon size={17} /> {it.label}
+            </button>
+          ))}
+        </div>
+      ))}
+      <button onClick={() => go('settings')} className="mt-auto flex items-center gap-3 rounded-2xl border border-border px-3 py-2 text-left text-sm cursor-pointer hover:bg-muted">
+        {user?.photo ? <img src={user.photo} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs text-primary">{(user?.name || 'G')[0]}</span>}
+        <span className="min-w-0"><span className="block truncate">{user?.name || 'Guest mode'}</span><span className="label block text-muted-foreground">{user ? 'Google account' : 'Sign in in Settings'}</span></span>
+      </button>
+      <button onClick={() => setDark(!dark)} className=" flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-foreground/80 hover:bg-muted cursor-pointer">
+        {dark ? <Sun size={17} /> : <Moon size={17} />} {dark ? 'Light theme' : 'Dark theme'}
+      </button>
+    </nav>
+  );
 
-  const handleRemoveWhitelistedEmail = (email: string) => {
-    const updated = whitelist.filter(w => w.toLowerCase() !== email.toLowerCase());
-    setWhitelist(updated);
-    saveWhitelist(updated);
-  };
-
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
-  const [syncToast, setSyncToast] = useState<string | null>(null);
-
-  const handleMarkJobApplied = (jobId: string, channel: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    setJobs(prev => prev.map(j => {
-      if (j.id === jobId) {
-        return {
-          ...j,
-          status: 'Applied',
-          appliedDate: j.appliedDate || today,
-          notes: j.notes ? `${j.notes} | Applied via ${channel} on ${today}` : `Applied via ${channel} on ${today}`
-        };
-      }
-      return j;
-    }));
-  };
-
-  const handleUnmarkJobApplied = (jobId: string) => {
-    setJobs(prev => prev.map(j => {
-      if (j.id === jobId) {
-        return {
-          ...j,
-          status: 'Scored',
-          appliedDate: undefined
-        };
-      }
-      return j;
-    }));
-  };
-
-  const [targetConfig, setTargetConfig] = useState<TargetConfig>({
-    targetMinCtc: 18,
-    targetMaxCtc: 28,
-    targetRangeMode: '22-28 LPA Push',
-    shiftPreference: 'Pure Remote US-Shift',
-    whitelistedCompanies: ['Deloitte USI', 'Fractal Analytics', 'Ironclad', 'Genpact Digital', 'Gartner Alumni Network'],
-    blacklistedCompanies: ['Low-ball agencies', 'Non-NCR Onsite'],
-    dailyAppTarget: 15,
-    workingHours: '09:00 - 23:30',
-    targetDeadline: '31 August 2026'
-  });
-
-  // Handler for Autonomous Agent Discovery & Re-Scoring Loop
-  const handleTriggerAgentLoop = () => {
-    setIsSyncing(true);
-    setSyncToast('⚡ Autonomous Agent Loop Initiated: Scanning LinkedIn, Naukri, Indeed & Executive Network for US-shift roles with ≥₹18 LPA Floor...');
-
-    setTimeout(() => {
-      // Re-evaluate & refresh timestamps, inject fresh opportunity if needed
-      setJobs(prevJobs => {
-        const hasIronclad = prevJobs.some(j => j.company.includes('Ironclad'));
-        let updated = [...prevJobs];
-        
-        if (!hasIronclad) {
-          const freshJob: JobRole = {
-            id: `job-${Date.now()}`,
-            title: "Senior Lead – Legal Ops & CLM Process Architecture",
-            company: "Ironclad (Legal Tech US-Shift)",
-            location: "Remote US-Shift / Gurgaon",
-            workMode: "Remote",
-            shift: "US/Night Shift",
-            ctcMinLpa: 24,
-            ctcMaxLpa: 28,
-            salaryUnclear: false,
-            source: "LinkedIn",
-            dateAdded: new Date().toISOString().split('T')[0],
-            status: "Scored",
-            description: "Lead enterprise legal operations transformation and CLM workflow design for global Fortune 500 tech clients. Requires 8+ yrs operations leadership, process optimization (TAT reduction), and Copilot AI integration.",
-            scores: {
-              salaryScore: 30,
-              titleSkillsScore: 25,
-              companyQualityScore: 15,
-              locationShiftScore: 15,
-              referralScore: 9,
-              postingAgeScore: 10,
-              totalScore: 98,
-              ctcFloorPassed: true,
-              tier: "HIGH_PRIORITY",
-              pros: ["Top salary range (24-28 LPA)", "Direct Gartner ops + Legal Ops alignment", "Pure remote US shift"],
-              redFlags: [],
-              skillGaps: [],
-              recommendation: "EXECUTIVE PRIORITY (98/100). Custom tailor & apply immediately."
-            },
-            contactPerson: {
-              name: "Marcus Vance",
-              title: "VP of Global Customer Operations & Legal Systems",
-              email: "mvance@ironcladapp.com"
-            }
-          };
-          updated = [freshJob, ...prevJobs];
-        }
-
-        return updated.map(j => ({
-          ...j,
-          scores: {
-            ...j.scores,
-            postingAgeScore: 10
-          }
-        }));
-      });
-
-      setIsSyncing(false);
-      setLastSyncTime(new Date());
-      setSyncToast('✅ Autonomous Loop Completed! 15+ Target Opportunities Re-scored. Total High-Priority Roles updated.');
-
-      setTimeout(() => {
-        setSyncToast(null);
-      }, 5000);
-    }, 1200);
-  };
-
-  // Dynamic Scoring Re-Evaluation Hook: Automatically re-evaluates all job scores when targetConfig changes
-  React.useEffect(() => {
-    setJobs(prevJobs => prevJobs.map(job => {
-      const maxCtc = job.ctcMaxLpa || job.ctcMinLpa || 0;
-      const minFloor = targetConfig.targetMinCtc || 18;
-      const maxTarget = targetConfig.targetMaxCtc || 28;
-
-      const ctcFloorPassed = maxCtc >= minFloor;
-
-      let salaryScore = 0;
-      if (ctcFloorPassed) {
-        if (maxCtc >= maxTarget) {
-          salaryScore = 30;
-        } else {
-          const ratio = (maxCtc - minFloor) / Math.max(1, maxTarget - minFloor);
-          salaryScore = Math.round(15 + ratio * 15);
-        }
-      }
-
-      const totalScore = ctcFloorPassed
-        ? Math.min(100, Math.max(0, (job.scores.relevanceScore || 35) + salaryScore + (job.scores.workModeShiftScore || 20) + (job.scores.speedOutreachScore || 10)))
-        : Math.min(45, Math.max(0, (job.scores.relevanceScore || 25) + salaryScore));
-
-      let tier: 'HIGH_PRIORITY' | 'STANDARD_PIPELINE' | 'DISCARD' = 'DISCARD';
-      if (!ctcFloorPassed) {
-        tier = 'DISCARD';
-      } else if (totalScore >= 75) {
-        tier = 'HIGH_PRIORITY';
-      } else if (totalScore >= 50) {
-        tier = 'STANDARD_PIPELINE';
-      }
-
-      const floorFlagMsg = `HARD FAIL: Below ₹${minFloor} LPA Floor`;
-      let updatedRedFlags = (job.scores.redFlags || []).filter(f => !f.startsWith('HARD FAIL: Below ₹'));
-      if (!ctcFloorPassed) {
-        updatedRedFlags.push(floorFlagMsg);
-      }
-
-      return {
-        ...job,
-        scores: {
-          ...job.scores,
-          salaryScore,
-          ctcFloorPassed,
-          totalScore,
-          tier,
-          redFlags: updatedRedFlags
-        }
-      };
-    }));
-  }, [targetConfig.targetMinCtc, targetConfig.targetMaxCtc, targetConfig.shiftPreference]);
-
-  const handleJobAdded = (newJob: JobRole) => {
-    setJobs(prev => [newJob, ...prev]);
-    setSelectedJob(newJob);
-    if (newJob.scores.ctcFloorPassed) {
-      setActiveTab('pipeline');
-    }
-  };
-
-  const handleUpdateJobStatus = (jobId: string, newStatus: JobStatus) => {
-    setJobs(prev => prev.map(j => {
-      if (j.id === jobId) {
-        return {
-          ...j,
-          status: newStatus,
-          appliedDate: (newStatus === 'Applied' && !j.appliedDate) ? new Date().toISOString().split('T')[0] : j.appliedDate
-        };
-      }
-      return j;
-    }));
-  };
-
-  const handleUpdateJob = (updatedJob: JobRole) => {
-    setJobs(prev => prev.map(j => j.id === updatedJob.id ? updatedJob : j));
-    if (selectedJob?.id === updatedJob.id) {
-      setSelectedJob(updatedJob);
-    }
-  };
+  if (!inApp) return <Suspense fallback={<div className="min-h-screen bg-[#0d0b0a]" />}><Landing dark={dark} toggleTheme={toggleTheme} enter={enter} /></Suspense>;
 
   return (
-    <AdminAccessGate
-      activeUserEmail={activeUserEmail}
-      whitelist={whitelist}
-      onLogin={handleLogin}
-      onLogout={handleLogout}
-    >
-      <div className="min-h-screen bg-[#0a0a0b] text-[#e0e0e0] font-sans selection:bg-blue-600 selection:text-white flex flex-col overflow-x-hidden w-full max-w-full">
-        {/* Dynamic Agent Sync Toast Notification Bar */}
-        {syncToast && (
-          <div className="bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-blue-950/90 text-white text-xs font-mono font-bold py-2.5 px-4 text-center border-b border-blue-500/40 shadow-xl flex items-center justify-center gap-2 animate-fade-in relative z-30">
-            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-            <span>{syncToast}</span>
+    <Ctx.Provider value={{ profile, setProfile, jobs, setJobs, page, go, selectedJobId, hasResume, user }}>
+      <div className="app-bg" aria-hidden="true" />
+      <div className="min-h-screen lg:grid lg:grid-cols-[270px_1fr]">
+        <aside className="sticky top-0 hidden h-screen p-4 lg:block"><div className="glass h-full overflow-hidden rounded-[28px]">{sidebar}</div></aside>
+
+        <header className="glass sticky top-3 z-30 mx-3 mt-3 flex items-center justify-between rounded-full py-2 pl-5 pr-2 lg:hidden">
+          <button onClick={leave} className="display text-2xl cursor-pointer">Momentum</button>
+          <button onClick={() => setMenu(true)} aria-label="Open menu" className="rounded-lg p-2 hover:bg-muted cursor-pointer"><Menu size={20} /></button>
+        </header>
+        {menu && (
+          <div className="fixed inset-0 z-40 lg:hidden" onKeyDown={(e) => e.key === 'Escape' && setMenu(false)}>
+            <div className="absolute inset-0 bg-black/50" onClick={() => setMenu(false)} />
+            <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-72 bg-card-solid shadow-2xl">
+              <button onClick={() => setMenu(false)} aria-label="Close menu" className="absolute right-3 top-3 rounded-lg p-2 hover:bg-muted cursor-pointer"><X size={18} /></button>
+              {sidebar}
+            </div>
           </div>
         )}
 
-        {/* Header Navigation */}
-        <Navbar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          targetConfig={targetConfig}
-          setTargetConfig={setTargetConfig}
-          jobs={jobs}
-          onTriggerAgentLoop={handleTriggerAgentLoop}
-          isSyncing={isSyncing}
-          onOpenBatchEmailModal={() => setIsBatchEmailModalOpen(true)}
-          onOpenPlatformTrackerModal={() => setIsPlatformTrackerModalOpen(true)}
-          onOpenAuditModal={() => setIsAuditModalOpen(true)}
-          onOpenGmailConnectorModal={() => setIsGmailConnectorModalOpen(true)}
-          isUsNightShiftTrackActive={isUsNightShiftTrackActive}
-          onToggleUsNightShiftTrack={() => setIsUsNightShiftTrackActive(prev => !prev)}
-          activeUserEmail={activeUserEmail}
-          onOpenWhitelistModal={() => setIsWhitelistModalOpen(true)}
-          isPanicMode={isPanicMode}
-          onTogglePanicMode={handleTogglePanicMode}
-        />
-
-        {/* Main Container */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-24 sm:pb-6 space-y-6 min-w-0 overflow-x-hidden overflow-y-auto">
-          {activeTab === 'simple-overview' && (
-            <SimpleOverviewView
-              jobs={jobs}
-              targetConfig={targetConfig}
-              isPanicMode={isPanicMode}
-              onTogglePanicMode={handleTogglePanicMode}
-              onOpenBatchEmailModal={() => setIsBatchEmailModalOpen(true)}
-              onOpenPlatformTrackerModal={() => setIsPlatformTrackerModalOpen(true)}
-              onOpenGmailConnectorModal={() => setIsGmailConnectorModalOpen(true)}
-              onOpenAuditModal={() => setIsAuditModalOpen(true)}
-              onSelectJob={setSelectedJob}
-              setActiveTab={setActiveTab}
-            />
-          )}
-
-          {activeTab === 'overview' && (
-            <DashboardOverview
-              jobs={jobs}
-              onSelectJob={setSelectedJob}
-              onOpenAddJobModal={() => setIsAddJobModalOpen(true)}
-              setActiveTab={setActiveTab}
-              targetConfig={targetConfig}
-              setTargetConfig={setTargetConfig}
-              onTriggerAgentLoop={handleTriggerAgentLoop}
-              isSyncing={isSyncing}
-              lastSyncTime={lastSyncTime}
-              onOpenBatchEmailModal={() => setIsBatchEmailModalOpen(true)}
-              onOpenPlatformTrackerModal={() => setIsPlatformTrackerModalOpen(true)}
-              isUsNightShiftTrackActive={isUsNightShiftTrackActive}
-              onToggleUsNightShiftTrack={() => setIsUsNightShiftTrackActive(prev => !prev)}
-              onMarkJobApplied={handleMarkJobApplied}
-              isPanicMode={isPanicMode}
-              onTogglePanicMode={handleTogglePanicMode}
-              resumeData={resumeData}
-              onUpdateResume={setResumeData}
-            />
-          )}
-
-          {activeTab === 'status-tracker' && (
-            <ApplicationStatusScheduleChart
-              jobs={jobs}
-              onSelectJob={setSelectedJob}
-              setActiveTab={setActiveTab}
-              onMarkJobApplied={handleMarkJobApplied}
-              dailyTarget={targetConfig.dailyAppTarget || 15}
-            />
-          )}
-
-          {activeTab === 'strategy' && (
-            <RecruiterStrategyView
-              jobs={jobs}
-              targetConfig={targetConfig}
-              onSelectJob={setSelectedJob}
-              setActiveTab={setActiveTab}
-            />
-          )}
-
-          {activeTab === 'pipeline' && (
-            <JobPipelineView
-              jobs={jobs}
-              onSelectJob={setSelectedJob}
-              onOpenAddJobModal={() => setIsAddJobModalOpen(true)}
-              onUpdateJobStatus={handleUpdateJobStatus}
-              onUpdateJob={handleUpdateJob}
-              setActiveTab={setActiveTab}
-              onOpenAuditModal={() => setIsAuditModalOpen(true)}
-            />
-          )}
-
-          {activeTab === 'resume' && (
-            <ResumeTailorView
-              jobs={jobs}
-              selectedJob={selectedJob}
-              onSelectJob={setSelectedJob}
-              resumeData={resumeData}
-              onUpdateResume={setResumeData}
-            />
-          )}
-
-          {activeTab === 'outreach' && (
-            <OutreachStudioView
-              jobs={jobs}
-              selectedJob={selectedJob}
-              onSelectJob={setSelectedJob}
-            />
-          )}
-
-          {activeTab === 'cadence' && (
-            <DailyCadenceTracker
-              jobs={jobs}
-              targetConfig={targetConfig}
-            />
-          )}
-
-          {activeTab === 'interviews' && (
-            <div className="space-y-6">
-              <InterviewStageTracker
-                jobs={jobs}
-                onSelectJob={setSelectedJob}
-              />
-              <InterviewCalendar
-                jobs={jobs}
-                onSelectJob={setSelectedJob}
-              />
-              <JobHistoryTimeline
-                jobs={jobs}
-                onSelectJob={setSelectedJob}
-              />
-              <AiOutreachGenerator
-                jobs={jobs}
-                resumeData={resumeData}
-              />
-              <SkillGapHeatmap
-                jobs={jobs}
-                resumeData={resumeData}
-                onUpdateResume={setResumeData}
-              />
-              <CareerTrajectoryVisualizer
-                resumeData={resumeData}
-                jobs={jobs}
-              />
-              <SalaryBenchmarking
-                jobs={jobs}
-              />
-            </div>
-          )}
-
-          {activeTab === 'system-audit' && (
-            <SystemAuditView
-              onTriggerAgentLoop={handleTriggerAgentLoop}
-              isSyncing={isSyncing}
-            />
-          )}
-
-          {activeTab === 'agent-ceo' && (
-            <AgentCeoBoard
-              onTriggerAgentLoop={handleTriggerAgentLoop}
-              isSyncing={isSyncing}
-            />
-          )}
-
-          {activeTab === 'config' && (
-            <MasterPromptConfigView
-              targetConfig={targetConfig}
-              setTargetConfig={setTargetConfig}
-            />
-          )}
+        <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 lg:py-12">
+          <div key={page} className="stagger"><Suspense fallback={<p className="label text-muted-foreground">Loading…</p>}><Page /></Suspense></div>
         </main>
-
-        {/* Add Job Modal */}
-        <AddJobModal
-          isOpen={isAddJobModalOpen}
-          onClose={() => setIsAddJobModalOpen(false)}
-          onJobAdded={handleJobAdded}
-        />
-
-        {/* Batch Email & ATS Document Exporter Modal */}
-        <BatchEmailPackageModal
-          jobs={jobs}
-          isOpen={isBatchEmailModalOpen}
-          onClose={() => setIsBatchEmailModalOpen(false)}
-          onMarkJobApplied={handleMarkJobApplied}
-          activeSenderEmail={activeUserEmail || CONTACT_EMAIL}
-          onOpenGmailConnectorModal={() => setIsGmailConnectorModalOpen(true)}
-        />
-
-        {/* 1-Click Platform Launcher & Anti-Duplicate Application Tracker */}
-        <PlatformApplyTrackerModal
-          jobs={jobs}
-          isOpen={isPlatformTrackerModalOpen}
-          onClose={() => setIsPlatformTrackerModalOpen(false)}
-          onMarkJobApplied={handleMarkJobApplied}
-          onUnmarkJobApplied={handleUnmarkJobApplied}
-        />
-
-        {/* Application Audit Overlay & Anti-Ban Inspector */}
-        <ApplicationAuditOverlay
-          isOpen={isAuditModalOpen}
-          onClose={() => setIsAuditModalOpen(false)}
-          jobs={jobs}
-          onOpenGmailConnectorModal={() => setIsGmailConnectorModalOpen(true)}
-        />
-
-        {/* Gmail Account & MCP Connector Dispatch Audit Modal */}
-        <GmailMcpConnectorModal
-          isOpen={isGmailConnectorModalOpen}
-          onClose={() => setIsGmailConnectorModalOpen(false)}
-          activeSenderEmail={activeUserEmail || CONTACT_EMAIL}
-          onUpdateSenderEmail={(newEmail) => handleLogin(newEmail)}
-        />
-
-        {/* Whitelist Manager & Access Security Modal */}
-        <WhitelistManagerModal
-          isOpen={isWhitelistModalOpen}
-          onClose={() => setIsWhitelistModalOpen(false)}
-          whitelist={whitelist}
-          activeUserEmail={activeUserEmail}
-          onAddEmail={handleAddWhitelistedEmail}
-          onRemoveEmail={handleRemoveWhitelistedEmail}
-          onLogout={handleLogout}
-        />
-
-        {/* Sticky Mobile Bottom Navigation */}
-        <BottomMobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
-
-        {/* Footer */}
-        <footer className="border-t border-[#1f1f23] bg-[#0d0d0f] py-4 text-center text-[10px] uppercase tracking-widest text-[#6b6b75]">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              Akash Sharma Job OS v2.0 • Admin Gate Active ({activeUserEmail})
-            </span>
-            <span>Target Deadline: 31 August 2026 (33 Days Sprint)</span>
-          </div>
-        </footer>
       </div>
-    </AdminAccessGate>
+    </Ctx.Provider>
   );
 }
