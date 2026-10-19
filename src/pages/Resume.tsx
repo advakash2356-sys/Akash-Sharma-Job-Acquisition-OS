@@ -2,25 +2,14 @@ import React, { useRef, useState } from 'react';
 import { Upload, Download, FileJson, Trash2, UserRound } from 'lucide-react';
 import { Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
 import { useApp } from '../lib/state';
-import { sampleProfile } from '../data/sampleProfile';
+import ResumeDrop from '../components/ResumeDrop';
 import { emptyProfile, type Profile } from '../types';
 
 export default function ResumePage() {
   const { profile, setProfile, jobs, setJobs, hasResume } = useApp();
   const [msg, setMsg] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const set = (k: keyof Profile) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setProfile({ ...profile, [k]: e.target.value });
-
-  const onResumeFile = async (f?: File) => {
-    if (!f) return;
-    if (!/\.(txt|md|markdown)$/i.test(f.name) && !f.type.startsWith('text/')) {
-      setMsg('Upload a .txt or .md file, or paste your resume text. For a PDF or Word file, open it and copy the text.');
-      return;
-    }
-    setProfile({ ...profile, resumeText: await f.text() });
-    setMsg(`Loaded ${f.name}.`);
-  };
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify({ version: 1, profile, jobs }, null, 2)], { type: 'application/json' });
@@ -47,7 +36,6 @@ export default function ResumePage() {
       <PageHeader
         title="My resume"
         subtitle="Your resume is saved only in this browser. Every AI feature (score, tailor, cover letter, outreach) reads it."
-        action={<Button variant="outline" onClick={() => { setProfile(sampleProfile); setMsg('Sample profile loaded. Replace it with your own.'); }}><UserRound size={16} /> Load sample profile</Button>}
       />
       {msg && <p role="status" className="mb-4 rounded-lg bg-accent px-3 py-2 text-sm text-primary">{msg}</p>}
 
@@ -64,11 +52,13 @@ export default function ResumePage() {
         </Card>
 
         <Card>
+          <ResumeDrop hasText={hasResume} onText={(t, n) => { setProfile({ ...profile, resumeText: t }); setMsg(`Loaded ${n}. Check the text below and fix anything the parser got wrong.`); }} />
+        </Card>
+
+        <Card>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <Label htmlFor="r">Resume text</Label>
             <div className="flex gap-2">
-              <input ref={fileRef} type="file" accept=".txt,.md,text/plain" hidden onChange={(e) => { onResumeFile(e.target.files?.[0]); e.target.value = ''; }} />
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload size={14} /> Upload .txt / .md</Button>
             </div>
           </div>
           <Textarea id="r" rows={18} value={profile.resumeText} onChange={set('resumeText')} placeholder="Paste your full resume here: summary, experience, skills, education." className="font-mono text-[13px]" />

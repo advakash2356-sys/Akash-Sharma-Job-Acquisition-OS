@@ -4,7 +4,52 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
 }
 
-const MODEL = "gemini-3.6-flash";
+// Listed by ListModels with generateContent; gemini-2.5-flash is listed but 404s for some keys, so it is last. Tried in order when a model is missing, busy or out of quota.
+const MODELS = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-2.5-flash"];
+
+/** Pulls Google's real status + message out of an @google/genai error. */
+export function googleError(e: any): { status: number; code: string; message: string } {
+  const raw = String(e?.message || e || "");
+  let status = Number(e?.status) || 0;
+  let msg = raw;
+  try {
+    const j = JSON.parse(raw);
+    if (j?.error) { status = Number(j.error.code) || status; msg = j.error.message || msg; }
+  } catch { /* not JSON */ }
+  msg = msg.replace(/\s+/g, " ").slice(0, 300);
+  return { status, code: "", message: msg };
+}
+
+function explain(e: any): ApiError {
+  if (e instanceof ApiError) return e;
+  const g = googleError(e);
+  const m = g.message;
+  if (/API key not valid|API_KEY_INVALID|API key expired|invalid api key/i.test(m)) return new ApiError(401, `Google says this API key is invalid: "${m}". Copy a fresh key from aistudio.google.com/apikey.`, "BAD_API_KEY");
+  if (g.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(m)) return new ApiError(429, `Google says the free-tier limit is reached: "${m}". Wait a minute and retry.`, "RATE_LIMIT");
+  if (/location is not supported|not available in your (country|region)/i.test(m)) return new ApiError(403, `Google says the Gemini API is not available from this server's region: "${m}".`, "REGION");
+  if (g.status === 403 || /PERMISSION_DENIED/i.test(m)) return new ApiError(403, `Google denied access for this key: "${m}". The key may be restricted or the Generative Language API disabled for its project.`, "PERMISSION");
+  if (g.status === 404 || /not found|not supported for generateContent/i.test(m)) return new ApiError(502, `Google says the AI model is unavailable for this key: "${m}".`, "MODEL");
+  if (g.status === 400) return new ApiError(502, `Google rejected the request: "${m}".`, "BAD_REQUEST");
+  if (g.status === 503 || /overloaded|UNAVAILABLE/i.test(m)) return new ApiError(503, `Google's model is overloaded right now: "${m}". Try again shortly.`, "OVERLOADED");
+  return new ApiError(502, `The AI request failed${g.status ? ` (Google ${g.status})` : ""}: "${m || "no details"}".`, "UPSTREAM");
+}
+
+const retryable = (e: any) => { const g = googleError(e); return g.status === 404 || g.status === 429 || g.status === 503 || /not found|RESOURCE_EXHAUSTED|overloaded/i.test(g.message); };
+
+async function generate(client: GoogleGenAI, req: { contents: string; config?: any }) {
+  let last: any;
+  for (const model of MODELS) {
+    try {
+      const res = await client.models.generateContent({ model, ...req });
+      if (res.text) return res;
+      last = new ApiError(502, "The AI returned an empty response. Try again.", "EMPTY");
+    } catch (e) {
+      last = e;
+      if (!retryable(e)) throw e;
+    }
+  }
+  throw last;
+}
 
 const SYSTEM = `You are a careful career assistant. You work ONLY from the candidate's resume text supplied in the request.
 Never invent employers, dates, degrees, certifications, or metrics that are not in the resume. If something is missing, say so.
@@ -33,8 +78,7 @@ const str = { type: Type.STRING };
 const strs = { type: Type.ARRAY, items: { type: Type.STRING } };
 
 async function run(client: GoogleGenAI, prompt: string, schema?: any) {
-  const res = await client.models.generateContent({
-    model: MODEL,
+  const res = await generate(client, {
     contents: prompt,
     config: {
       systemInstruction: SYSTEM,
@@ -50,14 +94,9 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
   if (!key) throw new ApiError(401, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
   if (action === "test-key") {
     try {
-      const r = await new GoogleGenAI({ apiKey: key }).models.generateContent({ model: MODEL, contents: "Reply with the single word: ok" });
-      if (!r.text) throw new Error("empty");
+      await generate(new GoogleGenAI({ apiKey: key }), { contents: "Reply with the single word: ok" });
       return { result: { ok: true } };
-    } catch (e: any) {
-      const msg = String(e?.message || e);
-      if (/429|quota|rate/i.test(msg)) throw new ApiError(429, "The key works but its free-tier limit is reached. Try again in a minute.", "RATE_LIMIT");
-      throw new ApiError(401, "Google rejected this key. Check that you copied it fully.", "BAD_API_KEY");
-    }
+    } catch (e: any) { throw explain(e); }
   }
   const j = need(body);
   const client = new GoogleGenAI({ apiKey: key });
@@ -100,11 +139,7 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
         throw new ApiError(404, "Unknown action.");
     }
   } catch (e: any) {
-    if (e instanceof ApiError) throw e;
-    const msg = String(e?.message || e);
-    if (/API key|API_KEY|permission|401|403/i.test(msg)) throw new ApiError(401, "The API key was rejected. Check it in Settings.", "BAD_API_KEY");
-    if (/429|quota|rate/i.test(msg)) throw new ApiError(429, "Free-tier limit reached. Wait a minute or use your own key in Settings.", "RATE_LIMIT");
-    throw new ApiError(502, "The AI request failed. Try again.");
+    throw explain(e);
   }
 }
 

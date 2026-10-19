@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, Trash2 } from 'lucide-react';
 import { Badge, Button, Card, Input, Label } from './ui';
-import { clearUserApiKey, getUserApiKey, setUserApiKey } from '../lib/userApiKey';
+import { clearUserApiKey, getUserApiKey, setUserApiKey, usingGuestKey } from '../lib/userApiKey';
 import { callAi } from '../lib/api';
 import { useAiReady } from '../lib/aiReady';
 
@@ -48,6 +48,7 @@ export default function ApiKeyCard({ prominent }: { prominent?: boolean }) {
         <Button variant="outline" onClick={test} disabled={testing || (!hasKey && !value.trim())}>{testing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Test key</Button>
         {hasKey && <Button variant="danger" onClick={() => { clearUserApiKey(); setValue(''); setMsg({ ok: true, text: 'Key removed from this browser.' }); }}><Trash2 size={16} /> Remove</Button>}
       </div>
+      {usingGuestKey() && <p className="mt-3 text-sm text-muted-foreground">Using the key you saved in guest mode on this browser. Save a key here to give this account its own.</p>}
       {msg && <p role="status" className={`mt-3 text-sm ${msg.ok ? 'text-primary' : 'text-danger'}`}>{msg.text}</p>}
       <div className="mt-4 flex gap-3 rounded-2xl bg-muted p-3 text-sm text-muted-foreground">
         <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />
