@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import { verifyGoogleIdToken } from "./server/googleAuth.js";
 import { handleAction, keyFromHeaders, serverKeyConfigured, ApiError } from "./server/handlers.js";
 
 async function startServer() {
@@ -11,6 +12,13 @@ async function startServer() {
 
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.get("/api/status", (_req, res) => res.json({ serverKey: serverKeyConfigured() }));
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      res.json(await verifyGoogleIdToken(req.body?.credential));
+    } catch (e: any) {
+      res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
+    }
+  });
   app.post("/api/ai/:action", async (req, res) => {
     try {
       res.json(await handleAction(req.params.action, req.body || {}, keyFromHeaders(req.headers)));

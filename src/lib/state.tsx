@@ -12,7 +12,7 @@ export interface AppCtx {
   go: (p: PageId, jobId?: string) => void;
   selectedJobId: string;
   hasResume: boolean;
-  user: import('./firebase').AuthUser | null;
+  user: import('./googleAuth').AuthUser | null;
 }
 
 export const Ctx = createContext<AppCtx>(null as unknown as AppCtx);

@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
-import { watchAuth, type AuthUser } from './lib/firebase';
+import { getSession, watchAuth, type AuthUser } from './lib/googleAuth';
 import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
 import { setKeyNamespace } from './lib/userApiKey';
 import { useLocalState } from './lib/useLocalState';
@@ -28,12 +28,8 @@ const NAV: { group: string; items: { id: PageId; label: string; icon: React.Elem
 ];
 
 export default function App() {
-  const [auth, setAuth] = useState<{ ready: boolean; user: AuthUser | null }>({ ready: false, user: null });
-  useEffect(() => {
-    let off = () => {};
-    watchAuth((u) => setAuth({ ready: true, user: u })).then((f) => { off = f; });
-    return () => off();
-  }, []);
+  const [auth, setAuth] = useState<{ ready: boolean; user: AuthUser | null }>({ ready: true, user: getSession() });
+  useEffect(() => watchAuth((u) => setAuth({ ready: true, user: u })), []);
   const uid = auth.user?.uid || 'guest';
   setKeyNamespace(uid);
   if (!auth.ready) return <div className="min-h-screen bg-background" />;
