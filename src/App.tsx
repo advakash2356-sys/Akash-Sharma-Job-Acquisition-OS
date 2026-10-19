@@ -21,7 +21,7 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Setup = lazy(() => import('./pages/Setup'));
 import ErrorBoundary from './components/ErrorBoundary';
 const NotFound = lazy(() => import('./pages/NotFound'));
-import { CREDIT, COPYRIGHT } from './lib/brand';
+import { CREDIT, COPYRIGHT, PAGE_META, PUBLIC_PAGES, SITE_URL } from './lib/brand';
 import { track } from './lib/analytics';
 import { getUserApiKey, KEY_EVENT } from './lib/userApiKey';
 const About = lazy(() => import('./pages/About'));
@@ -31,6 +31,15 @@ const Feedback = lazy(() => import('./pages/Feedback'));
 const Crash = (): React.ReactElement => { throw new Error('Test crash (dev only)'); };
 const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback'];
 /** '#/app/<page>' deep links. Unknown page -> 404. '#/app' alone -> null (default page). */
+const isPublic = (p: string) => (PUBLIC_PAGES as readonly string[]).includes(p);
+/** Keep <title>, description, canonical and og:url in step with the visible page. */
+function setMeta(key: string, path: string) {
+  const [t, d] = PAGE_META[key] || PAGE_META.app;
+  document.title = t;
+  const set = (sel: string, attr: string, v: string) => document.querySelector(sel)?.setAttribute(attr, v);
+  set('meta[name="description"]', 'content', d); set('meta[property="og:title"]', 'content', t); set('meta[property="og:description"]', 'content', d);
+  set('link[rel="canonical"]', 'href', SITE_URL + path); set('meta[property="og:url"]', 'content', SITE_URL + path);
+}
 const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/([a-z-]+)/); if (!m) return null; return (PAGE_IDS.includes(m[1]) ? m[1] : 'notfound') as PageId; };
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
@@ -63,7 +72,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
     return () => window.removeEventListener('hashchange', f);
   }, []);
   const enter = () => { track('start_setup'); location.hash = '#/app'; window.scrollTo(0, 0); };
-  const leave = () => { location.hash = ''; window.scrollTo(0, 0); };
+  const leave = () => { try { history.pushState(null, '', '/'); } catch { location.hash = ''; } setInApp(false); window.scrollTo(0, 0); };
   const [dark, setDark] = useState(() => {
     const s = localStorage.getItem('jaos_theme');
     return s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -78,10 +87,11 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const go = (p: PageId, jobId?: string) => {
     if (jobId) setSelectedJobId(jobId);
     setPage(p);
-    try { history.replaceState(null, '', `#/app/${p === 'notfound' ? 'overview' : p}`); } catch { /* ignore */ }
+    try { const q = p === 'notfound' ? 'overview' : p; history.replaceState(null, '', `${isPublic(q) ? `/${q}` : '/'}#/app/${q}`); } catch { /* ignore */ }
     setMenu(false);
     window.scrollTo(0, 0);
   };
+  useEffect(() => { if (!inApp) setMeta('landing', '/'); else if (isPublic(page)) setMeta(page, `/${page}`); else setMeta('app', '/'); }, [inApp, page]);
   const hasResume = profile.resumeText.trim().length >= 50;
   useEffect(() => { if (hasResume) track('resume_added'); }, [hasResume]);
   useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);

@@ -44,3 +44,6 @@ The in-app Terms page (`#/app/terms`) is short and plain: the app is provided as
 
 ## Feedback
 "Share feedback" opens a pre-filled GitHub issue (form: `.github/ISSUE_TEMPLATE/feedback.yml`, label `feedback`) or a pre-filled email to the owner. No backend, no key.
+
+## SEO and channel links
+Clean URLs `/about`, `/terms`, `/feedback`, `/privacy`; per-page title/description/canonical; JSON-LD (Organization + WebApplication, no ratings); sitemap and robots. Per-channel launch links (`?ref=instagram` etc.) are counted by source in GoatCounter. Owner steps for Google Search Console and Bing: `docs/SEO_SETUP.md`.

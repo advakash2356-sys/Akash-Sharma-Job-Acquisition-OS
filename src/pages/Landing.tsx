@@ -188,15 +188,15 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="display text-xl text-foreground">Momentum</span>
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
-            <a href="#/app/feedback" className="label hover:text-primary">Share feedback</a>
+            <a href="/feedback" className="label hover:text-primary">Share feedback</a>
             <ShareButton className="label cursor-pointer hover:text-primary" />
-            <a href="#/app/about" className="label hover:text-primary">About</a>
-            <a href="#/app/terms" className="label hover:text-primary">Terms</a>
-            <a href="#/app/privacy" className="label hover:text-primary">Privacy & security</a>
+            <a href="/about" className="label hover:text-primary">About</a>
+            <a href="/terms" className="label hover:text-primary">Terms</a>
+            <a href="/privacy" className="label hover:text-primary">Privacy & security</a>
           </nav>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span><a href="#/app/about" className="hover:text-primary">{CREDIT}</a> · {COPYRIGHT}</span>
+          <span><a href="/about" className="hover:text-primary">{CREDIT}</a> · {COPYRIGHT}</span>
           <span>Code under MIT licence; name and logo not licensed. No cookies: your data is kept in this browser's local storage.</span>
         </div>
       </footer>

@@ -1,7 +1,7 @@
 // Privacy-first funnel counts via GoatCounter (cookieless, no script loaded).
 // Uses VITE_GOATCOUNTER_CODE if set ("off" disables), else the owner's default code. Never counts in local dev.
 // Sends ONLY a fixed event name: never resume text, keys, names or job data.
-import { GOATCOUNTER_CODE } from './brand';
+import { GOATCOUNTER_CODE, CHANNELS } from './brand';
 const RAW = ((import.meta.env.VITE_GOATCOUNTER_CODE as string | undefined)?.trim() || GOATCOUNTER_CODE);
 const CODE = import.meta.env.DEV || RAW.toLowerCase() === 'off' ? '' : RAW.replace(/[^a-z0-9-]/gi, '');
 export const ANALYTICS_ON = !!CODE;
@@ -21,5 +21,31 @@ export function track(e: EventName) {
     const u = new URL(`https://${ANALYTICS_HOST}/count`);
     u.searchParams.set('p', e); u.searchParams.set('t', e); u.searchParams.set('e', 'true'); u.searchParams.set('rnd', Math.random().toString(36).slice(2));
     const img = new Image(); img.referrerPolicy = 'no-referrer'; img.src = u.toString();
+  } catch { /* never break the app for stats */ }
+}
+
+const SOURCES: readonly string[] = [...CHANNELS, 'share'];
+/** Where this visit came from, only if the link carried a known ref / utm_source (e.g. ?ref=instagram). */
+export function visitSource(search = location.search): { source: string; campaign: string } | null {
+  const q = new URLSearchParams(search);
+  const source = (q.get('ref') || q.get('utm_source') || '').toLowerCase().trim();
+  if (!SOURCES.includes(source)) return null;
+  const c = (q.get('utm_campaign') || '').toLowerCase().trim();
+  return { source, campaign: /^[a-z0-9_-]{1,40}$/.test(c) ? c : '' };
+}
+
+/** One anonymous page view per page load: the page path plus, if present, the channel the link came from.
+ *  GoatCounter shows the source under Campaigns/Referrers; an extra event from_<channel> makes it easy to compare. */
+export function countVisit() {
+  if (!CODE || statsOptedOut()) return;
+  try {
+    const path = location.pathname.replace(/[^a-z0-9/_-]/gi, '').slice(0, 40) || '/';
+    const src = visitSource();
+    const u = new URL(`https://${ANALYTICS_HOST}/count`);
+    u.searchParams.set('p', path); u.searchParams.set('t', path);
+    if (src) u.searchParams.set('q', `?ref=${src.source}${src.campaign ? `&utm_campaign=${src.campaign}` : ''}`);
+    u.searchParams.set('rnd', Math.random().toString(36).slice(2));
+    const img = new Image(); img.referrerPolicy = 'no-referrer'; img.src = u.toString();
+    if (src) { const ev = new URL(u); ev.search = ''; ev.searchParams.set('p', `from_${src.source}`); ev.searchParams.set('t', `from_${src.source}`); ev.searchParams.set('e', 'true'); ev.searchParams.set('rnd', Math.random().toString(36).slice(2)); const i2 = new Image(); i2.referrerPolicy = 'no-referrer'; i2.src = ev.toString(); }
   } catch { /* never break the app for stats */ }
 }
