@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X, MessageSquare, Info } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
 import { getSession, watchAuth, type AuthUser } from './lib/googleAuth';
@@ -7,25 +7,38 @@ import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
 import { setKeyNamespace } from './lib/userApiKey';
 import { useLocalState } from './lib/useLocalState';
 import { cn } from './lib/utils';
-import Overview from './pages/Overview';
-import Jobs from './pages/Jobs';
-import Interviews from './pages/Interviews';
-import ResumePage from './pages/Resume';
+const Overview = lazy(() => import('./pages/Overview'));
+const Jobs = lazy(() => import('./pages/Jobs'));
+const Interviews = lazy(() => import('./pages/Interviews'));
+const ResumePage = lazy(() => import('./pages/Resume'));
 const Tailor = lazy(() => import('./pages/Tailor'));
 const Outreach = lazy(() => import('./pages/Outreach'));
 const Insights = lazy(() => import('./pages/Insights'));
 const Landing = lazy(() => import('./pages/Landing'));
 const Salary = lazy(() => import('./pages/Salary'));
-import SettingsPage from './pages/Settings';
-import Privacy from './pages/Privacy';
-import Setup from './pages/Setup';
+const SettingsPage = lazy(() => import('./pages/Settings'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Setup = lazy(() => import('./pages/Setup'));
+import ErrorBoundary from './components/ErrorBoundary';
+const NotFound = lazy(() => import('./pages/NotFound'));
+import { CREDIT, COPYRIGHT } from './lib/brand';
+import { track } from './lib/analytics';
+import { getUserApiKey, KEY_EVENT } from './lib/userApiKey';
+const About = lazy(() => import('./pages/About'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Feedback = lazy(() => import('./pages/Feedback'));
+// Dev-only: lets the launch audit prove the error boundary catches a crash.
+const Crash = (): React.ReactElement => { throw new Error('Test crash (dev only)'); };
+const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback'];
+/** '#/app/<page>' deep links. Unknown page -> 404. '#/app' alone -> null (default page). */
+const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/([a-z-]+)/); if (!m) return null; return (PAGE_IDS.includes(m[1]) ? m[1] : 'notfound') as PageId; };
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
   { group: 'Overview', items: [{ id: 'setup', label: 'Guided setup', icon: Wand2 }, { id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
   { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
   { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Tailor & cover letter', icon: Wand2 }] },
   { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
-  { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }, { id: 'privacy', label: 'Privacy & security', icon: ShieldCheck }] },
+  { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }, { id: 'privacy', label: 'Privacy & security', icon: ShieldCheck }, { id: 'feedback', label: 'Share feedback', icon: MessageSquare }, { id: 'about', label: 'About', icon: Info }] },
 ];
 
 export default function App() {
@@ -40,16 +53,16 @@ export default function App() {
 function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const [profile, setProfile] = useLocalState<Profile>(scoped(PROFILE_KEY, uid), emptyProfile);
   const [jobs, setJobs] = useLocalState<Job[]>(scoped(JOBS_KEY, uid), []);
-  const [page, setPage] = useState<PageId>(() => (location.hash === '#/app/privacy' ? 'privacy' : (profile.resumeText || '').trim().length < 50 ? 'setup' : 'overview'));
+  const [page, setPage] = useState<PageId>(() => hashPage() || ((profile.resumeText || '').trim().length < 50 ? 'setup' : 'overview'));
   const [selectedJobId, setSelectedJobId] = useState('');
   const [menu, setMenu] = useState(false);
   const [inApp, setInApp] = useState(() => location.hash.startsWith('#/app'));
   useEffect(() => {
-    const f = () => { setInApp(location.hash.startsWith('#/app')); if (location.hash === '#/app/privacy') setPage('privacy'); };
+    const f = () => { setInApp(location.hash.startsWith('#/app')); const hp = hashPage(); if (hp) { setPage(hp); window.scrollTo(0, 0); } };
     window.addEventListener('hashchange', f);
     return () => window.removeEventListener('hashchange', f);
   }, []);
-  const enter = () => { location.hash = '#/app'; window.scrollTo(0, 0); };
+  const enter = () => { track('start_setup'); location.hash = '#/app'; window.scrollTo(0, 0); };
   const leave = () => { location.hash = ''; window.scrollTo(0, 0); };
   const [dark, setDark] = useState(() => {
     const s = localStorage.getItem('jaos_theme');
@@ -65,17 +78,21 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const go = (p: PageId, jobId?: string) => {
     if (jobId) setSelectedJobId(jobId);
     setPage(p);
+    try { history.replaceState(null, '', `#/app/${p === 'notfound' ? 'overview' : p}`); } catch { /* ignore */ }
     setMenu(false);
     window.scrollTo(0, 0);
   };
   const hasResume = profile.resumeText.trim().length >= 50;
+  useEffect(() => { if (hasResume) track('resume_added'); }, [hasResume]);
+  useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);
+  useEffect(() => { if (jobs.some((j) => j.found)) track('first_job_found'); }, [jobs]);
 
-  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage }[page];
+  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, feedback: Feedback, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
       <div className="px-2 pt-1">
-        <button onClick={leave} className="display text-3xl leading-none cursor-pointer" aria-label="Back to home">Momentum</button>
+        <button onClick={leave} className="display text-3xl leading-none cursor-pointer" aria-label="Momentum, back to home">Momentum</button>
         <div className="label mt-1 text-muted-foreground">{profile.name || 'Your job search'}</div>
       </div>
       {NAV.map((g) => (
@@ -101,10 +118,11 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
       <button onClick={() => setDark(!dark)} className=" flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-foreground/80 hover:bg-muted cursor-pointer">
         {dark ? <Sun size={17} /> : <Moon size={17} />} {dark ? 'Light theme' : 'Dark theme'}
       </button>
+      <div className="px-2.5 text-xs text-muted-foreground"><button onClick={() => go('about')} className="cursor-pointer hover:text-primary">{CREDIT}</button> · <button onClick={() => go('terms')} className="cursor-pointer hover:text-primary">Terms</button><div className="mt-0.5">{COPYRIGHT}</div></div>
     </nav>
   );
 
-  if (!inApp) return <Suspense fallback={<div className="min-h-screen bg-[#0d0b0a]" />}><Landing dark={dark} toggleTheme={toggleTheme} enter={enter} /></Suspense>;
+  if (!inApp) return <ErrorBoundary><Suspense fallback={<div className="min-h-screen bg-[#0d0b0a]" />}><Landing dark={dark} toggleTheme={toggleTheme} enter={enter} /></Suspense></ErrorBoundary>;
 
   return (
     <Ctx.Provider value={{ profile, setProfile, jobs, setJobs, page, go, selectedJobId, hasResume, user }}>
@@ -127,7 +145,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
         )}
 
         <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 lg:py-12">
-          <div key={page} className="stagger"><Suspense fallback={<p className="label text-muted-foreground">Loading…</p>}><Page /></Suspense></div>
+          <div key={page} className="stagger"><ErrorBoundary key={page}><Suspense fallback={<p className="label text-muted-foreground">Loading…</p>}>{import.meta.env.DEV && location.hash === '#/app/notfound?crash' ? <Crash /> : <Page />}</Suspense></ErrorBoundary></div>
         </main>
       </div>
     </Ctx.Provider>

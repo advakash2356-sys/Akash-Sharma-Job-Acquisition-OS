@@ -1,3 +1,4 @@
+import { ANALYTICS_HOST, ANALYTICS_ON } from '../lib/analytics';
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button, Card, PageHeader } from '../components/ui';
@@ -29,9 +30,16 @@ export default function Privacy() {
         <Item t="Checks that run only in your browser">
           <p>Fact check (on tailored resumes, cover letters and outreach), Sort reply, follow-up reminders (.ics), milestones, duplicate warnings, CSV export and the government-notice details are computed in this browser from data you already saved. They send nothing anywhere. A reply you paste is stored only in this browser with the job. Notice period and start date, if you fill them on My resume, are sent to Gemini with AI requests so letters can mention them.</p>
         </Item>
-        <Item t="No tracking, no sale">
-          <p>The app includes no analytics, advertising or tracking scripts, and fonts are bundled with the site rather than loaded from a third party. We do not sell or share your data, because we do not hold it.</p>
+        <Item t="Usage counts, no tracking, no sale">
+          {ANALYTICS_ON
+            ? <p>This deployment counts a few anonymous steps with GoatCounter ({ANALYTICS_HOST}), a cookieless, open-source counter: landing view, start setup, resume added, key added, first job found, export, feedback sent and share. Each count is just the step name. No resume text, key, name, job or contact data is ever sent. Your browser fetches a tiny counter image from {ANALYTICS_HOST}, so GoatCounter sees your IP address and browser type for that request; it does not store them (it keeps a random ID in memory for 8 hours to avoid double counts). No cookies are set. Counting is off if your browser sends Do Not Track or Global Privacy Control, and you can switch it off in Settings.</p>
+            : <p>This deployment does not count usage: no analytics code is switched on. If the owner turns on counting later, this paragraph changes to list exactly what is counted.</p>}
+          <p>There are no advertising or tracking scripts and no cookies; fonts are bundled with the site rather than loaded from a third party. We do not sell or share your data, because we do not hold it.</p>
+          <p>Cookies and local storage: the app sets no cookies. It saves your data in this browser's local storage, which is needed for the app to work; clear it any time with "Delete everything" below.</p>
           <p>Google sign-in is optional. When you use it, your browser loads Google's sign-in script (accounts.google.com) and Google sends this page a signed ID token. The token is sent once to this app's function, which checks it with Google's public keys (signature, expiry, that it was issued for this app, and that your email is verified) and returns your Google id, email, name and photo. The function does not store or log them. Your browser keeps that verified profile in local storage as a sign-in marker and shows it to you; it is not sent with AI requests. "Open in Gmail" opens a draft that you review and send yourself; the app never sends email.</p>
+        </Item>
+        <Item t="Feedback">
+          <p>"Share feedback" builds a message in your browser. It is sent only when you press send: either as a public GitHub issue on the project (you need a GitHub account) or as an email from your own mail app to the owner. The app itself sends nothing.</p>
         </Item>
         <Item t="Delete everything">
           <p>"Clear all data" on My resume removes your resume and jobs for the current account. The button below removes everything this app has saved in this browser: all accounts' resumes and jobs, API keys and preferences. Exported files you downloaded stay where you saved them. Signing out (Settings) ends the sign-in session only and keeps your saved data on this device.</p>

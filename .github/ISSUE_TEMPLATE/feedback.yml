@@ -1,0 +1,19 @@
+name: Feedback
+description: Share feedback about Momentum (public)
+title: "[Feedback] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks! Please do not include your resume, phone number or API key: issues are public."
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind?
+      options: ["Idea", "Bug", "Job search results", "Something confusing", "Praise"]
+    validations: { required: true }
+  - type: textarea
+    id: details
+    attributes:
+      label: Your feedback
+    validations: { required: true }

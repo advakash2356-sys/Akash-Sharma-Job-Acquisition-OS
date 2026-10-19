@@ -4,7 +4,23 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 
+import { COPYRIGHT, CREDIT, PROOF, SITE_URL } from '../lib/brand';
+import { track } from '../lib/analytics';
+
 gsap.registerPlugin(ScrollTrigger);
+
+/** Share link for a friend: native share sheet where available, otherwise copy. ?ref=share lets the owner see shares in referrers. */
+function ShareButton({ className }: { className: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${SITE_URL}/?ref=share`;
+  const share = async () => {
+    track('share');
+    const data = { title: 'Momentum: a free job search workspace', text: 'Free job search workspace: real postings, tailored resumes, your data stays in your browser.', url };
+    try { if (navigator.share) { await navigator.share(data); return; } } catch { return; }
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { prompt('Copy this link', url); }
+  };
+  return <button onClick={share} className={className}>{copied ? 'Link copied' : 'Share with a friend'}</button>;
+}
 
 const STEPS = [
   ['01', 'Bring your resume', 'Upload it once. It is saved in your browser and powers every tool.'],
@@ -17,6 +33,7 @@ const STEPS = [
 export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; toggleTheme: () => void; enter: () => void }) {
   const root = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
+  useEffect(() => { track('landing_view'); }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -64,7 +81,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         </div>
         <div className="flex items-center gap-1">
           <button onClick={toggleTheme} aria-label="Toggle theme" className="rounded-full p-2 hover:bg-muted cursor-pointer">{dark ? <Sun size={16} /> : <Moon size={16} />}</button>
-          <button onClick={enter} className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 cursor-pointer">Open workspace</button>
+          <button onClick={enter} className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 cursor-pointer">Start your path</button>
         </div>
       </nav>
     </header>
@@ -90,9 +107,10 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           </h1>
           <div className="hero-fade mt-8 flex flex-wrap items-center gap-3">
             <button onClick={enter} className="inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-6 py-3 font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight size={18} /></button>
-            <a href="#path" className="rounded-full border border-white/30 px-6 py-3 backdrop-blur hover:bg-white/10">See how it works</a>
+            <a href="#path" className="px-3 py-3 text-white/80 underline-offset-4 hover:underline">See how it works</a>
             <span className="label ml-2 hidden text-white/60 sm:block">Free · data saved in your browser · no sign-up</span>
           </div>
+          {PROOF && <p className="hero-fade label mt-4 text-white/70" data-testid="social-proof">{PROOF.users.toLocaleString()} job seekers have started a search (as of {PROOF.asOf})</p>}
         </div>
       </section>
 
@@ -115,9 +133,10 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
               <p className="label mb-4 text-[#ffb089]">The path to the offer</p>
               <h2 className="display text-[clamp(2.6rem,6vw,5.5rem)] leading-[0.95]">Every step,<br />one horizon.</h2>
             </div>
+            <div className="relative">
+              <span aria-hidden className="absolute bottom-2 left-[7px] top-2 w-px bg-white/15" />
+              <span aria-hidden className="path-line absolute bottom-2 left-[7px] top-2 w-px origin-top bg-[#ff6a2b]" />
             <ol className="relative grid gap-5 pl-8">
-              <span className="absolute bottom-2 left-[7px] top-2 w-px bg-white/15" />
-              <span className="path-line absolute bottom-2 left-[7px] top-2 w-px origin-top bg-[#ff6a2b]" />
               {STEPS.map(([n, t, d], i) => (
                 <li key={n} className={`path-step-${i} relative`}>
                   <span className="absolute -left-8 top-2 h-3.5 w-3.5 rounded-full border-2 border-[#ff6a2b] bg-[#0d0b0a]" />
@@ -127,6 +146,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
                 </li>
               ))}
             </ol>
+            </div>
           </div>
         </div>
       </section>
@@ -161,12 +181,24 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           <Lock className="reveal mx-auto mb-5 text-[#ff6a2b]" />
           <h2 className="display reveal text-[clamp(2.6rem,8vw,7rem)] leading-[0.92]">Your data lives in <span className="italic text-[#ff6a2b]">your browser.</span></h2>
           <p className="reveal mx-auto mt-6 max-w-xl text-white/70">Resume, jobs and API key are saved in local storage, with no database. When you use an AI feature, the text it needs goes through this app to Google Gemini for that request. Export a backup any time.</p>
-          <button onClick={enter} className="reveal mt-10 inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-8 py-4 text-lg font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Open your workspace <ArrowUpRight /></button>
+          <button onClick={enter} className="reveal mt-10 inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-8 py-4 text-lg font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight /></button>
         </div>
       </section>
-      <footer className="flex flex-wrap items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:px-10">
-        <span className="display text-xl text-foreground">Momentum</span>
-        <span className="flex items-center gap-5"><button onClick={() => { location.hash = '#/app/privacy'; }} className="label hover:text-primary cursor-pointer">Privacy & security</button><span className="label">Job search OS · MIT licensed</span></span>
+      <footer className="grid gap-4 px-5 py-8 text-sm text-muted-foreground sm:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="display text-xl text-foreground">Momentum</span>
+          <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
+            <a href="#/app/feedback" className="label hover:text-primary">Share feedback</a>
+            <ShareButton className="label cursor-pointer hover:text-primary" />
+            <a href="#/app/about" className="label hover:text-primary">About</a>
+            <a href="#/app/terms" className="label hover:text-primary">Terms</a>
+            <a href="#/app/privacy" className="label hover:text-primary">Privacy & security</a>
+          </nav>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span><a href="#/app/about" className="hover:text-primary">{CREDIT}</a> · {COPYRIGHT}</span>
+          <span>Code under MIT licence; name and logo not licensed. No cookies: your data is kept in this browser's local storage.</span>
+        </div>
       </footer>
     </div>
   );

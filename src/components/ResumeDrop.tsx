@@ -21,7 +21,7 @@ export default function ResumeDrop({ hasText, onText }: { hasText: boolean; onTe
   return (
     <div>
       <div
-        role="button" tabIndex={0} aria-label="Upload resume: drop a file or press Enter to choose one"
+        role="button" tabIndex={0}
         onClick={() => input.current?.click()}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), input.current?.click())}
         onDragOver={(e) => { e.preventDefault(); setOver(true); }}
