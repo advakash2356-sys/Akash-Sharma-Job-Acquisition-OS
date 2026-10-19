@@ -7,33 +7,37 @@ import { useApp } from '../lib/state';
 import { useAiReady } from '../lib/aiReady';
 import { callAi } from '../lib/api';
 import { boardLinks } from '../lib/boards';
+import { COUNTRY_NAMES, dedupeAgainst, deriveCountries, keywordFit, searchJobsApi, splitTitles, type FoundJob } from '../lib/jobSearch';
 import type { Job, Profile } from '../types';
 
 type St = 'idle' | 'running' | 'done' | 'error';
 const STAGES = [
   { id: 'parse', label: 'Reading your resume and filling your profile' },
-  { id: 'research', label: 'Researching roles that fit you' },
-  { id: 'fill', label: 'Adding suggestions to your Jobs list' },
+  { id: 'research', label: 'Searching real postings on FreeHire' },
+  { id: 'fill', label: 'Scoring fit and adding postings to Jobs' },
 ] as const;
 
 const fill = (cur: string | undefined, next: string) => (cur && cur.trim() ? cur : next || '');
 
 export default function Setup() {
-  const { profile, setProfile, setJobs, hasResume, go } = useApp();
+  const { profile, setProfile, jobs: allJobs, setJobs, hasResume, go } = useApp();
+  const jobsNow = useRef(allJobs); jobsNow.current = allJobs;
   const { ready } = useAiReady();
   const [st, setSt] = useState<Record<string, St>>({ parse: 'idle', research: 'idle', fill: 'idle' });
   const [err, setErr] = useState('');
   const [note, setNote] = useState('');
   const [summary, setSummary] = useState('');
+  const [links, setLinks] = useState<{ label: string; url: string }[]>([]);
+  const [scope, setScope] = useState<{ countries: string[]; titles: string[] } | null>(null);
   const running = useRef(false);
   const auto = useRef(false);
   const set = (id: string, v: St) => setSt((s) => ({ ...s, [id]: v }));
 
   const run = async () => {
     if (running.current) return;
-    running.current = true; setErr(''); setNote(''); setSummary('');
+    running.current = true; setErr(''); setNote(''); setSummary(''); setLinks([]);
     setSt({ parse: 'running', research: 'idle', fill: 'idle' });
-    let stage = 'parse';
+    let stage = 'parse'; let fbTitles: string[] = []; let fbLoc = '';
     try {
       const p: any = await callAi('parse-resume', { resume: profile.resumeText });
       const titles: string[] = (p.targetTitles || []).filter(Boolean);
@@ -47,27 +51,51 @@ export default function Setup() {
       setProfile((cur) => ({ ...cur, ...Object.fromEntries(Object.entries(next).filter(([k]) => k !== 'resumeText' && k !== 'dailyTarget' && k !== 'aiInstructions')) }));
       set('parse', 'done'); stage = 'research'; set('research', 'running');
 
-      const r: any = await callAi('suggest-jobs', { resume: profile.resumeText, targetRoles: next.targetRoles, location: next.location, minCtc: next.minCtc });
-      setNote(r.note || ''); set('research', 'done'); stage = 'fill'; set('fill', 'running');
+      const qTitles = splitTitles(next.targetRoles);
+      const countries = deriveCountries(next.location);
+      fbTitles = qTitles; fbLoc = next.location;
+      setScope({ countries, titles: qTitles });
+      const r = await searchJobsApi(qTitles, countries, true);
+      const msgs: string[] = [];
+      if (r.warnings.length) msgs.push(`Some searches failed: ${r.warnings.join('; ')}.`);
+      if (!r.jobs.length) {
+        set('research', 'done'); set('fill', 'done');
+        setLinks(qTitles.flatMap((t) => boardLinks(t, next.location).map((l) => ({ ...l, label: `${t}: ${l.label}` }))));
+        setNote(`FreeHire found no open postings for ${qTitles.map((t) => `"${t}"`).join(', ')}${countries.length ? ` in ${countries.map((c) => COUNTRY_NAMES[c] || c).join('/')}` : ''} or remote. Edit your target roles on My resume, or use the job-board links below.`);
+        setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
+        setSummary('No postings added.');
+        return;
+      }
+      set('research', 'done'); stage = 'fill'; set('fill', 'running');
 
+      const fresh = dedupeAgainst(r.jobs, jobsNow.current);
+      const fits = new Map<string, { score: number; kind: 'ai' | 'keyword'; summary: string }>();
+      let aiFailed = '';
+      for (let i = 0; i < fresh.length && !aiFailed; i += 10) {
+        try {
+          const out: any = await callAi('fit-jobs', { resume: profile.resumeText, jobs: fresh.slice(i, i + 10).map((j) => ({ id: j.id, title: j.title, company: j.company, description: j.description })) });
+          (out.fits || []).forEach((f: any) => fits.set(f.id, { score: f.score, kind: 'ai', summary: f.summary }));
+        } catch (e: any) { aiFailed = e.message || 'Gemini failed'; }
+      }
+      if (aiFailed) msgs.push(`Gemini fit scoring was not available (${aiFailed.slice(0, 200)}). Jobs without an AI score show a plain keyword-match score instead.`);
       const now = new Date().toISOString().slice(0, 10);
-      const jobs: Job[] = (r.suggestions || []).map((s: any, i: number) => ({
-        id: `ai-${Date.now()}-${i}`,
-        title: s.title,
-        company: s.company || 'Company to be found',
-        url: '',
-        description: `${s.why}${s.location ? `\n\nLocation: ${s.location}` : ''}\n\nAI-suggested, verify before applying. This is not a verified posting. Paste the real job description here to score it.`,
-        status: 'Saved', createdAt: now, notes: '', interviews: [],
-        aiSuggested: true,
-        sourceUrl: r.grounded && s.url ? s.url : undefined,
-        boardLinks: boardLinks(s.title, s.location || next.location),
-      }));
+      const jobs: Job[] = fresh.map((j: FoundJob, i: number) => {
+        const fit = fits.get(j.id) || { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const };
+        return {
+          id: `fh-${Date.now()}-${i}`, title: j.title, company: j.company, url: j.url,
+          description: j.description || `${j.title} at ${j.company}. ${j.location}`,
+          status: 'Saved' as const, createdAt: now, notes: '', interviews: [], source: 'Other',
+          found: { provider: 'freehire' as const, id: j.id, source: j.source, postedAt: j.postedAt, location: j.location, fit },
+        };
+      }).sort((a, b) => (b.found!.fit!.score - a.found!.fit!.score));
       setJobs((js) => [...jobs, ...js]);
       setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
       set('fill', 'done');
-      setSummary(`${jobs.length} AI-suggested ${r.grounded ? 'roles' : 'role titles'} added to Jobs.`);
+      setNote(msgs.join(' '));
+      setSummary(`${jobs.length} real postings added to Jobs (of ${r.total} FreeHire matches${r.cached ? ', cached' : ''}), best fit first.`);
     } catch (e: any) {
       set(stage, 'error'); setErr(e.message || 'Something went wrong.');
+      if (stage === 'research') { const t = fbTitles; if (t.length) setLinks(t.flatMap((x) => boardLinks(x, fbLoc).map((l) => ({ ...l, label: `${x}: ${l.label}` })))); }
     } finally { running.current = false; }
   };
 
@@ -83,7 +111,7 @@ export default function Setup() {
 
   return (
     <>
-      <PageHeader title="Guided setup" subtitle="Two steps from you. Then your profile and a first list of roles to look at fill themselves in." />
+      <PageHeader title="Guided setup" subtitle="Two steps from you. Then your profile and real job postings that fit you are found and scored for you." />
       <ol className="grid gap-5">
         <li><Card className={step1 ? 'opacity-90' : 'ring-1 ring-primary/30'}>
           <div className="mb-3 flex items-center gap-3"><Dot done={step1} n={1} /><h2 className="text-2xl">Upload your resume</h2></div>
@@ -107,6 +135,8 @@ export default function Setup() {
           </ul>
           {err && <p role="alert" className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm text-danger">{err}</p>}
           {note && <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm">{note}</p>}
+          {links.length > 0 && <div className="mt-3 text-sm"><p className="mb-1 text-muted-foreground">Real job-board searches (not postings), open them yourself:</p><div className="flex flex-wrap gap-2">{links.map((l) => <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="rounded-full border border-border px-3 py-1 underline">{l.label}</a>)}</div></div>}
+          {scope && <p className="mt-2 text-xs text-muted-foreground">Searched FreeHire for {scope.titles.join(', ')} in {scope.countries.length ? scope.countries.map((c) => COUNTRY_NAMES[c] || c).join('/') : 'no specific country'} and remote (global/APAC). Only these keywords and places are sent to FreeHire, never your resume.</p>}
           {summary && <p role="status" className="mt-3 text-sm font-medium">{summary} Everything above is editable on My resume.</p>}
           <div className="mt-4 flex flex-wrap gap-2">
             {step1 && step2 && st.parse !== 'running' && st.research !== 'running' && st.fill !== 'running' && (

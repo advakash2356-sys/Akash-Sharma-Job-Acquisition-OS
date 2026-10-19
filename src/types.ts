@@ -78,12 +78,15 @@ export interface Job {
   recruiterReview?: RecruiterReview;
   interviewPrep?: InterviewPrep;
   prepDone?: string[];
-  /** Created by the AI suggestion step. Not a verified posting. */
-  aiSuggested?: boolean;
-  /** Link taken from Google Search results (grounding). Only set when real. */
-  sourceUrl?: string;
-  /** Real job-board search pages for this title (not specific postings). */
-  boardLinks?: { label: string; url: string }[];
+  /** Set when this job is a real posting found through FreeHire's public job API. Verify it is still open before applying. */
+  found?: {
+    provider: 'freehire';
+    id: string;
+    source: string;
+    postedAt: string;
+    location: string;
+    fit?: { score: number; kind: 'ai' | 'keyword'; summary: string };
+  };
 }
 
 export const emptyProfile: Profile = {

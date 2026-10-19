@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { verifyGoogleIdToken } from "./server/googleAuth.js";
+import { rateLimit, searchJobs } from "./server/jobsSearch.js";
 import { handleAction, keyFromHeaders, serverKeyConfigured, ApiError } from "./server/handlers.js";
 
 async function startServer() {
@@ -15,6 +16,14 @@ async function startServer() {
   app.post("/api/auth/google", async (req, res) => {
     try {
       res.json(await verifyGoogleIdToken(req.body?.credential));
+    } catch (e: any) {
+      res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
+    }
+  });
+  app.post("/api/jobs/search", async (req, res) => {
+    try {
+      rateLimit(String(req.headers["x-forwarded-for"] || req.ip || "anon").split(",")[0].trim());
+      res.json({ result: await searchJobs(req.body || {}) });
     } catch (e: any) {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
     }

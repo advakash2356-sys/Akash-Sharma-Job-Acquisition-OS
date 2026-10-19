@@ -96,13 +96,6 @@ function resumeOnly(body: Body) {
   return resume.slice(0, 20000);
 }
 
-function extractJson(text: string): any {
-  const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const raw = (m ? m[1] : text).trim();
-  const start = raw.search(/[\[{]/);
-  return JSON.parse(start >= 0 ? raw.slice(start) : raw);
-}
-
 async function parseResume(client: GoogleGenAI, body: Body) {
   const resume = resumeOnly(body);
   return run(client, `RESUME TEXT:\n${resume}\n\nExtract the candidate's details strictly from this text. Use an empty string or empty list when something is not stated. Do not guess. "minPay" must be empty unless the resume states a pay expectation. "targetTitles" are 3-5 job titles this person is best suited for, based only on their experience.`, {
@@ -116,45 +109,19 @@ async function parseResume(client: GoogleGenAI, body: Body) {
   });
 }
 
-async function suggestJobs(client: GoogleGenAI, body: Body) {
+async function fitJobs(client: GoogleGenAI, body: Body) {
   const resume = resumeOnly(body);
-  const titles = String(body.targetRoles || "").slice(0, 300) || "(infer from resume)";
-  const loc = String(body.location || "").slice(0, 120) || "anywhere / remote";
-  const base = `CANDIDATE RESUME:\n${resume.slice(0, 8000)}\n\nTarget titles: ${titles}\nLocation: ${loc}\nMinimum pay: ${body.minCtc || "n/a"}\n\n`;
-  // 1) Try Google Search grounding (real, current results).
-  let groundingError = "";
-  try {
-    const res = await generate(client, {
-      contents: base + `Use Google Search to find real, currently open job postings and hiring companies that best match this candidate. Return ONLY a JSON array (inside a \`\`\`json block) of up to 8 items: {"title": string, "company": string, "location": string, "why": string (1-2 sentences tied to the resume), "url": string (only a page you actually saw in search results, else "")}. Never invent a company, posting or URL; return fewer items if unsure.`,
-      config: { systemInstruction: SYSTEM, tools: [{ googleSearch: {} }] },
-    });
-    const chunks: any[] = (res as any).candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    const sources = chunks.filter((c) => c.web?.uri).map((c) => ({ title: String(c.web.title || ""), uri: String(c.web.uri) }));
-    if (!sources.length) throw new Error("search returned no sources");
-    const items = extractJson(res.text || "[]");
-    const hosts = new Set(sources.map((s) => s.title.toLowerCase().replace(/^www\./, "")));
-    const suggestions = (Array.isArray(items) ? items : []).slice(0, 8).map((it: any) => {
-      let url = "";
-      try { const h = new URL(String(it.url)).hostname.toLowerCase().replace(/^www\./, ""); if (hosts.has(h)) url = String(it.url); } catch { /* no url */ }
-      return { title: String(it.title || ""), company: String(it.company || ""), location: String(it.location || ""), why: String(it.why || ""), url };
-    }).filter((x: any) => x.title);
-    return { grounded: true, note: "Found with Google Search. These are suggestions from web results, not verified postings. Open the source and confirm the role is still open.", suggestions, sources: sources.slice(0, 8) };
-  } catch (e: any) {
-    const ge = googleError(e);
-    groundingError = ge.message || String(e?.message || e);
-  }
-  // 2) Honest fallback: role titles + search queries only. No companies, no postings, no URLs invented.
-  const out = await run(client, base + "Search is not available. Suggest 6 job titles that best match this candidate, each with a short reason tied to the resume and a good job-board search query. Do NOT name specific companies or postings.", {
+  const list = (Array.isArray(body.jobs) ? body.jobs : []).slice(0, 10).map((j: any) => ({
+    id: String(j.id || "").slice(0, 200), title: String(j.title || "").slice(0, 160), company: String(j.company || "").slice(0, 120), description: String(j.description || "").slice(0, 700),
+  })).filter((j: any) => j.id && j.title);
+  if (!list.length) throw new ApiError(400, "No jobs to score.", "BAD_INPUT");
+  const out = await run(client, `CANDIDATE RESUME:\n${resume.slice(0, 5000)}\n\nREAL JOB POSTINGS (JSON):\n${JSON.stringify(list)}\n\nFor every posting give a fit score 0-100 against this resume and a one-sentence summary of why, using only facts in the resume and the posting text. Return one entry per posting, using its exact id.`, {
     type: Type.OBJECT,
-    properties: { roles: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: str, why: str, query: str }, required: ["title", "why", "query"] } } },
-    required: ["roles"],
+    properties: { fits: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: str, score: { type: Type.NUMBER }, summary: str }, required: ["id", "score", "summary"] } } },
+    required: ["fits"],
   });
-  return {
-    grounded: false,
-    note: `Google Search grounding was not available for this key (${groundingError.slice(0, 160) || "unknown reason"}), so these are role titles to search for, not job postings. Use the job-board links to find real openings.`,
-    suggestions: (out.roles || []).slice(0, 6).map((r: any) => ({ title: String(r.title), company: "", location: "", why: String(r.why), url: "", query: String(r.query || r.title) })),
-    sources: [],
-  };
+  const ids = new Set(list.map((j: any) => j.id));
+  return { fits: (out.fits || []).filter((f: any) => ids.has(String(f.id))).map((f: any) => ({ id: String(f.id), score: Math.max(0, Math.min(100, Math.round(Number(f.score) || 0))), summary: String(f.summary || "").slice(0, 300) })) };
 }
 
 export async function handleAction(action: string, body: Body, apiKey?: string) {
@@ -166,8 +133,8 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
       return { result: { ok: true } };
     } catch (e: any) { throw explain(e); }
   }
-  if (action === "parse-resume" || action === "suggest-jobs") {
-    try { const c = new GoogleGenAI({ apiKey: key }); return { result: action === "parse-resume" ? await parseResume(c, body) : await suggestJobs(c, body) }; }
+  if (action === "parse-resume" || action === "fit-jobs") {
+    try { const c = new GoogleGenAI({ apiKey: key }); return { result: action === "parse-resume" ? await parseResume(c, body) : await fitJobs(c, body) }; }
     catch (e: any) { throw explain(e); }
   }
   const j = need(body);
