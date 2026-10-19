@@ -1,9 +1,9 @@
 # Momentum: job search OS
 
-A private job-search workspace. Add jobs, score them against **your own resume**, tailor your resume and cover letter, simulate a recruiter's read, prep for interviews, write outreach, and track pay and pace.
+A job-search workspace whose data is stored only in your browser. Add jobs, score them against **your own resume**, tailor your resume and cover letter, simulate a recruiter's read, prep for interviews, write outreach, and track pay and pace.
 
 ## How it works (and what it stores)
-- **Your data stays in your browser.** Resume, jobs, notes and preferences are saved in `localStorage`. There is no database. Export or import a JSON backup from *My resume*.
+- **Your data is stored in your browser.** Resume, jobs, notes and preferences are saved in `localStorage`. There is no database. Export or import a JSON backup from *My resume*.
 - **Guest mode works with no account.** Optional **Sign in with Google** (Google Identity Services): the browser gets a Google ID token and posts it to `/api/auth/google`, which verifies it with `google-auth-library` (audience = `GOOGLE_CLIENT_ID`, email must be verified) and returns `{sub, email, name, picture}`; nothing is stored or logged server-side. The browser keeps that profile in `localStorage` and keys your data by `sub`. There are no server-side sessions or cloud storage: this separates data per account on one device, it does not sync across devices. Setup: [`GOOGLE_SIGNIN_SETUP.md`](./GOOGLE_SIGNIN_SETUP.md). Without `VITE_GOOGLE_CLIENT_ID` the button is disabled. Sign-out ends the session only.
 - **Bring your own free Gemini key** from https://aistudio.google.com/apikey (Settings). It is stored only in your browser (per account), sent in the `x-user-gemini-key` header to this app's own `/api/ai/*` function, and used for that single request. The code does not store or log it. If the site owner sets `GEMINI_API_KEY` on the server, requests without a user key use that key. Without any key, AI buttons are disabled with a pointer to Settings.
 - **What Google receives:** for each AI request, your resume text, the job details and any preferences you typed are sent via the function to Google's Gemini API. Google's terms apply (the free tier may use content to improve Google products).

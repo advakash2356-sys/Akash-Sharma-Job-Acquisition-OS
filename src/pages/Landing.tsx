@@ -7,7 +7,7 @@ import Lenis from 'lenis';
 gsap.registerPlugin(ScrollTrigger);
 
 const STEPS = [
-  ['01', 'Bring your resume', 'Paste it once. It stays in your browser and powers every tool.'],
+  ['01', 'Bring your resume', 'Upload it once. It is saved in your browser and powers every tool.'],
   ['02', 'Score the role', 'A candid fit score, strengths, gaps and the keywords you are missing.'],
   ['03', 'Tailor and reach out', 'Resume, cover letter and outreach rewritten from your real facts.'],
   ['04', 'Face the screen', 'A simulated recruiter read, plus interview prep for every round.'],
@@ -91,7 +91,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           <div className="hero-fade mt-8 flex flex-wrap items-center gap-3">
             <button onClick={enter} className="inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-6 py-3 font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight size={18} /></button>
             <a href="#path" className="rounded-full border border-white/30 px-6 py-3 backdrop-blur hover:bg-white/10">See how it works</a>
-            <span className="label ml-2 hidden text-white/60 sm:block">Free · private · no sign-up</span>
+            <span className="label ml-2 hidden text-white/60 sm:block">Free · data saved in your browser · no sign-up</span>
           </div>
         </div>
       </section>
@@ -145,7 +145,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
               <p className="mt-1 max-w-sm text-sm text-white/75">Rewritten per job from your real resume. Export to PDF or DOCX with the date in the file name.</p>
             </div>
           </div>
-          <Tile cls="md:col-span-3" icon={<Gauge />} title="Candid fit score" body="0 to 100 against your own resume, with strengths, gaps and missing keywords. (Example score shown.)" big="87" />
+          <Tile cls="md:col-span-3" icon={<Gauge />} title="Candid fit score" body="0 to 100 against your own resume, with strengths, gaps and missing keywords. (Example score shown; real scores need your Gemini key.)" big="87" />
           <Tile cls="md:col-span-2" icon={<ScanSearch />} title="Recruiter's 6-second read" body="Would you be shortlisted? Plus ATS keyword match." />
           <Tile cls="md:col-span-1" icon={<TrendingUp />} title="Pay charts" body="Ranges vs your target." />
           <Tile cls="md:col-span-2" icon={<Mail />} title="Outreach & templates" body="Open in Gmail or download .eml. You always press send." />
@@ -159,8 +159,8 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         <img src="/desk-offer.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
         <div className="relative mx-auto max-w-5xl text-center">
           <Lock className="reveal mx-auto mb-5 text-[#ff6a2b]" />
-          <h2 className="display reveal text-[clamp(2.6rem,8vw,7rem)] leading-[0.92]">Your data never<br />leaves <span className="italic text-[#ff6a2b]">your browser.</span></h2>
-          <p className="reveal mx-auto mt-6 max-w-xl text-white/70">Resume, jobs and API key live in local storage. Export a backup any time. Nothing is sold, and nothing is sent without you.</p>
+          <h2 className="display reveal text-[clamp(2.6rem,8vw,7rem)] leading-[0.92]">Your data lives in <span className="italic text-[#ff6a2b]">your browser.</span></h2>
+          <p className="reveal mx-auto mt-6 max-w-xl text-white/70">Resume, jobs and API key are saved in local storage, with no database. When you use an AI feature, the text it needs goes through this app to Google Gemini for that request. Export a backup any time.</p>
           <button onClick={enter} className="reveal mt-10 inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-8 py-4 text-lg font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Open your workspace <ArrowUpRight /></button>
         </div>
       </section>

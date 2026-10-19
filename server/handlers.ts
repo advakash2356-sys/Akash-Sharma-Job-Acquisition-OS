@@ -5,7 +5,7 @@ export class ApiError extends Error {
 }
 
 // Listed by ListModels with generateContent; gemini-2.5-flash is retired for new keys, so it is not used. Tried in order when a model is missing, busy or out of quota.
-const MODELS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.6-flash"];
+const MODELS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-flash-lite-latest"];
 
 /** Pulls Google's real status + message out of an @google/genai error. */
 export function googleError(e: any): { status: number; code: string; message: string } {
