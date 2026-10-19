@@ -85,6 +85,6 @@ export function guessTitles(resume: string): string[] {
 }
 export function guessLocation(resume: string): string {
   const head = resume.split('\n').slice(0, 15).join(' ');
-  const m = head.match(/\b(Bengaluru|Bangalore|Mumbai|Delhi|New Delhi|Gurugram|Gurgaon|Noida|Hyderabad|Chennai|Pune|Kolkata|Ahmedabad|India|London|Singapore|Dubai|Toronto|New York|San Francisco|Berlin|Sydney)\b[^|\n]{0,20}/i);
+  const m = head.match(/\b(Bengaluru|Bangalore|Mumbai|Delhi|New Delhi|Gurugram|Gurgaon|Noida|Hyderabad|Chennai|Pune|Kolkata|Ahmedabad|India|London|Singapore|Dubai|Toronto|New York|San Francisco|Berlin|Sydney)\b(?:,\s*(?:India|UK|USA|Singapore|UAE|Germany|Canada|Australia)\b)?/i);
   return m ? m[0].trim().replace(/[,;]\s*$/, '') : '';
 }
