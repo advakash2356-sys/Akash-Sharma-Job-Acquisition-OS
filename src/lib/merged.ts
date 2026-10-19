@@ -44,7 +44,7 @@ export function ics(ev: { uid: string; title: string; start: string; minutes?: n
   const pad = (n: number) => String(n).padStart(2, '0');
   const fmt = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
   const allDay = /^\d{4}-\d{2}-\d{2}$/.test(ev.start);
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Momentum Job OS//EN', 'BEGIN:VEVENT', `UID:${ev.uid}@momentum`, `DTSTAMP:${fmt(new Date())}`];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Akash Sync Agent//Job Acquisition OS//EN', 'BEGIN:VEVENT', `UID:${ev.uid}@job-acquisition-os`, `DTSTAMP:${fmt(new Date())}`];
   if (allDay) { const d = ev.start.replace(/-/g, ''); const n = new Date(ev.start + 'T00:00'); n.setDate(n.getDate() + 1); lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${n.getFullYear()}${pad(n.getMonth() + 1)}${pad(n.getDate())}`); }
   else { const s = new Date(ev.start); lines.push(`DTSTART:${fmt(s)}`, `DTEND:${fmt(new Date(s.getTime() + (ev.minutes || 60) * 60000))}`); }
   lines.push(`SUMMARY:${esc(ev.title)}`);

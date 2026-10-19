@@ -15,7 +15,7 @@
 
 ## What is already in place
 - Canonical URL, title and description per page (set when the page opens), Open Graph and Twitter card, `og.jpg` 1200×630.
-- JSON-LD: `Organization` (Akash Sync Agent) and `WebApplication` (Momentum, free, price 0). No ratings or reviews: add them only if they become real.
+- JSON-LD: `Organization` (Akash Sync Agent) and `WebApplication` (Job Acquisition OS, free, price 0). No ratings or reviews: add them only if they become real.
 - Clean public URLs `/about`, `/terms`, `/feedback`, `/privacy` (rewrites in `vercel.json`), listed in `sitemap.xml`; `robots.txt` points to the sitemap.
 
 ## Channel links (GoatCounter counts the source)

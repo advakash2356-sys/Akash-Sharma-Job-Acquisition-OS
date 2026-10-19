@@ -43,7 +43,7 @@ export default function Privacy() {
         </Item>
         <Item t="Delete everything">
           <p>"Clear all data" on My resume removes your resume and jobs for the current account. The button below removes everything this app has saved in this browser: all accounts' resumes and jobs, API keys and preferences. Exported files you downloaded stay where you saved them. Signing out (Settings) ends the sign-in session only and keeps your saved data on this device.</p>
-          <div><Button variant="danger" onClick={() => { if (confirm('Delete all Job OS data from this browser, including API keys? This cannot be undone.')) { wipeEverything(); setDone(true); setTimeout(() => location.reload(), 900); } }}><Trash2 size={16} /> Delete everything from this browser</Button></div>
+          <div><Button variant="danger" onClick={() => { if (confirm('Delete all Job Acquisition OS data from this browser, including API keys? This cannot be undone.')) { wipeEverything(); setDone(true); setTimeout(() => location.reload(), 900); } }}><Trash2 size={16} /> Delete everything from this browser</Button></div>
           {done && <p role="status" className="text-primary">Deleted. Reloading…</p>}
         </Item>
       </div>

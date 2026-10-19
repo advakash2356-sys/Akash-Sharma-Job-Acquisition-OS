@@ -15,7 +15,7 @@ function ShareButton({ className }: { className: string }) {
   const url = `${SITE_URL}/?ref=share`;
   const share = async () => {
     track('share');
-    const data = { title: 'Momentum: a free job search workspace', text: 'Free job search workspace: real postings, tailored resumes, your data stays in your browser.', url };
+    const data = { title: 'Job Acquisition OS: a free job search workspace', text: 'Free job search workspace: real postings, tailored resumes, your data stays in your browser.', url };
     try { if (navigator.share) { await navigator.share(data); return; } } catch { return; }
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { prompt('Copy this link', url); }
   };
@@ -23,11 +23,12 @@ function ShareButton({ className }: { className: string }) {
 }
 
 const STEPS = [
-  ['01', 'Bring your resume', 'Upload it once. It is saved in your browser and powers every tool.'],
-  ['02', 'Score the role', 'A candid fit score, strengths, gaps and the keywords you are missing.'],
-  ['03', 'Tailor and reach out', 'Resume, cover letter and outreach written from your resume only. AI can slip, so read before you send.'],
-  ['04', 'Face the screen', 'A simulated recruiter read, plus interview prep for every round.'],
-  ['05', 'Land the offer', 'Track pay, compare offers, and see the whole path on one horizon.'],
+  ['01', 'Bring your resume', 'Upload a PDF, DOCX or TXT, or fill a short Hindi/English form if you have none. Saved in your browser.'],
+  ['02', 'Find real jobs', 'Real postings from FreeHire with the original link, plus government notices with an official link and a future last date. Verify before you apply.'],
+  ['03', 'Score the role', 'A fit score with strengths, gaps and missing keywords (AI with your free Gemini key, otherwise a labelled keyword match).'],
+  ['04', 'Tailor and reach out', 'Resume, cover letter and outreach drafts from your resume only, with a fact check. You read and send them yourself.'],
+  ['05', 'Face the screen', 'A simulated recruiter read, plus interview prep for every round.'],
+  ['06', 'Land the offer', 'Follow-up reminders for your calendar, pay you log on each job, and your weekly pace.'],
 ];
 
 export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; toggleTheme: () => void; enter: () => void }) {
@@ -73,7 +74,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
   const nav = (
     <header className="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
       <nav className={`glass flex w-full max-w-2xl items-center justify-between rounded-full px-3 py-2 pl-5 transition-shadow ${scrolled ? 'shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]' : ''}`} aria-label="Primary">
-        <span className="display text-xl">Momentum</span>
+        <span className="display text-xl">Job Acquisition OS</span>
         <div className="hidden items-center gap-6 text-sm sm:flex">
           <a href="#path" className="hover:text-primary">The path</a>
           <a href="#tools" className="hover:text-primary">Toolkit</a>
@@ -99,7 +100,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d0b0a] via-[#0d0b0a]/30 to-[#0d0b0a]/50" />
         <div className="hero-copy relative z-10 flex h-full flex-col justify-end px-5 pb-14 sm:px-10 sm:pb-20">
-          <p className="hero-fade label mb-5 text-[#ffb089]">Your job search, with momentum</p>
+          <p className="hero-fade label mb-5 text-[#ffb089]">Job Acquisition OS · free, by Akash Sync Agent</p>
           <h1 className="display max-w-[16ch] text-[clamp(3.6rem,11.5vw,11rem)] leading-[0.9]">
             <span className="block overflow-hidden"><span className="hero-line block">Your next</span></span>
             <span className="block overflow-hidden"><span className="hero-line block italic text-[#ff6a2b]">offer</span></span>
@@ -117,7 +118,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
       {/* MARQUEE */}
       <section aria-hidden="true" className="overflow-hidden border-y border-border py-5">
         <div className="marquee-track flex w-max gap-10 whitespace-nowrap">
-          {Array.from({ length: 2 }).flatMap((_, k) => ['Score', 'Tailor', 'Apply', 'Follow up', 'Interview', 'Negotiate', 'Offer'].map((w) => (
+          {Array.from({ length: 2 }).flatMap((_, k) => ['Find', 'Score', 'Tailor', 'Follow up', 'Interview', 'Prepare', 'Offer'].map((w) => (
             <span key={w + k} className="display flex items-center gap-10 text-5xl sm:text-7xl">{w}<span className="text-primary">✦</span></span>
           )))}
         </div>
@@ -166,11 +167,11 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
             </div>
           </div>
           <Tile cls="md:col-span-3" icon={<Gauge />} title="Candid fit score" body="0 to 100 against your own resume, with strengths, gaps and missing keywords. (Example score shown; real scores need your Gemini key.)" big="87" />
-          <Tile cls="md:col-span-2" icon={<ScanSearch />} title="Recruiter's 6-second read" body="Would you be shortlisted? Plus ATS keyword match." />
-          <Tile cls="md:col-span-1" icon={<TrendingUp />} title="Pay charts" body="Ranges vs your target." />
+          <Tile cls="md:col-span-2" icon={<ScanSearch />} title="Recruiter's 6-second read" body="A simulated shortlist read, plus a keyword match against the job description." />
+          <Tile cls="md:col-span-1" icon={<TrendingUp />} title="Pay charts" body="Pay you log on jobs, against your minimum." />
           <Tile cls="md:col-span-2" icon={<Mail />} title="Outreach & templates" body="Open in Gmail or download .eml. You always press send." />
           <Tile cls="md:col-span-2" icon={<Route />} title="Interview prep" body="Likely questions, answer outlines and what to ask." />
-          <Tile cls="md:col-span-2" icon={<Download />} title="Weekly report" body="Your momentum, as a PDF." />
+          <Tile cls="md:col-span-2" icon={<Download />} title="Weekly report" body="Your week of applications, as a PDF." />
         </div>
       </section>
 
@@ -186,7 +187,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
       </section>
       <footer className="grid gap-4 px-5 py-8 text-sm text-muted-foreground sm:px-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="display text-xl text-foreground">Momentum</span>
+          <span className="display text-xl text-foreground">Job Acquisition OS</span>
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
             <a href="/feedback" className="label hover:text-primary">Share feedback</a>
             <ShareButton className="label cursor-pointer hover:text-primary" />

@@ -9,7 +9,7 @@ export default function Terms() {
       <PageHeader eyebrow="Plain language" title="Terms of use" subtitle="Short and honest. Last updated 19 October 2026." />
       <div className="grid gap-5">
         <S t="What this is">
-          <p>Momentum is a free tool to organise your job search. It is provided as is, without any warranty. It does not apply for jobs or send emails for you: you review and send everything yourself.</p>
+          <p>Job Acquisition OS is a free tool to organise your job search. It is provided as is, without any warranty. It does not apply for jobs or send emails for you: you review and send everything yourself.</p>
         </S>
         <S t="Who can use the AI features">
           <p>The AI features use Google's Gemini API with your own key, so Google's <a className="underline text-primary" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini API Additional Terms</a> apply to you. Google requires you to be <b>18 or older</b> to use the API.</p>
@@ -26,7 +26,7 @@ export default function Terms() {
           <p>Do not use the app to spam employers, scrape sites, or break any law or platform terms. The job search has a rate limit to keep it fair.</p>
         </S>
         <S t="Name and logo">
-          <p>The code is MIT licensed. The name "Akash Sync Agent", the Momentum branding and the logo are not licensed for reuse. {COPYRIGHT}.</p>
+          <p>The code is MIT licensed. The name "Akash Sync Agent", the Job Acquisition OS branding (design concept "Momentum") and the logo are not licensed for reuse. {COPYRIGHT}.</p>
         </S>
       </div>
     </>

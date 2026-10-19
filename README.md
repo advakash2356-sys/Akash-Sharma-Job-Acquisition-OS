@@ -1,4 +1,6 @@
-# Momentum: job search OS
+# Job Acquisition OS
+
+Free, browser-only job search workspace. Made by Akash Sync Agent. ("Momentum" is the name of its visual design concept, not the product.)
 
 A job-search workspace whose data is stored only in your browser. Add jobs, score them against **your own resume**, tailor your resume and cover letter, simulate a recruiter's read, prep for interviews, write outreach, and track pay and pace.
 
@@ -33,7 +35,7 @@ Design notes: `DESIGN.md`. License: MIT.
 
 ## Licence, credit and brand
 - Code: **MIT** © 2026 Akash Sync Agent (Akash Sharma). In plain words, MIT lets anyone use, copy, modify, publish and even sell this code, as long as they keep the copyright and licence notice. That is the trade-off of an open licence.
-- **Brand is not licensed** (see `NOTICE`): the name "Akash Sync Agent", the Momentum branding, logo and OG card are not covered by MIT and may not be reused. Forks must rebrand.
+- **Brand is not licensed** (see `NOTICE`): the name "Akash Sync Agent", the Job Acquisition OS branding (design concept "Momentum"), logo and OG card are not covered by MIT and may not be reused. Forks must rebrand.
 - The app shows "Made by Akash Sync Agent" in the footer, sidebar, About page and (optional, on by default, Settings) in exported PDF/DOCX footers.
 
 ## Analytics (privacy-first)

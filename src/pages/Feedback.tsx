@@ -12,7 +12,7 @@ export default function Feedback() {
   const [text, setText] = useState('');
   const ok = text.trim().length >= 5;
   const title = `[Feedback] ${kind}: ${text.trim().split('\n')[0].slice(0, 60)}`;
-  const body = `**Type:** ${kind}\n\n${text.trim()}\n\n---\nSent from the Momentum feedback page (${new Date().toISOString().slice(0, 10)}).`;
+  const body = `**Type:** ${kind}\n\n${text.trim()}\n\n---\nSent from the Job Acquisition OS feedback page (${new Date().toISOString().slice(0, 10)}).`;
   const issueUrl = `https://github.com/${REPO}/issues/new?${new URLSearchParams({ template: 'feedback.yml', title, labels: 'feedback', kind, details: text.trim() }).toString()}`;
   const mailUrl = `mailto:${OWNER_EMAIL}?${new URLSearchParams({ subject: title, body: body.replace(/\*\*/g, '') }).toString().replace(/\+/g, '%20')}`;
   return (

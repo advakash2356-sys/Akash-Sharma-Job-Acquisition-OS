@@ -29,7 +29,7 @@ export default function ResumePage() {
       setProfile({ ...emptyProfile, ...d.profile });
       if (Array.isArray(d.jobs)) setJobs(d.jobs);
       setMsg('Backup imported.');
-    } catch { setMsg('That file is not a valid Job OS backup.'); }
+    } catch { setMsg('That file is not a valid Job Acquisition OS backup.'); }
   };
 
   return (

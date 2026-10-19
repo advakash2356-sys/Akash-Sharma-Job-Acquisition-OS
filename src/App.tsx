@@ -102,7 +102,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
       <div className="px-2 pt-1">
-        <button onClick={leave} className="display text-3xl leading-none cursor-pointer" aria-label="Momentum, back to home">Momentum</button>
+        <button onClick={leave} className="display text-3xl leading-none cursor-pointer" aria-label="Job Acquisition OS, back to home">Job Acquisition OS</button>
         <div className="label mt-1 text-muted-foreground">{profile.name || 'Your job search'}</div>
       </div>
       {NAV.map((g) => (
@@ -141,7 +141,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
         <aside className="sticky top-0 hidden h-screen p-4 lg:block"><div className="glass h-full overflow-hidden rounded-[28px]">{sidebar}</div></aside>
 
         <header className="glass sticky top-3 z-30 mx-3 mt-3 flex items-center justify-between rounded-full py-2 pl-5 pr-2 lg:hidden">
-          <button onClick={leave} className="display text-2xl cursor-pointer">Momentum</button>
+          <button onClick={leave} className="display text-2xl cursor-pointer">Job Acquisition OS</button>
           <button onClick={() => setMenu(true)} aria-label="Open menu" className="rounded-lg p-2 hover:bg-muted cursor-pointer"><Menu size={20} /></button>
         </header>
         {menu && (
