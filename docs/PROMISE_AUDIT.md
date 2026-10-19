@@ -151,3 +151,31 @@ Fixes found by this pass: main bundle 1.5 MB → 272 KB (pages lazy-loaded; land
 CSP check: the production build served locally with the exact `vercel.json` headers (minus HSTS/upgrade-insecure-requests, which need HTTPS) had **0 CSP violations** across the landing page (hero video), PDF and DOCX resume reading (pdf.js worker, mammoth), all app pages and a jsPDF export. Google sign-in under CSP is untested because sign-in is not configured on this server (GOOGLE_CLIENT_ID missing); its hosts (accounts.google.com/gsi/*, *.googleusercontent.com) are allowed.
 
 GoatCounter on (19 Oct 2026, 5:30 PM IST): production builds now default to the owner's code `akashsyncagent` (local dev never counts). One real `landing_view` count from the production build, served with the exact CSP, got **HTTP 200** from akashsyncagent.goatcounter.com, with 0 CSP violations. Launch audit re-run: 33/33.
+
+## LIVE production check (19 Oct 2026, 6:30–7:15 PM IST, main a915a1b)
+
+- Promise audit on production: 39/44 Yes. #11 "Test key succeeds" was a script timing issue: the live call took 9.5 s against a 6 s wait. A direct live call returned `{"ok":true}` and the script now polls for up to 24 s. Partial: #14 Google sign-in (GOOGLE_CLIENT_ID not set), #26 AI facts need a human read, #33 daily target, #43 rate limit (in-memory per serverless instance; 14 rapid calls were spread over instances, so no 429; this is best effort, as the claim says).
+- Merged-features audit on production: 19/19 Yes.
+- Live launch check (`scripts/live-launch-check.mjs`): 19/19 Yes. Real search with Akash's own profile facts (Legal Ops / CLM / ex-Gartner team lead, Delhi NCR + remote): 46 real FreeHire jobs on both the no-AI and the AI path, and the first 5 links returned HTTP 200.
+
+| # | Page | Promise | Result | Evidence |
+|---|---|---|---|---|
+| P1 | Landing | Live landing: footer credit + copyright | Yes | Momentum · SHARE FEEDBACK · SHARE WITH A FRIEND · ABOUT · TERMS · PRIVACY & SECURITY · Made by Akash Sync Agent · © 2026 Akash Sync Agent (Adv. Akash Sharma) ·  |
+| P2 | Funnel | Channel link counted by source (pageview q=ref + from_<channel> event) | Yes | p=/&t=/ / p=/&t=/&q=?ref=linkedin&utm_campaign=launch-oct26 / p=from_linkedin&t=from_linkedin&e=true / p=landing_view&t=landing_view&e=true |
+| P3 | SEO | JSON-LD Organization + WebApplication, no ratings | Yes | Organization: Akash Sync Agent, WebApplication: Momentum; no aggregateRating/review |
+| P4 | SEO | Clean URL /about: page, title, canonical | Yes | {"t":"About Momentum · Made by Akash Sync Agent","c":"https://akash-sharma-job-acquisition-os.vercel.app/about","h1":"About Momentum"} |
+| P5 | SEO | Clean URL /terms: page, title, canonical | Yes | {"t":"Terms of use · Momentum","c":"https://akash-sharma-job-acquisition-os.vercel.app/terms","h1":"Terms of use"} |
+| P6 | SEO | Clean URL /feedback: page, title, canonical | Yes | {"t":"Share feedback · Momentum","c":"https://akash-sharma-job-acquisition-os.vercel.app/feedback","h1":"Share your feedback"} |
+| P7 | SEO | Clean URL /privacy: page, title, canonical | Yes | {"t":"Privacy & security · Momentum","c":"https://akash-sharma-job-acquisition-os.vercel.app/privacy","h1":"Privacy & security"} |
+| P8 | Privacy | Live Privacy lists counted steps + page view/channel | Yes | GoatCounter host akashsyncagent.goatcounter.com, 8 steps + page view + channel |
+| P9 | App | Live sidebar credit, Terms, copyright | Yes | sidebar footer present |
+| P10 | App | Live in-app 404 | Yes | "Off the path." |
+| P11 | Static | Live 404 for unknown path | Yes | HTTP 404, styled 404.html |
+| P12 | Static | Live security headers | Yes | CSP, XFO DENY, nosniff, HSTS, Referrer-Policy, Permissions-Policy |
+| P13 | SEO | Live sitemap (live domain, 5 URLs) + robots | Yes | 5 <loc> on live domain; robots Sitemap line |
+| P14 | SEO | Live OG image | Yes | og.jpg 200 image/jpeg |
+| P15 | Jobs | No-AI path: "Skip AI, search jobs now" returns real jobs | Yes | 46 jobs, e.g. CLM Specialist (Contract Lifecycle Management) - Locally Recruited @ CIMMYT; Commercial Contract Manager @ Unisys; Legal Operations Analyst (6-month Contractor) - Hyderabad @ Schrödinger |
+| P16 | Jobs | Job links open (HTTP check of first 5) | Yes | statuses: 200,200,200,200,200 |
+| P17 | Jobs | AI path: guided setup with Akash's key fills roles and finds jobs | Yes | AI roles: Legal Operations Professional, Contract Manager, Contract Lifecycle Management Specialist, Legal Operations Team Lead; 46 jobs, e.g. CLM Specialist (Contract Lifecycle Management) - Locally Recruited @ CIMMYT; Commercial Contract Manager @ Unisys; Le |
+| P18 | Security | No CSP violations across the live run | Yes | 0 violations |
+| P19 | Mobile | Live landing fits 390px | Yes | overflow px 0 |
