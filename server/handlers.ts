@@ -142,7 +142,6 @@ async function suggestJobs(client: GoogleGenAI, body: Body) {
   } catch (e: any) {
     const ge = googleError(e);
     groundingError = ge.message || String(e?.message || e);
-    if (/quota|RESOURCE_EXHAUSTED/i.test(groundingError) || ge.status === 429) throw explain(e); // quota applies to plain calls too
   }
   // 2) Honest fallback: role titles + search queries only. No companies, no postings, no URLs invented.
   const out = await run(client, base + "Search is not available. Suggest 6 job titles that best match this candidate, each with a short reason tied to the resume and a good job-board search query. Do NOT name specific companies or postings.", {
