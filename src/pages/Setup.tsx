@@ -181,7 +181,7 @@ export default function Setup() {
             : <ResumeDrop hasText={hasResume} onText={(t) => { edited.current = false; auto.current = false; setProfile((p) => ({ ...p, resumeText: t, setupDone: undefined, manual: false })); }} />}
           <p className="mt-2 text-xs text-muted-foreground">Read in your browser. It leaves your device only when an AI step runs, and then only to Google's Gemini API.</p>
         </Card></li>
-        <li><div className={step1 ? '' : 'pointer-events-none opacity-50'}>
+        <li><div className={step1 ? '' : 'pointer-events-none opacity-50'} inert={!step1} aria-disabled={!step1 || undefined}>
           <div className="mb-2 flex items-center gap-3"><Dot done={step2} n={2} /><h2 className="text-2xl">Add your free Gemini key</h2></div>
           <ApiKeyCard prominent={step1 && !step2} />
         </div></li>

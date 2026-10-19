@@ -1,6 +1,9 @@
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, Footer, HeadingLevel } from 'docx';
 import type { Job, Profile } from '../types';
+import { CREDIT, SITE_URL, exportCreditOn } from './brand';
+import { track } from './analytics';
+const creditLine = () => (exportCreditOn() ? `  ·  ${CREDIT} (${SITE_URL.replace('https://', '')})` : '');
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'document';
 const stamp = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -35,16 +38,17 @@ export function exportPdf(text: string, title: string, base: string) {
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120);
-    doc.text(`${name}  ·  page ${i} of ${pages}`, m, h - 28);
+    doc.text(`${name}  ·  page ${i} of ${pages}${creditLine()}`, m, h - 28);
   }
   doc.save(name);
+  track('export');
 }
 
 export async function exportDocx(text: string, title: string, base: string) {
   const name = `${base}.docx`;
   const doc = new Document({
     sections: [{
-      footers: { default: new Footer({ children: [new Paragraph({ children: [new TextRun({ text: name, size: 16, color: '777777' })] })] }) },
+      footers: { default: new Footer({ children: [new Paragraph({ children: [new TextRun({ text: `${name}${creditLine()}`, size: 16, color: '777777' })] })] }) },
       children: [
         new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: title, bold: true })] }),
         ...clean(text).split('\n').map((l) => new Paragraph({ spacing: { after: 100 }, children: [new TextRun(l)] })),
@@ -52,6 +56,7 @@ export async function exportDocx(text: string, title: string, base: string) {
     }],
   });
   save(await Packer.toBlob(doc), name);
+  track('export');
 }
 
 export interface Draft { to?: string; subject: string; body: string }
@@ -69,6 +74,7 @@ export function withTestNotice(d: Draft): Draft {
 
 /** Unsent draft (X-Unsent: 1) that opens in a mail app for review. Nothing is sent. */
 export function exportEml(d0: Draft, base: string) {
+  track('export');
   const d = withTestNotice(d0);
   const name = `${base}.eml`;
   const body = `${d.body}\r\n\r\n--\r\n(${name})`.replace(/\r?\n/g, '\r\n');

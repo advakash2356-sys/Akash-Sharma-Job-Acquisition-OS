@@ -6,6 +6,10 @@ export function boardLinks(title: string, location: string, india = /india|delhi
     { label: 'Search on LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${q}${l ? `&location=${l}` : ''}` },
     { label: 'Search on Indeed', url: `https://${india ? 'in.indeed.com' : 'www.indeed.com'}/jobs?q=${q}${l ? `&l=${l}` : ''}` },
     { label: 'Search on Google Jobs', url: `https://www.google.com/search?q=${encodeURIComponent(`${title} jobs ${location || ''}`.trim())}&ibp=htl;jobs` },
+    ...(!india || /remote/i.test(location || '') ? [
+      { label: 'Remote: We Work Remotely', url: `https://weworkremotely.com/remote-jobs/search?term=${q}` },
+      { label: 'Remote: Remotive', url: `https://remotive.com/remote-jobs?query=${q}` },
+    ] : []),
   ];
 }
 

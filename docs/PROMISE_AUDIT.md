@@ -42,7 +42,7 @@ Run on production (https://akash-sharma-job-acquisition-os.vercel.app) on 2026-1
 | 34 | Resume | JSON backup export + import round trip | Export JSON, clear data, import | Yes | export keys version,profile,jobs; import restored jobs=true | - |
 | 35 | Resume | Clear all data removes resume and jobs | Click Clear all data and accept confirm | Yes | resumeText=0, jobs=0 | - |
 | 36 | Privacy | "Delete everything from this browser" removes all data incl. key | Click and accept | Yes | after delete + reload: no resume/jobs/key left (app re-creates empty defaults); non-empty keys: none | - |
-| 37 | Privacy | No analytics, ads, trackers; fonts bundled (only own origin) | All request hosts across full audit session | Yes | hosts contacted by the browser: akash-sharma-job-acquisition-os.vercel.app,  | - |
+| 37 | Privacy | No ads or trackers, usage counts off unless configured; fonts bundled (only own origin) | All request hosts across full audit session | Yes | hosts contacted by the browser: akash-sharma-job-acquisition-os.vercel.app,  | - |
 | 38 | Privacy | FreeHire gets only titles/cities/flags/education (not resume, name, age, phone, key) | Capture browser→/api/jobs/search body in manual-form run | Yes | body: {"titles":["driver","chauffeur"],"countries":["IN"],"cities":["Delhi","New Delhi","Gurugram","Gurgaon","Noida","Ghaziabad","Faridabad"],"remote":false,"entryLevel":true,"govt":true,"education":"12"} | - |
 | 39 | Setup | Short Hindi/English form for people without a resume finds jobs near them | Manual form (24, 12th, Delhi) on production | Yes | 12 jobs: Process Server (Post Code @ DSSSB Delhi Dis; Hardware Technician (ITI) @ 7RD; 3-Ton Pickup Driver - Fre @ apt-resources | - |
 | 40 | Setup | Government jobs: official notification link + last date, never invented | Manual form with govt ticked | Yes | Process Server (Post Code: 807/26) / DSSSB Delhi District Courts / last date 2026-11-04 / https://dsssb.delhi.gov.in/sites/default/files/DSSSB/circulars-orders/final_adv_ | - |
@@ -68,3 +68,86 @@ Also run end to end on production with the box key: score (AI), tailored resume,
 - Test mode: with the toggle on, downloaded .eml and Gmail compose URLs start subject and body with `[TEST - please ignore]`. Nothing is ever sent by the app.
 - Government jobs: official notices kept only with a .gov.in/.nic.in link and a future last date. The SarkariMap RSS aggregator returns HTTP 403 to Vercel's servers; it is not worked around. Works locally, labelled as aggregator when it does load.
 - Blocked: Google sign-in (Vercel env vars).
+
+## Merged features (branch `merge-repos`, see docs/MERGE_PLAN.md)
+Tested 2026-10-19 with headless Chrome against the branch build running locally (`npm run dev`, same server code, real FreeHire and real Gemini calls). The Vercel preview of this branch is behind Vercel Deployment Protection (HTTP 401 without a Vercel login), so it could not be driven headlessly. Script: `scripts/merge-audit.mjs` (`BASE=<url> GEMINI_API_KEY=... node scripts/merge-audit.mjs`).
+
+**Totals: 19 promises, Yes 19.**
+
+| # | Page | Promise | Test | Result | Evidence |
+|---|---|---|---|---|---|
+| M1 | Dashboard | Milestones counted from real jobs | Read Milestones card | Yes | Milestones  Counted from your own jobs in this browser.  ✓ First application sent 1/1 10 applications 2/10 3 tailored applications 0/3 5-day applying streak 0/5 ✓ First interview 1/1 First offer 0/1 1 |
+| M2 | Dashboard | Follow-up due uses 5/10 working-day rule | Seeded applied 2026-10-05 (due 10-12) and 2026-10-12 (due 10-19) | Yes | Follow up Acme Logistics applied 2026-10-05 Beta Stores applied 2026-10-12  |
+| M3 | Jobs | Follow-up schedule with dates and .ics reminder | Open applied job, download .ics | Yes | schedule #1 2026-10-12, #2 2026-10-19; file follow-up-1-acme-logistics.ics DTSTART 20261012 |
+| M4 | Jobs | "Mark sent" advances the cadence (max two) | Click Mark #1 sent | Yes | followUpsSent=1; only #2 remains |
+| M5 | Jobs | Sort reply: rules label a pasted reply and suggest status | Paste a rejection, Sort, Save | Yes | label Rejection; status=Rejected; reply saved in browser |
+| M6 | Jobs | Follow-ups stop after a reply | Re-read schedule | Yes | Stopped: you logged a reply (Rejection). |
+| M7 | Jobs | Govt card: days left + notice no., stated pay, age (never guessed) | Open seeded DSSSB job | Yes | last date to apply: 2026-11-04 (16 days left). Notice no. 05/2026 · Pay stated: Rs 19,900 - 63,200 · Age: Age limit: not exceeding 27 years. The link opens the official notification. Found via telegram, posted 2026-10-04 |
+| M8 | Jobs | Duplicate warning when adding a job already tracked | Type same title + company | Yes | Looks like a job you already track: Warehouse Associate at Beta Stores (added 2026-10-12). You can still add it. |
+| M9 | Interviews | Interview .ics download | Click .ics | Yes | interview-dsssb-delhi-district-courts-2026-10-22.ics: 15:00 IST = 09:30Z, 30-min alarm |
+| M10 | Resume | Export jobs (CSV) | Click and parse file | Yes | jobs-2026-10-19.csv: header + 3 rows |
+| M11 | Resume | Notice period / available from saved | Read fields after reload | Yes | ["15 days","1 Nov 2026"] |
+| M12 | Tailor | Fact check under AI tailored resume | Real Gemini tailor, read panel | Yes | Fact check · 7 items to confirm  Compares this text with your resume and the job description in your browser. Anything listed does not appear there: keep it only if it is true.  Names and skills: Zomato. Demonstrated, Bilingual, S |
+| M13 | Tailor | Availability is sent to AI with requests | Inspect /api/ai request body | Yes | request instructions include "notice period 15 days; can start 1 Nov 2026" |
+| M14 | Outreach | Fact check on outreach package | Generate outreach (real Gemini) | Yes | Fact check · 4 items to confirm |
+| M15 | Outreach | Still draft-only: no send endpoint, Test mode prefix kept | Toggle Test mode, download .eml | Yes | test-user-outreach-beta-stores-2026-10-19.eml: X-Unsent 1, subject prefixed |
+| M16 | Privacy | Privacy page describes the merged browser-only checks | Read page | Yes | section present |
+| M17 | Setup | Remote board search links (We Work Remotely, Remotive) when nothing is found | Remote location, impossible title, Skip AI | Yes | https://weworkremotely.com/remote-jobs/search?term=zzqqxx%20operator ; https://remotive.com/remote-jobs?query=zzqqxx%20operator |
+| M18 | App | No third-party requests from the browser | All hosts in session | Yes | hosts: localhost:3000 |
+| M19 | App | Job drawer with new sections fits a phone screen | 390px, open job | Yes | overflow px 0 |
+
+Regression: the 44-promise audit above was re-run on the branch build. Results matched production, except two checks that only work against a deployed build: #12 (looks for the hashed JS bundle) and #37 (only `localhost` was contacted, so nothing external, but the check expects the Vercel host). Rate limiting (#43) returned 429 after 7 calls on a single server, as designed. #26 is now backed by the in-browser Fact check (M12, M14).
+
+## Launch check: branding, funnel, feedback, gaps (19 Oct 2026, branch merge-repos)
+
+Script: `scripts/launch-audit.mjs` (BASE = dev server, GA_BASE = a preview build made with `VITE_GOATCOUNTER_CODE=auditcode`; GoatCounter requests are intercepted and aborted, so nothing is sent). Result: **33/33 Yes**.
+
+| # | Page | Promise | Test | Result | Evidence |
+|---|---|---|---|---|---|
+| L1 | Landing | Footer credit, copyright and links | Read footer | Yes | Momentum · SHARE FEEDBACK · SHARE WITH A FRIEND · ABOUT · TERMS · PRIVACY & SECURITY · Made by Akash Sync Agent · © 2026 Akash Sync Agent (Adv. Akash Sharma) · Code under MIT licence; name and logo not licensed. No cooki |
+| L2 | Landing | One strong CTA in the hero | Count buttons in hero section | Yes | hero buttons: ["Start your path"]; "See how it works" is a plain link |
+| L3 | Landing | Social-proof slot hidden until real numbers | Look for data-testid=social-proof | Yes | PROOF=null in src/lib/brand.ts, slot not rendered |
+| L4 | Landing | Share with a friend gives a referral link | Click Share (no Web Share in headless), read clipboard | Yes | clipboard: https://akash-sharma-job-acquisition-os.vercel.app/?ref=share |
+| L5 | Landing | Meta: title, author, OG/Twitter card, canonical, favicon | Read <head> | Yes | {"t":"Momentum: free job search workspace, by Akash Sync Agent","a":"Akash Sync Agent (Adv. Akash Sharma)","sn":"Momentum","img":"https://akash-sharma-job-acquisition-os.vercel.app/og.jpg","tw":"summary_large_image","can":"https:/ |
+| L6 | Static | OG image 1200x630, favicon, apple icon served | Fetch and read size | Yes | og.jpg 200 image/jpeg (1200, 630) 88KB; favicon 200; apple 200 |
+| L7 | Static | robots.txt and sitemap.xml | Fetch both | Yes | robots allows all + Sitemap line; sitemap lists site root |
+| L8 | Static | 404 page for unknown paths | Fetch /404.html (Vercel serves it for unknown paths) | Yes | 404.html: "Off the path.", noindex, back link |
+| L9 | Static | Security headers in vercel.json | Parse config | Yes | CSP + nosniff + DENY + referrer + permissions + HSTS; functions config kept: true |
+| L10 | App | Sidebar credit, copyright and Terms link | Read sidebar | Yes | Guest mode · SIGN IN IN SETTINGS · Dark theme · Made by Akash Sync Agent · Terms · © 2026 Akash Sync Agent (Adv. Akash Sharma) |
+| L11 | About | Credit opens About: credits, plain MIT, brand not licensed | Click credit | Yes | #/app/about; The source code is open under the MIT licence (GitHub). MIT lets anyone use, copy, change and even sell the code, as long as they keep the copyright a |
+| L12 | Terms | Terms: as-is, Gemini terms, 18+, free-tier data use, EEA/UK | Deep link #/app/terms | Yes | link to Gemini API Additional Terms; 18+; EEA/CH/UK paid only; free tier may be reviewed by humans |
+| L13 | Feedback | Buttons disabled until text is written | Read hrefs on empty form | Yes | hrefs: [null,null] |
+| L14 | Feedback | Prefilled GitHub issue (form, label) and private email | Type text, read links | Yes | /advakash2356-sys/Akash-Sharma-Job-Acquisition-OS/issues/new?template=feedback.yml&labels=feedback; mailto:adv.akash2356@gmail.com?subject=%5BFeedback%5D%20Idea… |
+| L15 | Feedback | Feedback reaches Akash: [TEST] issue on GitHub | GitHub API issue #1 | Yes | https://github.com/advakash2356-sys/Akash-Sharma-Job-Acquisition-OS/issues/1 "[TEST] Feedback form test, please ignore" label feedback, open |
+| L16 | App | In-app 404 for unknown pages | #/app/does-not-exist | Yes | "Off the path." with back button |
+| L17 | App | Error boundary shows real cause, Reload and Report | Dev-only crash route | Yes | message shown, sidebar still works |
+| L18 | Privacy | Privacy matches analytics OFF state | Read page | Yes | This deployment does not count usage: no analytics code is switched on. If the owner turns on counting later, this paragraph changes to list exactly what is cou |
+| L19 | Settings | Settings states counting is off; export credit toggle | Read page | Yes | both controls shown |
+| L20 | Exports | PDF footer carries the credit | exportPdf, pdftotext | Yes | audit-pdf.pdf · page 1 of 1 · Made by Akash Sync Agent (akash-sharma-job-acquisition-os.vercel.app) |
+| L21 | Exports | DOCX footer carries the credit | exportDocx, unzip footer | Yes | word/footer1.xml contains credit |
+| L22 | Exports | Credit can be switched off in Settings | Set off, export PDF | Yes | footer: audit-pdf.pdf · page 1 of 1 |
+| L23 | App | No GoatCounter (or other 3rd-party) requests when code is unset | All hosts so far | Yes | hosts: localhost:3000 |
+| L24 | Mobile | No sideways scroll at 390px: / | scrollWidth - innerWidth | Yes | overflow px 0 |
+| L25 | Mobile | No sideways scroll at 390px: /#/app/about | scrollWidth - innerWidth | Yes | overflow px 0 |
+| L26 | Mobile | No sideways scroll at 390px: /#/app/terms | scrollWidth - innerWidth | Yes | overflow px 0 |
+| L27 | Mobile | No sideways scroll at 390px: /#/app/feedback | scrollWidth - innerWidth | Yes | overflow px 0 |
+| L28 | Analytics | landing_view counted on landing | Analytics-on build, intercepted | Yes | https://auditcode.goatcounter.com/count?p=landing_view&t=landing_view&e=true&rnd=… |
+| L29 | Analytics | start_setup counted | Click Start your path | Yes | landing_view, start_setup |
+| L30 | Analytics | resume_added / first_job_found once only | Seed then reload twice | Yes | landing_view, start_setup, resume_added, first_job_found |
+| L31 | Analytics | Only the step name is sent (no content) | Inspect every intercepted URL | Yes | 4 requests, params e,p,t,rnd only; host auditcode.goatcounter.com |
+| L32 | Analytics | Privacy lists the exact events when ON | Read page on analytics build | Yes | all 8 events named; GoatCounter; DNT/GPC/opt-out |
+| L33 | Analytics | Opt-out stops counting | Set opt-out, load landing | Yes | 0 requests |
+
+Lighthouse 12 (local `vite preview` of the production build; Vercel headers do not apply locally):
+
+| Page | Form factor | Performance | Accessibility | Best practices | SEO |
+|---|---|---|---|---|---|
+| Landing | mobile | 90 | 100 | 100 | 100 |
+| Landing | desktop | 100 | 100 | 100 | 100 |
+| App (#/app) | mobile | 93 | 100 | 100 | 100 |
+| App (#/app) | desktop | 100 | 100 | 100 | 100 |
+
+Fixes found by this pass: main bundle 1.5 MB → 272 KB (pages lazy-loaded; landing mobile performance 70 → 90); landing step list markup (spans inside `<ol>`); locked setup step was keyboard-focusable and failed contrast (now `inert`); light-theme accent darkened to #b13204 for 4.5:1 on the active nav item; logo and drop-zone accessible names match their visible text.
+CSP check: the production build served locally with the exact `vercel.json` headers (minus HSTS/upgrade-insecure-requests, which need HTTPS) had **0 CSP violations** across the landing page (hero video), PDF and DOCX resume reading (pdf.js worker, mammoth), all app pages and a jsPDF export. Google sign-in under CSP is untested because sign-in is not configured on this server (GOOGLE_CLIENT_ID missing); its hosts (accounts.google.com/gsi/*, *.googleusercontent.com) are allowed.
+
+GoatCounter on (19 Oct 2026, 5:30 PM IST): production builds now default to the owner's code `akashsyncagent` (local dev never counts). One real `landing_view` count from the production build, served with the exact CSP, got **HTTP 200** from akashsyncagent.goatcounter.com, with 0 CSP violations. Launch audit re-run: 33/33.

@@ -1,3 +1,4 @@
+import { download, jobsCsv } from '../lib/merged';
 import React, { useRef, useState } from 'react';
 import { Upload, Download, FileJson, Trash2, UserRound } from 'lucide-react';
 import { Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
@@ -49,6 +50,8 @@ export default function ResumePage() {
           <div><Label htmlFor="k">Links</Label><Input id="k" value={profile.links} onChange={set('links')} placeholder="LinkedIn, portfolio" /></div>
           <div><Label htmlFor="t" hint="optional">Target roles</Label><Input id="t" value={profile.targetRoles} onChange={set('targetRoles')} placeholder="e.g. Product Manager, Ops Lead" /></div>
           <div><Label htmlFor="c" hint="optional">Minimum pay</Label><Input id="c" value={profile.minCtc} onChange={set('minCtc')} placeholder="e.g. 18 LPA" /></div>
+          <div><Label htmlFor="np" hint="optional">Notice period</Label><Input id="np" value={profile.noticePeriod || ''} onChange={(e) => setProfile((p) => ({ ...p, noticePeriod: e.target.value }))} placeholder="e.g. 30 days, or none" /></div>
+          <div><Label htmlFor="af" hint="optional">Available from</Label><Input id="af" value={profile.availableFrom || ''} onChange={(e) => setProfile((p) => ({ ...p, availableFrom: e.target.value }))} placeholder="e.g. 1 Dec 2026, or immediately" /></div>
         </Card>
 
         <Card className="grid gap-4">
@@ -77,6 +80,7 @@ export default function ResumePage() {
           <p className="mb-4 text-sm text-muted-foreground">Export your resume and jobs as a JSON file, or restore them on another device.</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={exportJson}><Download size={16} /> Export JSON</Button>
+            <Button variant="outline" disabled={!jobs.length} onClick={() => download(jobsCsv(jobs), `jobs-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv')}><Download size={16} /> Export jobs (CSV)</Button>
             <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={(e) => { importJson(e.target.files?.[0]); e.target.value = ''; }} />
             <Button variant="outline" onClick={() => importRef.current?.click()}><FileJson size={16} /> Import JSON</Button>
             <Button variant="danger" onClick={() => { if (confirm('Delete your resume and all jobs from this browser?')) { setProfile(emptyProfile); setJobs([]); setMsg('All data cleared.'); } }}><Trash2 size={16} /> Clear all data</Button>
