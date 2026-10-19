@@ -1,3 +1,4 @@
+import { today } from '../lib/utils';
 import React from 'react';
 import { BarChart3, FileDown } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -20,7 +21,7 @@ export default function Insights() {
   const gaps = skillGaps(jobs);
 
   const report = () => {
-    const d = new Date(), date = d.toISOString().slice(0, 10), name = `weekly-report-${date}.pdf`;
+    const d = new Date(), date = today(), name = `weekly-report-${date}.pdf`;
     const sp = sprintStats(jobs, parseInt(profile.dailyTarget) || 0);
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text(`Weekly job-search report${profile.name ? `: ${profile.name}` : ''}`, 56, 64);

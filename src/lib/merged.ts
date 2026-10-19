@@ -20,9 +20,10 @@ export function factCheck(output: string, resume: string, jobText = ''): FactChe
     .replace(/(^|\n)\s*[*•-]?\s*\**([A-Z][\w /&]{1,30})\**\s*:/g, '$1'); // "Label:" prefixes
   const numbers = uniq((body.match(/\b\d[\d,.]*\s?(%|\+|x|k|lpa|lakh|crore|years?|yrs?|months?)?/gi) || []).map((n) => n.trim()))
     .filter((n) => !has((n.match(/\d[\d,.]*/) || [n])[0].replace(/[.,]$/, '')));
-  const words = body.match(/\b([A-Z][a-zA-Z+#.]{1,}(?:\s[A-Z][a-zA-Z+#.]+){0,2}|[A-Z]{2,}[a-z]?)\b/g) || [];
+  const words = (body.match(/\b([A-Z][a-zA-Z+#.]{1,}(?:[ \t][A-Z][a-zA-Z+#.]+){0,2}|[A-Z]{2,}[a-z]?)\b/g) || []).map((w) => w.replace(/\.+$/, '').replace(/\.\s.*$/, '')); // phrases never cross a line or sentence end
   const COMMON = /^(I|The|A|An|And|Dear|Hiring|Manager|Team|Best|Regards|Sincerely|Thank|Thanks|Hello|Hi|Yours|My|In|At|For|With|As|To|Of|On|This|That|It|We|You|Your|Our|Professional|Summary|Experience|Skills|Education|Objective|Key|Core|Work|Profile|Contact|Email|Phone|Subject|Re|Name|City|Age|Languages?|Certifications?|Achievements?|Projects?|Responsibilities|Highlights|Strengths|Open|Available|Looking|Reliable|Delivered|Managed|Led|Built|Worked|Handled|Ensured|Maintained|Reduced|Improved|Increased|Achieved|Developed|Created|Supported|Coordinated|Present|Current|Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December|LinkedIn|Gmail)$/;
-  const terms = uniq(words.map((w) => w.trim())).filter((w) => !COMMON.test(w) && !w.split(' ').every((x) => COMMON.test(x)) && !has(w)).slice(0, 25);
+  const trimCommon = (w: string) => { const a = w.split(' '); while (a.length && COMMON.test(a[0])) a.shift(); while (a.length && COMMON.test(a[a.length - 1])) a.pop(); return a.join(' '); };
+  const terms = uniq(words.map((w) => trimCommon(w.trim())).filter(Boolean)).filter((w) => !COMMON.test(w) && !w.split(' ').every((x) => COMMON.test(x)) && !has(w)).slice(0, 25);
   const lower = output.toLowerCase();
   const cliches = CLICHES.filter((c) => lower.includes(c) && !norm(resume).includes(c));
   return { numbers: numbers.slice(0, 20), terms, cliches };

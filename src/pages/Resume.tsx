@@ -1,3 +1,4 @@
+import { today } from '../lib/utils';
 import { download, jobsCsv } from '../lib/merged';
 import React, { useRef, useState } from 'react';
 import { Upload, Download, FileJson, Trash2, UserRound } from 'lucide-react';
@@ -80,7 +81,7 @@ export default function ResumePage() {
           <p className="mb-4 text-sm text-muted-foreground">Export your resume and jobs as a JSON file, or restore them on another device.</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={exportJson}><Download size={16} /> Export JSON</Button>
-            <Button variant="outline" disabled={!jobs.length} onClick={() => download(jobsCsv(jobs), `jobs-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv')}><Download size={16} /> Export jobs (CSV)</Button>
+            <Button variant="outline" disabled={!jobs.length} onClick={() => download(jobsCsv(jobs), `jobs-${today()}.csv`, 'text/csv')}><Download size={16} /> Export jobs (CSV)</Button>
             <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={(e) => { importJson(e.target.files?.[0]); e.target.value = ''; }} />
             <Button variant="outline" onClick={() => importRef.current?.click()}><FileJson size={16} /> Import JSON</Button>
             <Button variant="danger" onClick={() => { if (confirm('Delete your resume and all jobs from this browser?')) { setProfile(emptyProfile); setJobs([]); setMsg('All data cleared.'); } }}><Trash2 size={16} /> Clear all data</Button>

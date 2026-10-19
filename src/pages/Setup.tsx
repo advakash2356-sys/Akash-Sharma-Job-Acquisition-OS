@@ -1,3 +1,4 @@
+import { today } from '../lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Loader2, RotateCw, SkipForward, XCircle } from 'lucide-react';
 import { Button, Card, Input, Label, PageHeader } from '../components/ui';
@@ -96,7 +97,7 @@ export default function Setup() {
       }
     }
     if (aiNote) msgs.push(aiNote);
-    const now = new Date().toISOString().slice(0, 10);
+    const now = today();
     const jobs: Job[] = fresh.map((j: FoundJob, i: number) => {
       const fit = fits.get(j.id) || { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const };
       return {
