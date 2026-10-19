@@ -1,4 +1,11 @@
-# Promise audit
+# Promise audit: Job Acquisition OS
+
+**Last updated: 20 Oct 2026 (IST), on LIVE production https://akash-sharma-job-acquisition-os.vercel.app (main 32531cb).** Made by Akash Sync Agent.
+
+Current state: blue-collar persona E2E 16/16; live launch check 19/19. Earlier sections below are kept as dated history. The product name is Job Acquisition OS ("Momentum" is the visual design concept), so older rows that say "Momentum" refer to the same app.
+
+Known limits (honest, not fixable in the app): Google sign-in is off until GOOGLE_CLIENT_ID is set. AI text needs a human read (the fact check helps but can't prove facts). The rate limit is in-memory per serverless instance (best effort). FreeHire coverage varies by day (4 jobs for this persona today). Government sites such as dsssb.delhi.gov.in did not answer from our test server (timeout), so the official PDF link was not fetch-checked; it is the notice's own .gov.in URL.
+
 
 Run on production (https://akash-sharma-job-acquisition-os.vercel.app) on 2026-10-19 with headless Chrome, real PDF/DOCX/TXT uploads and a real Gemini key (not printed). Script: `scripts/promise-audit.mjs`.
 
@@ -177,5 +184,55 @@ GoatCounter on (19 Oct 2026, 5:30 PM IST): production builds now default to the 
 | P15 | Jobs | No-AI path: "Skip AI, search jobs now" returns real jobs | Yes | 46 jobs, e.g. CLM Specialist (Contract Lifecycle Management) - Locally Recruited @ CIMMYT; Commercial Contract Manager @ Unisys; Legal Operations Analyst (6-month Contractor) - Hyderabad @ Schrödinger |
 | P16 | Jobs | Job links open (HTTP check of first 5) | Yes | statuses: 200,200,200,200,200 |
 | P17 | Jobs | AI path: guided setup with Akash's key fills roles and finds jobs | Yes | AI roles: Legal Operations Professional, Contract Manager, Contract Lifecycle Management Specialist, Legal Operations Team Lead; 46 jobs, e.g. CLM Specialist (Contract Lifecycle Management) - Locally Recruited @ CIMMYT; Commercial Contract Manager @ Unisys; Le |
+| P18 | Security | No CSP violations across the live run | Yes | 0 violations |
+| P19 | Mobile | Live landing fits 390px | Yes | overflow px 0 |
+
+## 20 Oct 2026 truth pass + blue-collar persona E2E (LIVE)
+
+Persona: 24-year-old man, 12th pass, Delhi, no resume, using the Hindi/English form. Uses the box Gemini key; no email was sent. Script: `scripts/persona-e2e.mjs`.
+
+Truth fixes: the product is now named Job Acquisition OS everywhere (title, meta, JSON-LD, OG card, sidebar, About, Terms, NOTICE, README, .ics). The landing now lists the real-jobs step and the no-resume form. Removed "Apply" and "Negotiate" (no such features) and "ATS keyword match" (now "keyword match against the job description"). Pay and weekly-report copy now match what the app does.
+Bug fixes: "today" used UTC, so the applied date, file names and the weekly report showed yesterday's date between 00:00 and 05:30 IST (fixed). The fact check flagged the user's own name and phrases spanning lines or sentences (fixed).
+
+| # | Area | Promise | Result | Evidence |
+|---|---|---|---|---|
+| E1 | Profile | No-resume Hindi/English form saves the persona | Yes | bilingual labels; saved: age 24, edu 12, city Delhi, roles "Driver, Delivery, Warehouse, Security guard" |
+| E2 | Search | Real jobs found automatically (FreeHire) | Yes | 4 jobs added |
+| E3 | Search | 3+ real NCR blue-collar jobs with working links | Yes | 3 NCR jobs; link statuses 200,200,200; e.g. 3-Ton Pickup Driver - Fresh Produce processing company @ apt-resources (New Delhi, Delhi, India); Supervisor Warehouse @ donaldson (Gurgaon); Warehouse Supervisor @ Carry You (Bhora Kalan, Binola Industrial Area, Gurgaon, India) |
+| E4 | Search | 1+ government notice with future last date and .gov.in/.nic.in link | Yes | 1 notices; e.g. Process Server (Post Code: 807/26) @ DSSSB Delhi District Courts, last date 2026-11-04, https://dsssb.delhi.gov.in/sites/default/files/DSSSB/circulars-orders/final_adv_1.pdf (HTTP err) |
+| E5 | Fit | Fit score on found jobs (AI with key, else labelled keyword) | Yes | 4/4 scored; first: ai 50 |
+| E6 | Fit | Score this job (AI): strengths, gaps, missing keywords | Yes | Fit score Re-score 40 / 100 Partial Mat for "3-Ton Pickup Driver - Fresh Produce processing company" |
+| E7 | Follow-up | Mark applied, follow-up .ics reminder downloads | Yes | follow-up-1-apt-resources.ics: DTSTART;VALUE=DATE:20261027; SUMMARY:Follow up #1: 3-Ton Pickup Driver - Fresh Produce processing company\, a |
+| E8 | Tailor | Tailored resume + cover letter (AI) | Yes | both generated; Fact check · 4 items to confirm |
+| E9 | Export | PDF + DOCX export with credit footer and date in name | Yes | demo-persona-resume-apt-resources-2026-10-20.pdf, demo-persona-resume-apt-resources-2026-10-20.docx; credit in both footers |
+| E10 | Outreach | Email draft in Test mode: Gmail link + .eml carry [TEST - please ignore]; nothing sent | Yes | demo-persona-outreach-apt-resources-2026-10-20.eml: Subject: [TEST - please ignore] Application for 3-Ton Pickup Driver Role; X-Unsent: 1; Gmail compose link (view=cm) prefilled; send requests: 0 |
+| E11 | Interview | Add interview + AI prep | Yes | prep with likely questions and "Ask them" |
+| E12 | Interview | Interview .ics download | Yes | interview-dsssb-delhi-district-courts-2026-10-27.ics: DTSTART:20261027T053000Z (11:00 IST) |
+| E13 | Salary | Salary chart from pay logged on a job vs minimum | Yes | pay entered on 1 job (15k–20k), minimum 15000; 18 svg |
+| E14 | Insights | Insights from own jobs + weekly report PDF | Yes | weekly-report-2026-10-20.pdf |
+| E15 | Feedback | Feedback page builds GitHub issue + email links | Yes | GitHub issue form + mailto (not opened, nothing sent) |
+| E16 | Share | Share with a friend copies ?ref=share link | Yes | https://akash-sharma-job-acquisition-os.vercel.app/?ref=share |
+
+Live launch check after the rename (`scripts/live-launch-check.mjs`):
+
+| # | Area | Promise | Result | Evidence |
+|---|---|---|---|---|
+| P1 | Landing | Live landing: footer credit + copyright | Yes | Job Acquisition OS · SHARE FEEDBACK · SHARE WITH A FRIEND · ABOUT · TERMS · PRIVACY & SECURITY · Made by Akash Sync Agent · © 2026 Akash Sync Agent (Adv. Akash  |
+| P2 | Funnel | Channel link counted by source (pageview q=ref + from_<channel> event) | Yes | p=/&t=/ / p=/&t=/&q=?ref=linkedin&utm_campaign=launch-oct26 / p=from_linkedin&t=from_linkedin&e=true / p=landing_view&t=landing_view&e=true |
+| P3 | SEO | JSON-LD Organization + WebApplication, no ratings | Yes | Organization: Akash Sync Agent, WebApplication: Job Acquisition OS; no aggregateRating/review |
+| P4 | SEO | Clean URL /about: page, title, canonical | Yes | {"t":"About Job Acquisition OS · Made by Akash Sync Agent","c":"https://akash-sharma-job-acquisition-os.vercel.app/about","h1":"About Job Acquisition OS"} |
+| P5 | SEO | Clean URL /terms: page, title, canonical | Yes | {"t":"Terms of use · Job Acquisition OS","c":"https://akash-sharma-job-acquisition-os.vercel.app/terms","h1":"Terms of use"} |
+| P6 | SEO | Clean URL /feedback: page, title, canonical | Yes | {"t":"Share feedback · Job Acquisition OS","c":"https://akash-sharma-job-acquisition-os.vercel.app/feedback","h1":"Share your feedback"} |
+| P7 | SEO | Clean URL /privacy: page, title, canonical | Yes | {"t":"Privacy & security · Job Acquisition OS","c":"https://akash-sharma-job-acquisition-os.vercel.app/privacy","h1":"Privacy & security"} |
+| P8 | Privacy | Live Privacy lists counted steps + page view/channel | Yes | GoatCounter host akashsyncagent.goatcounter.com, 8 steps + page view + channel |
+| P9 | App | Live sidebar credit, Terms, copyright | Yes | sidebar footer present |
+| P10 | App | Live in-app 404 | Yes | "Off the path." |
+| P11 | Static | Live 404 for unknown path | Yes | HTTP 404, styled 404.html |
+| P12 | Static | Live security headers | Yes | CSP, XFO DENY, nosniff, HSTS, Referrer-Policy, Permissions-Policy |
+| P13 | SEO | Live sitemap (live domain, 5 URLs) + robots | Yes | 5 <loc> on live domain; robots Sitemap line |
+| P14 | SEO | Live OG image | Yes | og.jpg 200 image/jpeg |
+| P15 | Jobs | No-AI path: "Skip AI, search jobs now" returns real jobs | Yes | 46 jobs, e.g. CLM Specialist (Contract Lifecycle Management) - Locally Recruited @ CIMMYT; Commercial Contract Manager @ Unisys; Legal Operations Analyst (6-month Contractor) - Hyderabad @ Schrödinger |
+| P16 | Jobs | Job links open (HTTP check of first 5) | Yes | statuses: 200,200,200,200,200 |
+| P17 | Jobs | AI path: guided setup with Akash's key fills roles and finds jobs | Yes | AI roles: Legal Operations Professional, Contract Manager, Contract Administrator, Legal Operations Specialist; 54 jobs, e.g. Contract Administrator Senior Associate @ pwc; Contract Administrator - Associate @ pwc; Lead Contract Administrator @ Adani Group |
 | P18 | Security | No CSP violations across the live run | Yes | 0 violations |
 | P19 | Mobile | Live landing fits 390px | Yes | overflow px 0 |
