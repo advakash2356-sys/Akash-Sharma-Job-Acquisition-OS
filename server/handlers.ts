@@ -36,19 +36,35 @@ function explain(e: any): ApiError {
 
 const retryable = (e: any) => { const g = googleError(e); return g.status === 404 || g.status === 429 || g.status === 503 || /not found|RESOURCE_EXHAUSTED|overloaded/i.test(g.message); };
 
-async function generate(client: GoogleGenAI, req: { contents: string; config?: any }) {
+interface GenOpts { models?: string[]; perCallMs?: number; budgetMs?: number }
+const FAST: GenOpts = { models: ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.6-flash"], perCallMs: 15000, budgetMs: 40000 };
+
+/** Tries models in order. Every call has a hard timeout and the whole request has a time budget, so nothing can hang. */
+async function generate(client: GoogleGenAI, req: { contents: string; config?: any }, opts: GenOpts = {}) {
+  const { models = MODELS, perCallMs = 25000, budgetMs = 50000 } = opts;
+  const start = Date.now();
   let last: any;
-  for (const model of MODELS) {
+  for (const model of models) {
+    const left = budgetMs - (Date.now() - start);
+    if (left < 3000) break;
+    const ctl = new AbortController();
+    const ms = Math.min(perCallMs, left);
+    const timer = setTimeout(() => ctl.abort(), ms);
     try {
-      const res = await client.models.generateContent({ model, ...req });
+      const res = await client.models.generateContent({ model, ...req, config: { ...req.config, abortSignal: ctl.signal } });
       if (res.text) return res;
       last = new ApiError(502, "The AI returned an empty response. Try again.", "EMPTY");
-    } catch (e) {
-      if (!last || googleError(last).status === 404) last = e; // keep the most informative error (quota beats not-found)
+    } catch (e: any) {
+      if (ctl.signal.aborted) {
+        const te = new ApiError(504, `Google's ${model} model did not answer within ${Math.round(ms / 1000)} seconds.`, "TIMEOUT");
+        if (!last) last = te;
+        continue;
+      }
+      if (!last || googleError(last).status === 404 || (last as ApiError).code === "TIMEOUT") last = e; // keep the most informative error (quota beats not-found and timeouts)
       if (!retryable(e)) throw e;
-    }
+    } finally { clearTimeout(timer); }
   }
-  throw last;
+  throw last || new ApiError(504, "The AI did not answer in time. Try again.", "TIMEOUT");
 }
 
 const SYSTEM = `You are a careful career assistant. You work ONLY from the candidate's resume text supplied in the request.
@@ -77,14 +93,14 @@ function need(body: Body) {
 const str = { type: Type.STRING };
 const strs = { type: Type.ARRAY, items: { type: Type.STRING } };
 
-async function run(client: GoogleGenAI, prompt: string, schema?: any) {
+async function run(client: GoogleGenAI, prompt: string, schema?: any, opts?: GenOpts) {
   const res = await generate(client, {
     contents: prompt,
     config: {
       systemInstruction: SYSTEM,
       ...(schema ? { responseMimeType: "application/json", responseSchema: schema } : {}),
     },
-  });
+  }, opts);
   if (!res.text) throw new ApiError(502, "The AI returned an empty response. Try again.");
   return schema ? JSON.parse(res.text) : res.text;
 }
@@ -93,7 +109,7 @@ async function run(client: GoogleGenAI, prompt: string, schema?: any) {
 function resumeOnly(body: Body) {
   const resume = String(body.resume || "").trim();
   if (resume.length < 50) throw new ApiError(400, "Add your resume first. It is used for every AI feature.", "NO_RESUME");
-  return resume.slice(0, 20000);
+  return resume.slice(0, 12000); // long resumes: the first 12k characters hold the roles and skills
 }
 
 async function parseResume(client: GoogleGenAI, body: Body) {
@@ -106,7 +122,7 @@ async function parseResume(client: GoogleGenAI, body: Body) {
       experience: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { role: str, company: str, period: str }, required: ["role", "company", "period"] } },
     },
     required: ["name", "headline", "email", "phone", "location", "links", "minPay", "skills", "targetTitles", "experience"],
-  });
+  }, FAST);
 }
 
 async function fitJobs(client: GoogleGenAI, body: Body) {
@@ -119,7 +135,7 @@ async function fitJobs(client: GoogleGenAI, body: Body) {
     type: Type.OBJECT,
     properties: { fits: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: str, score: { type: Type.NUMBER }, summary: str }, required: ["id", "score", "summary"] } } },
     required: ["fits"],
-  });
+  }, FAST);
   const ids = new Set(list.map((j: any) => j.id));
   return { fits: (out.fits || []).filter((f: any) => ids.has(String(f.id))).map((f: any) => ({ id: String(f.id), score: Math.max(0, Math.min(100, Math.round(Number(f.score) || 0))), summary: String(f.summary || "").slice(0, 300) })) };
 }

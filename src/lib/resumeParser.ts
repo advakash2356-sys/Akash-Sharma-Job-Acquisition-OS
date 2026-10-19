@@ -37,7 +37,7 @@ async function docxText(buf: ArrayBuffer): Promise<string> {
 
 const tidy = (t: string) => t.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 
-export async function parseResumeFile(file: File): Promise<string> {
+async function parseResumeFileInner(file: File): Promise<string> {
   if (file.size > MAX_BYTES) throw new ParseError('That file is over 15 MB. Use a smaller file.');
   const name = file.name.toLowerCase();
   let text: string;
@@ -55,4 +55,12 @@ export async function parseResumeFile(file: File): Promise<string> {
   }
   if (text.replace(/\s/g, '').length < 20) throw new ParseError('No readable text was found in this file.');
   return text;
+}
+
+/** Same as above but never hangs: stops after 45 seconds with a clear message. */
+export function parseResumeFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new ParseError('Reading this file took longer than 45 seconds and was stopped. Try a smaller file, or paste the text instead.')), 45000);
+    parseResumeFileInner(file).then(resolve, reject).finally(() => clearTimeout(timer));
+  });
 }

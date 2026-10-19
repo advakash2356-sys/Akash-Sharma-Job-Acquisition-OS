@@ -1,4 +1,4 @@
-import { AiError } from './api';
+import { AiError, fetchLimited, type CallOpts } from './api';
 import { keywordGap } from './insights';
 import type { Profile } from '../types';
 
@@ -21,11 +21,8 @@ export function deriveCountries(location: string): string[] {
 export const splitTitles = (s: string) => s.split(/[,;\n]/).map((t) => t.trim()).filter(Boolean).slice(0, 4);
 
 /** Sends only job titles and place filters to /api/jobs/search. Never resume text. */
-export async function searchJobsApi(titles: string[], countries: string[], remote: boolean): Promise<SearchResult> {
-  let res: Response;
-  try {
-    res = await fetch('/api/jobs/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titles, countries, remote }) });
-  } catch { throw new AiError('Network error while searching jobs. Check your connection and try again.'); }
+export async function searchJobsApi(titles: string[], countries: string[], remote: boolean, opts: CallOpts = {}): Promise<SearchResult> {
+  const res = await fetchLimited('/api/jobs/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titles, countries, remote }) }, { timeoutMs: 30000, ...opts }, 'The job search');
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new AiError(data.error || `Job search failed (${res.status}).`, data.code);
   return data.result as SearchResult;
@@ -43,3 +40,22 @@ export function dedupeAgainst<T extends { url: string }>(incoming: T[], existing
   return incoming.filter((j) => !have.has(j.url));
 }
 export type { Profile };
+
+const TITLE_RE = /\b(manager|counsel|lead|analyst|engineer|officer|associate|executive|specialist|director|consultant|developer|designer|head|coordinator|administrator|advisor|architect|scientist|accountant)\b/i;
+/** Guess job titles from resume lines, without AI. Looks for short lines that read like a title. */
+export function guessTitles(resume: string): string[] {
+  const out: string[] = [];
+  for (const raw of resume.split('\n').slice(0, 80)) {
+    const line = raw.replace(/^[\s•*\-–]+/, '').trim();
+    if (line.length < 4 || line.length > 70 || !TITLE_RE.test(line)) continue;
+    const t = line.split(/\s*(?:\bat\b|@|\||,|\(|\s-\s|–|—)\s*/i)[0].trim();
+    if (t.length >= 4 && t.length <= 50 && TITLE_RE.test(t) && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+export function guessLocation(resume: string): string {
+  const head = resume.split('\n').slice(0, 15).join(' ');
+  const m = head.match(/\b(Bengaluru|Bangalore|Mumbai|Delhi|New Delhi|Gurugram|Gurgaon|Noida|Hyderabad|Chennai|Pune|Kolkata|Ahmedabad|India|London|Singapore|Dubai|Toronto|New York|San Francisco|Berlin|Sydney)\b[^|\n]{0,20}/i);
+  return m ? m[0].trim().replace(/[,;]\s*$/, '') : '';
+}
