@@ -74,7 +74,7 @@ const TITLE_RE = /\b(manager|counsel|lead|analyst|engineer|officer|associate|exe
 /** Guess job titles from resume lines, without AI. Looks for short lines that read like a title. */
 export function guessTitles(resume: string): string[] {
   const out: string[] = [];
-  for (const raw of resume.split('\n').slice(0, 80)) {
+  for (const raw of resume.split(/\n|(?<=[a-z])\.\s+/).slice(0, 120)) {
     const line = raw.replace(/^[\s•*\-–]+/, '').trim();
     if (line.length < 4 || line.length > 70 || !TITLE_RE.test(line) || /certif|licen[cs]|degree|diploma|bachelor|master of|universit|college|school|\b(LLB|LLM|MBA|B\.?A|B\.?Tech)\b/i.test(line)) continue;
     const t = line.split(/\s*(?:\bat\b|@|\||,|\(|\s-\s|–|—)\s*/i)[0].trim();

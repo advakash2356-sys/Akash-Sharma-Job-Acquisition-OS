@@ -9,7 +9,7 @@ gsap.registerPlugin(ScrollTrigger);
 const STEPS = [
   ['01', 'Bring your resume', 'Upload it once. It is saved in your browser and powers every tool.'],
   ['02', 'Score the role', 'A candid fit score, strengths, gaps and the keywords you are missing.'],
-  ['03', 'Tailor and reach out', 'Resume, cover letter and outreach rewritten from your real facts.'],
+  ['03', 'Tailor and reach out', 'Resume, cover letter and outreach written from your resume only. AI can slip, so read before you send.'],
   ['04', 'Face the screen', 'A simulated recruiter read, plus interview prep for every round.'],
   ['05', 'Land the offer', 'Track pay, compare offers, and see the whole path on one horizon.'],
 ];
@@ -142,7 +142,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
             <div className="relative flex h-full flex-col justify-end text-[#f4ede2]">
               <FileText className="mb-3 text-[#ff6a2b]" />
               <h3 className="display text-4xl">Tailored resume & cover letter</h3>
-              <p className="mt-1 max-w-sm text-sm text-white/75">Rewritten per job from your real resume. Export to PDF or DOCX with the date in the file name.</p>
+              <p className="mt-1 max-w-sm text-sm text-white/75">Written per job from your resume text (read it before use). Export to PDF or DOCX with the date in the file name.</p>
             </div>
           </div>
           <Tile cls="md:col-span-3" icon={<Gauge />} title="Candid fit score" body="0 to 100 against your own resume, with strengths, gaps and missing keywords. (Example score shown; real scores need your Gemini key.)" big="87" />
