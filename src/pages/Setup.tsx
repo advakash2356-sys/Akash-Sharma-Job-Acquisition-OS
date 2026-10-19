@@ -72,6 +72,13 @@ export default function Setup() {
     }
     set('research', 'done'); set('fill', 'running');
     const fresh = dedupeAgainst(r.jobs, jobsNow.current);
+    if (!fresh.length) {
+      set('fill', 'done');
+      setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
+      setNote(msgs.join(' '));
+      setSummary(`All ${r.jobs.length} matching postings are already in your Jobs list, so nothing new was added.`);
+      return;
+    }
     const fits = new Map<string, { score: number; kind: 'ai' | 'keyword'; summary: string }>();
     let aiNote = useAi ? '' : 'Scored by keyword match only (AI skipped).';
     const t0 = Date.now();

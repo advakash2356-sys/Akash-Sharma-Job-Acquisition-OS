@@ -47,7 +47,7 @@ export function guessTitles(resume: string): string[] {
   const out: string[] = [];
   for (const raw of resume.split('\n').slice(0, 80)) {
     const line = raw.replace(/^[\s•*\-–]+/, '').trim();
-    if (line.length < 4 || line.length > 70 || !TITLE_RE.test(line)) continue;
+    if (line.length < 4 || line.length > 70 || !TITLE_RE.test(line) || /certif|licen[cs]|degree|diploma|bachelor|master of|universit|college|school|\b(LLB|LLM|MBA|B\.?A|B\.?Tech)\b/i.test(line)) continue;
     const t = line.split(/\s*(?:\bat\b|@|\||,|\(|\s-\s|–|—)\s*/i)[0].trim();
     if (t.length >= 4 && t.length <= 50 && TITLE_RE.test(t) && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
     if (out.length >= 3) break;
