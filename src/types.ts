@@ -22,6 +22,9 @@ export interface Profile {
   /** Short form instead of a resume (blue-collar and fresher flow). */
   manual?: boolean;
   age?: string;
+  /** Notice period and start date the user typed (merged from Recruiter-Scraper availability). */
+  noticePeriod?: string;
+  availableFrom?: string;
   education?: '8' | '10' | '12' | 'iti' | 'diploma' | 'graduate' | '';
   workPrefs?: string[];
   wantsGovt?: boolean;
@@ -81,6 +84,10 @@ export interface Job {
   outreach?: { emailSubject: string; emailBody: string; linkedinMessage: string; followUp: string };
   interviews: Interview[];
   source?: string;
+  /** Follow-up notes the user marked as sent (cadence stops after 2). */
+  followUpsSent?: number;
+  /** Last reply the user pasted and how it was classified. */
+  reply?: { text: string; kind: string; at: string };
   recruiterReview?: RecruiterReview;
   interviewPrep?: InterviewPrep;
   prepDone?: string[];

@@ -5,6 +5,7 @@ import { AiError_, CopyButton, RunButton, useAiAction } from '../components/AiPa
 import { Download } from 'lucide-react';
 import { exportDocx, exportPdf, fileBase } from '../lib/exporters';
 import { useApp } from '../lib/state';
+import FactCheckPanel from '../components/FactCheck';
 
 export default function Tailor() {
   const { jobs, setJobs, selectedJobId, go, hasResume, page, profile } = useApp();
@@ -32,7 +33,7 @@ export default function Tailor() {
                 <div className="flex gap-2">{text && <CopyButton text={text} />}{text && <><Button size="sm" variant="outline" onClick={() => exportPdf(text, `${title}: ${job.title}, ${job.company}`, fileBase(profile, job, field === 'coverLetter' ? 'cover-letter' : 'resume'))}><Download size={14} /> PDF</Button><Button size="sm" variant="outline" onClick={() => exportDocx(text, `${title}: ${job.title}, ${job.company}`, fileBase(profile, job, field === 'coverLetter' ? 'cover-letter' : 'resume'))}><Download size={14} /> DOCX</Button></>}<RunButton loading={ai.loading} disabled={!hasResume} onClick={async () => { const r = await ai.run(); if (r) save({ [field]: r }); }}>{text ? 'Regenerate' : label}</RunButton></div>
               </div>
               <AiError_ error={ai.error} go={go} />
-              {text ? <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed">{text}</pre> : !ai.error && <p className="text-sm text-muted-foreground">Nothing generated yet.</p>}
+              {text && <FactCheckPanel text={text} resume={`${profile.resumeText} ${profile.name} ${profile.email} ${profile.phone} ${profile.location} ${profile.noticePeriod || ""} ${profile.availableFrom || ""}`} jobText={`${job.title} ${job.company} ${job.description}`} />}{text ? <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed">{text}</pre> : !ai.error && <p className="text-sm text-muted-foreground">Nothing generated yet.</p>}
             </Card>
           );
         })}

@@ -1,3 +1,5 @@
+import { CalendarPlus } from 'lucide-react';
+import { download, ics, slug } from '../lib/merged';
 import React, { useState } from 'react';
 import { CalendarDays, Plus, Trash2 } from 'lucide-react';
 import { Button, Card, Dialog, EmptyState, Input, Label, PageHeader, Select, Textarea } from '../components/ui';
@@ -77,6 +79,7 @@ export default function Interviews() {
                 <div className="text-sm text-muted-foreground">{i.job.title} · {i.date ? new Date(i.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'No date set'}</div>
                 {i.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{i.notes}</p>}
               </div>
+              {i.date && <Button size="sm" variant="outline" onClick={() => download(ics({ uid: i.id, title: `Interview: ${i.round}, ${i.job.company}`, start: i.date, minutes: 60, description: `${i.job.title} at ${i.job.company}${i.notes ? `\n${i.notes}` : ''}`, url: i.job.url || undefined }), `interview-${slug(i.job.company)}-${i.date.slice(0, 10)}.ics`, 'text/calendar')}><CalendarPlus size={14} /> .ics</Button>}
               <Button size="sm" variant="ghost" aria-label="Delete interview" onClick={() => setJobs((js) => js.map((j) => j.id === i.job.id ? { ...j, interviews: j.interviews.filter((x) => x.id !== i.id) } : j))}><Trash2 size={15} /></Button>
             </Card>
           ))}

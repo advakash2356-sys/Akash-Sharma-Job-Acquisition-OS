@@ -3,6 +3,7 @@ import { Send } from 'lucide-react';
 import { Button, Card, EmptyState, Input, Label, PageHeader, Select } from '../components/ui';
 import { AiError_, CopyButton, RunButton, useAiAction } from '../components/AiPanel';
 import { Download, Mail } from 'lucide-react';
+import FactCheckPanel from '../components/FactCheck';
 import TestModeToggle from '../components/TestModeToggle';
 import { TEST_EVENT, exportEml, fileBase, gmailComposeUrl } from '../lib/exporters';
 import { TEMPLATES, fillTemplate } from '../lib/insights';
@@ -40,7 +41,8 @@ export default function Outreach() {
       {o && (
         <Card className="mb-4">
           <h2 className="mb-1 text-lg font-medium">Send it yourself</h2>
-          <p className="mb-3 text-sm text-muted-foreground">Nothing is sent for you and no account is connected. Open a pre-filled Gmail draft, or download an .eml draft for any mail app.</p>
+          <FactCheckPanel text={`${o.emailSubject}\n${o.emailBody}\n${o.linkedinMessage}\n${o.followUp}`} resume={`${profile.resumeText} ${profile.name} ${profile.email} ${profile.phone} ${profile.location} ${profile.noticePeriod || ""} ${profile.availableFrom || ""}`} jobText={`${job.title} ${job.company} ${job.description} ${contact.contactName} ${contact.contactTitle}`} />
+          <p className="mb-3 mt-3 text-sm text-muted-foreground">Nothing is sent for you and no account is connected. Open a pre-filled Gmail draft, or download an .eml draft for any mail app.</p>
           <div className="mb-3 max-w-sm"><Label htmlFor="to" hint="optional">Recipient email</Label><Input id="to" type="email" value={to} onChange={(e) => setTo(e.target.value)} /></div>
           <div className="flex flex-wrap gap-2">
             <a href={gmailComposeUrl({ to, subject: o.emailSubject, body: o.emailBody })} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90"><Mail size={16} /> Open in Gmail</a>

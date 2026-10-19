@@ -6,7 +6,8 @@ import FocusTimer from '../components/FocusTimer';
 import { useAiReady } from '../lib/aiReady';
 import { useApp } from '../lib/state';
 import { getUserApiKey } from '../lib/userApiKey';
-import { followUps, funnel, projection, sprintStats } from '../lib/insights';
+import { funnel, projection, sprintStats, todayStr } from '../lib/insights';
+import { cadence, milestones } from '../lib/merged';
 
 export default function Overview() {
   const { profile, jobs, go, hasResume } = useApp();
@@ -24,7 +25,8 @@ export default function Overview() {
   const sp = sprintStats(jobs, target);
   const f = funnel(jobs);
   const pr = projection(jobs);
-  const due = followUps(jobs);
+  const due = jobs.filter((j) => { const c = cadence(j)[0]; return c && c.date <= todayStr(); }).sort((a, b) => (a.appliedAt! < b.appliedAt! ? -1 : 1));
+  const ms = milestones(jobs);
   const upcoming = jobs.flatMap((j) => j.interviews.map((i) => ({ ...i, job: j }))).filter((i) => i.date && new Date(i.date) >= new Date()).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
   const pct = target ? Math.min(100, Math.round((sp.today / target) * 100)) : 0;
 
@@ -99,7 +101,7 @@ export default function Overview() {
         </Card>
         <Card>
           <h2 className="mb-2 text-3xl">Follow up</h2>
-          {due.length === 0 ? <p className="text-sm text-muted-foreground">Nothing overdue. Applications older than 5 days with no reply appear here.</p> : (
+          {due.length === 0 ? <p className="text-sm text-muted-foreground">Nothing due. A follow-up is due 5 working days after applying, a second after 10, then stop.</p> : (
             <ul className="grid gap-2 text-sm">{due.slice(0, 4).map((j) => <li key={j.id}><button className="text-left hover:underline cursor-pointer" onClick={() => go('outreach', j.id)}><b>{j.company}</b> <span className="text-muted-foreground">applied {j.appliedAt}</span></button></li>)}</ul>
           )}
         </Card>
@@ -110,6 +112,11 @@ export default function Overview() {
           )}
         </Card>
       </div>
+      <Card className="mt-5">
+        <h2 className="mb-1 text-3xl">Milestones</h2>
+        <p className="mb-3 text-sm text-muted-foreground">Counted from your own jobs in this browser.</p>
+        <ul className="grid gap-2 sm:grid-cols-3">{ms.map((m) => <li key={m.id} className={`rounded-lg border px-3 py-2 text-sm ${m.done ? 'border-primary bg-accent text-primary' : 'border-border text-muted-foreground'}`}><b>{m.done ? '✓ ' : ''}{m.label}</b> <span className="float-right">{m.progress}</span></li>)}</ul>
+      </Card>
     </>
   );
 }

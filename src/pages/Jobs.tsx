@@ -6,11 +6,13 @@ import { useApp } from '../lib/state';
 import { uid, today } from '../lib/utils';
 import { JOB_STATUSES, type Job, type JobScore, type JobStatus, type RecruiterReview } from '../types';
 import { SOURCES, keywordGap } from '../lib/insights';
+import JobFollowUp from '../components/JobFollowUp';
+import { daysLeftLabel, findDuplicate, parseNotice } from '../lib/merged';
 
 const num = (v: string) => (v.trim() && !isNaN(Number(v)) ? Number(v) : undefined);
 const scoreTone = (n: number) => (n >= 75 ? 'primary' : n >= 55 ? 'gold' : 'danger') as 'primary' | 'gold' | 'danger';
 
-function AddJob({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (j: Job) => void }) {
+function AddJob({ open, onClose, onAdd, existing = [] }: { open: boolean; onClose: () => void; onAdd: (j: Job) => void; existing?: Job[] }) {
   const [f, setF] = useState({ title: '', company: '', url: '', description: '', source: 'LinkedIn' });
   const [pay, setPay] = useState({ min: '', max: '' });
   useEffect(() => { if (!open) { setF({ title: '', company: '', url: '', description: '', source: 'LinkedIn' }); setPay({ min: '', max: '' }); } }, [open]);
@@ -35,6 +37,7 @@ function AddJob({ open, onClose, onAdd }: { open: boolean; onClose: () => void; 
           <div><Label htmlFor="sx" hint="optional">Pay max</Label><Input id="sx" inputMode="decimal" value={pay.max} onChange={(e) => setPay({ ...pay, max: e.target.value })} /></div>
         </div>
         <div><Label htmlFor="jd">Job description</Label><Textarea id="jd" rows={8} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="Paste the full job description" required /></div>
+        {(() => { const d = f.title.trim() && findDuplicate(existing, f); return d ? <p role="status" className="rounded-lg bg-muted px-3 py-2 text-sm">Looks like a job you already track: <b>{d.title}</b> at {d.company} (added {d.createdAt}). You can still add it.</p> : null; })()}
         <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" disabled={!ok}>Add job</Button></div>
       </form>
     </Dialog>
@@ -56,7 +59,7 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
       {job.found && (
         <div className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm">
           {job.found.govt
-            ? <><b>Government job notice</b> · last date to apply: <b>{job.found.govt.lastDate}</b>. {job.found.govt.official ? <>The link opens the <b>official notification</b>.</> : <>The link opens {job.found.govt.via}, a news site that lists notices. Check the official notification there before applying.</>} Found via {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}.</>
+            ? <><b>Government job notice</b> · last date to apply: <b>{job.found.govt.lastDate}</b> ({daysLeftLabel(job.found.govt.lastDate)}). {(() => { const n = parseNotice(job.description); const parts = [n.notificationNo && `Notice no. ${n.notificationNo}`, n.pay && `Pay stated: ${n.pay}`, n.age && `Age: ${n.age}`, n.minYears != null && `Experience: ${n.minYears}+ years`].filter(Boolean); return parts.length ? <>{parts.join(' · ')}. </> : null; })()} {job.found.govt.official ? <>The link opens the <b>official notification</b>.</> : <>The link opens {job.found.govt.via}, a news site that lists notices. Check the official notification there before applying.</>} Found via {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}.</>
             : <><b>Real posting found via FreeHire</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.</>}
           {job.found.fit && <p className="mt-1">{job.found.fit.kind === 'ai' ? 'AI fit' : 'Keyword match'} {job.found.fit.score}/100: {job.found.fit.summary}</p>}
         </div>
@@ -121,6 +124,8 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
         <Button variant="outline" onClick={() => go('tailor', job.id)}>Tailor resume & cover letter</Button>
         <Button variant="outline" onClick={() => go('outreach', job.id)}>Write outreach</Button>
       </div>
+
+      <JobFollowUp job={job} patch={patch} go={go} />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         {([['salaryMin', 'Pay min'], ['salaryMax', 'Pay max'], ['offerAmount', 'Offer received']] as const).map(([k, l]) => (
@@ -189,7 +194,7 @@ export default function Jobs() {
           )}
         </>
       )}
-      <AddJob open={adding} onClose={() => setAdding(false)} onAdd={(j) => setJobs((js) => [j, ...js])} />
+      <AddJob open={adding} existing={jobs} onClose={() => setAdding(false)} onAdd={(j) => setJobs((js) => [j, ...js])} />
       {open && <JobDetail job={open} onClose={() => setOpenId(null)} />}
     </>
   );

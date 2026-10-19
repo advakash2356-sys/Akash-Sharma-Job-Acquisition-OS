@@ -19,7 +19,7 @@ export function useAiAction<T>(action: string, job: Job | undefined) {
     try {
       return await callAi<T>(action, {
         title: job.title, company: job.company, description: job.description,
-        resume: profile.resumeText, name: profile.name, targetRoles: profile.targetRoles, minCtc: profile.minCtc, instructions: profile.aiInstructions, ...extra,
+        resume: profile.resumeText, name: profile.name, targetRoles: profile.targetRoles, minCtc: profile.minCtc, instructions: [profile.aiInstructions, profile.noticePeriod || profile.availableFrom ? `Candidate availability (from the candidate, use only if relevant): notice period ${profile.noticePeriod || 'not stated'}; can start ${profile.availableFrom || 'not stated'}.` : ''].filter(Boolean).join('\n'), ...extra,
       });
     } catch (e) {
       const err = e as AiError;
