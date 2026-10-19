@@ -9,3 +9,6 @@ export const PROOF: { users: number; asOf: string } | null = null;
 const CREDIT_KEY = 'jaos_export_credit';
 export const exportCreditOn = () => { try { return localStorage.getItem(CREDIT_KEY) !== '0'; } catch { return true; } };
 export const setExportCredit = (on: boolean) => { try { localStorage.setItem(CREDIT_KEY, on ? '1' : '0'); } catch { /* ignore */ } };
+
+/** Owner's public GoatCounter site code (not a secret). Override with VITE_GOATCOUNTER_CODE; set it to "off" to disable. */
+export const GOATCOUNTER_CODE = 'akashsyncagent';

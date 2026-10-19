@@ -1,6 +1,9 @@
 // Privacy-first funnel counts via GoatCounter (cookieless, no script loaded).
-// Off unless VITE_GOATCOUNTER_CODE is set at build time. Sends ONLY a fixed event name: never resume text, keys, names or job data.
-const CODE = (import.meta.env.VITE_GOATCOUNTER_CODE as string | undefined)?.trim().replace(/[^a-z0-9-]/gi, '') || '';
+// Uses VITE_GOATCOUNTER_CODE if set ("off" disables), else the owner's default code. Never counts in local dev.
+// Sends ONLY a fixed event name: never resume text, keys, names or job data.
+import { GOATCOUNTER_CODE } from './brand';
+const RAW = ((import.meta.env.VITE_GOATCOUNTER_CODE as string | undefined)?.trim() || GOATCOUNTER_CODE);
+const CODE = import.meta.env.DEV || RAW.toLowerCase() === 'off' ? '' : RAW.replace(/[^a-z0-9-]/gi, '');
 export const ANALYTICS_ON = !!CODE;
 export const ANALYTICS_HOST = CODE ? `${CODE}.goatcounter.com` : '';
 export const EVENTS = ['landing_view', 'start_setup', 'resume_added', 'key_added', 'first_job_found', 'export', 'feedback_sent', 'share'] as const;
