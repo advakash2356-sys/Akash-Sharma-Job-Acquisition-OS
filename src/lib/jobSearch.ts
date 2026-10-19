@@ -35,12 +35,12 @@ export const isNcr = (loc: string) => /delhi|ncr|noida|gurgaon|gurugram|ghaziaba
 
 /** Preferred-work chips for the short form. Hindi labels, English search terms. */
 export const WORK_CHOICES: { id: string; en: string; hi: string; terms: string[] }[] = [
-  { id: 'driver', en: 'Driver', hi: 'ड्राइवर', terms: ['driver'] },
+  { id: 'driver', en: 'Driver', hi: 'ड्राइवर', terms: ['driver', 'chauffeur'] },
   { id: 'delivery', en: 'Delivery', hi: 'डिलीवरी', terms: ['delivery executive', 'delivery partner', 'delivery boy'] },
-  { id: 'warehouse', en: 'Warehouse', hi: 'वेयरहाउस', terms: ['warehouse', 'loader', 'packer'] },
+  { id: 'warehouse', en: 'Warehouse', hi: 'वेयरहाउस', terms: ['warehouse', 'loader', 'packer', 'picker'] },
   { id: 'security', en: 'Security guard', hi: 'सिक्योरिटी गार्ड', terms: ['security guard', 'security supervisor'] },
-  { id: 'electrician', en: 'Electrician', hi: 'इलेक्ट्रीशियन', terms: ['electrician'] },
-  { id: 'helper', en: 'Helper', hi: 'हेल्पर', terms: ['helper'] },
+  { id: 'electrician', en: 'Electrician', hi: 'इलेक्ट्रीशियन', terms: ['electrician', 'technician'] },
+  { id: 'helper', en: 'Helper', hi: 'हेल्पर', terms: ['helper', 'housekeeping'] },
   { id: 'technician', en: 'Technician / Mechanic', hi: 'टेक्नीशियन / मैकेनिक', terms: ['technician', 'mechanic'] },
   { id: 'housekeeping', en: 'Housekeeping', hi: 'हाउसकीपिंग', terms: ['housekeeping'] },
   { id: 'field', en: 'Field / sales executive', hi: 'फील्ड / सेल्स', terms: ['field executive'] },

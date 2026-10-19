@@ -58,7 +58,7 @@ export function parseInput(body: any) {
 }
 
 const STOP = new Set(["and", "the", "for", "with", "job", "jobs"]);
-const SENIOR = /\b(manager|engineer|analyst|developer|architect|director|head|lead|principal|consultant|scientist|vp|president|specialist)\b/i;
+const SENIOR = /\b(managers?|engineers?|analysts?|developers?|architects?|directors?|head|lead|principal|consultants?|scientists?|vp|president|specialists?|software|programmers?|designers?|migrations?)\b/i;
 /** Every word of one searched title must start a word in the posting title. Cuts FreeHire's loose stemmed matches. */
 export function titleRelevant(jobTitle: string, titles: string[], entryLevel: boolean) {
   const jt = jobTitle.toLowerCase();
