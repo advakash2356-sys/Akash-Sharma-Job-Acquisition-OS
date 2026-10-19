@@ -34,3 +34,8 @@ Every one of 100 sampled India results had an `http(s)` URL and a `posted_at`. T
 - `server/jobsSearch.ts` (`api/jobs/search.ts`, and Express route in dev): validates input (<= 4 titles, 2-letter country codes), caches identical searches 10 min (in memory, per server instance), limits 12 searches/min per client IP, validates each result (needs title, company, http(s) URL, slug; drops closed), dedupes by slug, URL and title+company+location, returns <= 40 newest.
 - Data sent to FreeHire: titles, country codes, remote flag. Not the resume.
 - Gemini (`fit-jobs`) only scores fit and writes one-line summaries for postings FreeHire returned. On Gemini failure the UI uses a keyword-match score and labels it.
+
+## Other sources evaluated
+- **SarkariMap RSS** (public feed, read server-side, 30-min cache): used for government notices; labelled as an aggregator, last date parsed and required to be in the future.
+- **FreeHire official-source postings**: used only when the text has a .gov.in/.nic.in link and a future last date.
+- Not used: NCS / DSSSB / SSC / Employment News (no open API; scraping not permitted), Adzuna and Jooble (need keys), Apify scrapers (paid / ToS risk), JobsForce India (not verified as maintained).

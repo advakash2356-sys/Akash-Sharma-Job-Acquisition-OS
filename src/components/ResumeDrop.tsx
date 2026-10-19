@@ -33,7 +33,7 @@ export default function ResumeDrop({ hasText, onText }: { hasText: boolean; onTe
         {busy ? <Loader2 className="animate-spin text-primary" /> : <FileUp className="text-primary" />}
         <div className="display text-3xl">{busy ? 'Reading your resume…' : hasText ? 'Replace with another file' : 'Drop your resume here'}</div>
         <p className="text-sm text-muted-foreground">or <span className="underline text-primary">choose a file</span>. PDF, DOCX, TXT or MD. Old .doc files are not supported: save as .docx or PDF first.</p>
-        <p className="label text-muted-foreground">Read in your browser · never uploaded</p>
+        <p className="label text-muted-foreground">Read in your browser · the file is never uploaded</p>
         <input ref={input} type="file" accept={ACCEPT} hidden onChange={(e) => { handle(e.target.files?.[0]); e.target.value = ''; }} />
       </div>
       {err && <p role="alert" className="mt-3 rounded-lg bg-muted p-3 text-sm text-danger">{err}</p>}

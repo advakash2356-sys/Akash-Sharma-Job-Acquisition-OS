@@ -33,7 +33,7 @@ export default function Insights() {
 
   return (
     <>
-      <PageHeader title="Insights" subtitle="Computed from your own jobs. Nothing here is estimated or made up." action={<Button variant="outline" onClick={report}><FileDown size={16} /> Weekly report (PDF)</Button>} />
+      <PageHeader title="Insights" subtitle="Computed from your own jobs. Nothing here is made up." action={<Button variant="outline" onClick={report}><FileDown size={16} /> Weekly report (PDF)</Button>} />
       <div className="grid gap-5 md:grid-cols-2">
         <Card>
           <h2 className="mb-3 text-3xl">Funnel</h2>
