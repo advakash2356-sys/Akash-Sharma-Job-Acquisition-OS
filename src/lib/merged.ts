@@ -15,7 +15,9 @@ export function factCheck(output: string, resume: string, jobText = ''): FactChe
   const src = norm(`${resume} ${jobText}`);
   const has = (t: string) => src.includes(norm(t).trim());
   const uniq = (a: string[]) => [...new Set(a)];
-  const body = output.replace(/\[[^\]]*\]/g, ' '); // ignore [placeholders]
+  const body = output.replace(/\[[^\]]*\]/g, ' ') // ignore [placeholders]
+    .split('\n').filter((l) => !/^\s*(#{1,6}\s|\*\*[^*]+\*\*\s*:?\s*$|[-=_]{3,})/.test(l)).join('\n') // headings
+    .replace(/(^|\n)\s*[*•-]?\s*\**([A-Z][\w /&]{1,30})\**\s*:/g, '$1'); // "Label:" prefixes
   const numbers = uniq((body.match(/\b\d[\d,.]*\s?(%|\+|x|k|lpa|lakh|crore|years?|yrs?|months?)?/gi) || []).map((n) => n.trim()))
     .filter((n) => !has((n.match(/\d[\d,.]*/) || [n])[0].replace(/[.,]$/, '')));
   const words = body.match(/\b([A-Z][a-zA-Z+#.]{1,}(?:\s[A-Z][a-zA-Z+#.]+){0,2}|[A-Z]{2,}[a-z]?)\b/g) || [];

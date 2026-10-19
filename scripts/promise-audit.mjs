@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core'; import fs from 'fs';
-const BASE='https://akash-sharma-job-acquisition-os.vercel.app'; const KEY=process.env.GEMINI_API_KEY;
+const BASE=process.env.BASE||'https://akash-sharma-job-acquisition-os.vercel.app'; const KEY=process.env.GEMINI_API_KEY;
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
 const R=[]; const T=async(page,promise,test,fn)=>{let res,ev;try{[res,ev]=await fn();}catch(e){res='No';ev='error: '+String(e.message).slice(0,120);}R.push({n:R.length+1,page,promise,test,res,ev:String(ev).replace(/\|/g,'/').replace(/\n/g,' ').slice(0,230)});console.log(R.length,res,promise.slice(0,50),'::',String(ev).slice(0,90));};
 fs.rmSync('/tmp/dl',{recursive:true,force:true}); fs.mkdirSync('/tmp/dl');
@@ -96,4 +96,4 @@ await T('Jobs API','Basic rate limiting (12 searches/min/IP)','14 distinct searc
 // ---- Mobile
 p=await fresh(390,800); await seed(p); await p.reload(); await sl(2000);
 await T('App','Works on a phone-sized screen (no sideways scroll)','390px viewport on dashboard, jobs',async()=>{const o=[];for(const pg of ['Dashboard','Jobs','Guided setup']){await click(p,new RegExp('^'+pg+'$'));await sl(800);o.push(await p.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth));}return [o.every(x=>x<=2)?'Yes':'No','scrollWidth overflow px: '+o.join(',')]});
-fs.writeFileSync('/tmp/audit.json',JSON.stringify(R,null,1)); await b.close();
+fs.writeFileSync('/tmp/audit-branch.json',JSON.stringify(R,null,1)); await b.close();

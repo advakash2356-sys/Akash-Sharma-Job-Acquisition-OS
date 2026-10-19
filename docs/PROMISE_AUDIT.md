@@ -68,3 +68,32 @@ Also run end to end on production with the box key: score (AI), tailored resume,
 - Test mode: with the toggle on, downloaded .eml and Gmail compose URLs start subject and body with `[TEST - please ignore]`. Nothing is ever sent by the app.
 - Government jobs: official notices kept only with a .gov.in/.nic.in link and a future last date. The SarkariMap RSS aggregator returns HTTP 403 to Vercel's servers; it is not worked around. Works locally, labelled as aggregator when it does load.
 - Blocked: Google sign-in (Vercel env vars).
+
+## Merged features (branch `merge-repos`, see docs/MERGE_PLAN.md)
+Tested 2026-10-19 with headless Chrome against the branch build running locally (`npm run dev`, same server code, real FreeHire and real Gemini calls). The Vercel preview of this branch is behind Vercel Deployment Protection (HTTP 401 without a Vercel login), so it could not be driven headlessly. Script: `scripts/merge-audit.mjs` (`BASE=<url> GEMINI_API_KEY=... node scripts/merge-audit.mjs`).
+
+**Totals: 19 promises, Yes 19.**
+
+| # | Page | Promise | Test | Result | Evidence |
+|---|---|---|---|---|---|
+| M1 | Dashboard | Milestones counted from real jobs | Read Milestones card | Yes | Milestones  Counted from your own jobs in this browser.  ✓ First application sent 1/1 10 applications 2/10 3 tailored applications 0/3 5-day applying streak 0/5 ✓ First interview 1/1 First offer 0/1 1 |
+| M2 | Dashboard | Follow-up due uses 5/10 working-day rule | Seeded applied 2026-10-05 (due 10-12) and 2026-10-12 (due 10-19) | Yes | Follow up Acme Logistics applied 2026-10-05 Beta Stores applied 2026-10-12  |
+| M3 | Jobs | Follow-up schedule with dates and .ics reminder | Open applied job, download .ics | Yes | schedule #1 2026-10-12, #2 2026-10-19; file follow-up-1-acme-logistics.ics DTSTART 20261012 |
+| M4 | Jobs | "Mark sent" advances the cadence (max two) | Click Mark #1 sent | Yes | followUpsSent=1; only #2 remains |
+| M5 | Jobs | Sort reply: rules label a pasted reply and suggest status | Paste a rejection, Sort, Save | Yes | label Rejection; status=Rejected; reply saved in browser |
+| M6 | Jobs | Follow-ups stop after a reply | Re-read schedule | Yes | Stopped: you logged a reply (Rejection). |
+| M7 | Jobs | Govt card: days left + notice no., stated pay, age (never guessed) | Open seeded DSSSB job | Yes | last date to apply: 2026-11-04 (16 days left). Notice no. 05/2026 · Pay stated: Rs 19,900 - 63,200 · Age: Age limit: not exceeding 27 years. The link opens the official notification. Found via telegram, posted 2026-10-04 |
+| M8 | Jobs | Duplicate warning when adding a job already tracked | Type same title + company | Yes | Looks like a job you already track: Warehouse Associate at Beta Stores (added 2026-10-12). You can still add it. |
+| M9 | Interviews | Interview .ics download | Click .ics | Yes | interview-dsssb-delhi-district-courts-2026-10-22.ics: 15:00 IST = 09:30Z, 30-min alarm |
+| M10 | Resume | Export jobs (CSV) | Click and parse file | Yes | jobs-2026-10-19.csv: header + 3 rows |
+| M11 | Resume | Notice period / available from saved | Read fields after reload | Yes | ["15 days","1 Nov 2026"] |
+| M12 | Tailor | Fact check under AI tailored resume | Real Gemini tailor, read panel | Yes | Fact check · 7 items to confirm  Compares this text with your resume and the job description in your browser. Anything listed does not appear there: keep it only if it is true.  Names and skills: Zomato. Demonstrated, Bilingual, S |
+| M13 | Tailor | Availability is sent to AI with requests | Inspect /api/ai request body | Yes | request instructions include "notice period 15 days; can start 1 Nov 2026" |
+| M14 | Outreach | Fact check on outreach package | Generate outreach (real Gemini) | Yes | Fact check · 4 items to confirm |
+| M15 | Outreach | Still draft-only: no send endpoint, Test mode prefix kept | Toggle Test mode, download .eml | Yes | test-user-outreach-beta-stores-2026-10-19.eml: X-Unsent 1, subject prefixed |
+| M16 | Privacy | Privacy page describes the merged browser-only checks | Read page | Yes | section present |
+| M17 | Setup | Remote board search links (We Work Remotely, Remotive) when nothing is found | Remote location, impossible title, Skip AI | Yes | https://weworkremotely.com/remote-jobs/search?term=zzqqxx%20operator ; https://remotive.com/remote-jobs?query=zzqqxx%20operator |
+| M18 | App | No third-party requests from the browser | All hosts in session | Yes | hosts: localhost:3000 |
+| M19 | App | Job drawer with new sections fits a phone screen | 390px, open job | Yes | overflow px 0 |
+
+Regression: the 44-promise audit above was re-run on the branch build. Results matched production, except two checks that only work against a deployed build: #12 (looks for the hashed JS bundle) and #37 (only `localhost` was contacted, so nothing external, but the check expects the Vercel host). Rate limiting (#43) returned 429 after 7 calls on a single server, as designed. #26 is now backed by the in-browser Fact check (M12, M14).

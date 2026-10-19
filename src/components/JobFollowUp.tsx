@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CalendarPlus } from 'lucide-react';
 import { Badge, Button, Label, Textarea } from './ui';
 import type { Job } from '../types';
+import { todayStr } from '../lib/insights';
 import { REPLY_ADVICE, cadence, classifyReply, download, ics, slug, type ReplyKind } from '../lib/merged';
 
 /** Follow-up schedule (.ics reminders) and a rules-based reply sorter. Browser only; nothing is sent. */
@@ -9,7 +10,7 @@ export default function JobFollowUp({ job, patch, go }: { job: Job; patch: (p: P
   const [text, setText] = useState('');
   const [kind, setKind] = useState<ReplyKind | null>(null);
   const steps = cadence(job);
-  const remind = (n: number, date: string) => download(ics({ uid: `${job.id}-fu${n}`, title: `Follow up #${n}: ${job.title}, ${job.company}`, start: date, description: `Send follow-up #${n} for ${job.title} at ${job.company}. Draft it in Momentum's Outreach studio.`, url: job.url || undefined }), `follow-up-${n}-${slug(job.company)}.ics`, 'text/calendar');
+  const remind = (n: number, date: string) => download(ics({ uid: `${job.id}-fu${n}`, title: `Follow up #${n}: ${job.title}, ${job.company}`, start: date < todayStr() ? todayStr() : date, description: `Send follow-up #${n} for ${job.title} at ${job.company}. Draft it in Momentum's Outreach studio.`, url: job.url || undefined }), `follow-up-${n}-${slug(job.company)}.ics`, 'text/calendar');
   const advice = kind ? REPLY_ADVICE[kind] : null;
   return (
     <section className="mb-5 grid gap-4 rounded-xl border border-border p-4">
