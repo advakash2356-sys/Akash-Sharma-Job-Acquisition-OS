@@ -53,6 +53,15 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
 
   return (
     <Dialog open onClose={onClose} title={job.title} wide>
+      {job.aiSuggested && (
+        <div className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm">
+          <b>AI-suggested, verify before applying.</b> This is not a verified posting. Confirm the role is open on the company site.
+          <div className="mt-2 flex flex-wrap gap-2">
+            {job.sourceUrl && <a href={job.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 underline"><ExternalLink size={13} /> Source from search results</a>}
+            {(job.boardLinks || []).map((l) => <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 underline"><ExternalLink size={13} /> {l.label}</a>)}
+          </div>
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <span>{job.company}</span>
         {job.url && <a href={job.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline"><ExternalLink size={13} /> Open posting</a>}
@@ -172,6 +181,7 @@ export default function Jobs() {
                   <div className="truncate text-sm text-muted-foreground">{j.company} · added {j.createdAt}</div>
                 </button>
                 {j.score && <span className="font-mono text-lg text-gold">{j.score.score}</span>}
+                {j.aiSuggested && <Badge tone="gold">AI-suggested, verify before applying</Badge>}
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
               </Card>
             ))}

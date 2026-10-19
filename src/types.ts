@@ -13,6 +13,12 @@ export interface Profile {
   aiInstructions: string;
   /** Plain-text resume. This is what every AI feature reads. */
   resumeText: string;
+  /** Comma-separated skills pulled from the resume by AI (editable). */
+  skills?: string;
+  /** Short experience summary pulled from the resume by AI (editable). */
+  experience?: string;
+  /** ISO time the guided auto-setup last finished. */
+  setupDone?: string;
 }
 
 export type JobStatus = 'Saved' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
@@ -72,6 +78,12 @@ export interface Job {
   recruiterReview?: RecruiterReview;
   interviewPrep?: InterviewPrep;
   prepDone?: string[];
+  /** Created by the AI suggestion step. Not a verified posting. */
+  aiSuggested?: boolean;
+  /** Link taken from Google Search results (grounding). Only set when real. */
+  sourceUrl?: string;
+  /** Real job-board search pages for this title (not specific postings). */
+  boardLinks?: { label: string; url: string }[];
 }
 
 export const emptyProfile: Profile = {

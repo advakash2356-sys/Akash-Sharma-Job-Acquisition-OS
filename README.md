@@ -10,6 +10,8 @@ A private job-search workspace. Add jobs, score them against **your own resume**
 - **No analytics or ad scripts.** Fonts are bundled. "Open in Gmail" and `.eml` are drafts you send yourself; nothing is sent for you.
 - **Delete everything:** *Privacy & security* page > "Delete everything from this browser".
 
+- **Guided setup (Guided setup page, first screen for new users):** 1) upload a resume, 2) add a Gemini key. Then it runs by itself: `parse-resume` (Gemini fills name, headline, contact, location, links, skills, experience, target titles and pay only if the resume states one; only empty fields are filled, all editable) and `suggest-jobs`. `suggest-jobs` first tries Gemini with the Google Search grounding tool. If that works, suggestions come from web results and a per-job link is kept only when its site appears in the search sources. If grounding is not available for the key, the UI says so with Google's reason and only produces role titles plus links to real LinkedIn / Indeed / Google Jobs search pages. No postings or URLs are invented. Every suggestion is a Saved job labelled "AI-suggested, verify before applying". Data stays in the browser.
+
 ## Run
 ```
 npm install

@@ -23,6 +23,7 @@ export default function Privacy() {
         </Item>
         <Item t="What is sent to Google">
           <p>For each AI request, your resume text, your name, the job title, company and description, and any preferences or contact names you typed are sent through the serverless function to Google's Gemini API to produce the answer. Nothing is sent to Google unless you press an AI button.</p>
+          <p>Guided setup runs two AI steps by itself once you have added a resume and a key: it sends your resume text to Gemini to fill your profile, then sends your resume, target titles and location to Gemini to suggest roles. When Google Search grounding is available for your key, Gemini also runs web searches built from that information, so search queries derived from your profile go to Google Search. Suggested jobs are saved only in this browser and are labelled "AI-suggested, verify before applying".</p>
           <p>Google's terms for the Gemini API apply, and on free-tier use Google may use submitted content to improve its products. Read them at <a className="underline text-primary" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">ai.google.dev/gemini-api/terms</a>. Avoid pasting information you would not want Google to process.</p>
         </Item>
         <Item t="No tracking, no sale">

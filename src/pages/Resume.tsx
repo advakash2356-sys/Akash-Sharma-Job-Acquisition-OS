@@ -51,6 +51,11 @@ export default function ResumePage() {
           <div><Label htmlFor="c" hint="optional">Minimum pay</Label><Input id="c" value={profile.minCtc} onChange={set('minCtc')} placeholder="e.g. 18 LPA" /></div>
         </Card>
 
+        <Card className="grid gap-4">
+          <div><Label htmlFor="sk" hint="comma separated">Skills</Label><Input id="sk" value={profile.skills || ''} onChange={set('skills')} placeholder="Filled by guided setup, edit freely" /></div>
+          <div><Label htmlFor="ex" hint="short summary">Experience</Label><Textarea id="ex" rows={3} value={profile.experience || ''} onChange={set('experience')} placeholder="Roles, companies and years" /></div>
+        </Card>
+
         <Card>
           <ResumeDrop hasText={hasResume} onText={(t, n) => { setProfile({ ...profile, resumeText: t }); setMsg(`Loaded ${n}. Check the text below and fix anything the parser got wrong.`); }} />
         </Card>

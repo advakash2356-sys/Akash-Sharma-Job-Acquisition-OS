@@ -4,8 +4,8 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
 }
 
-// Listed by ListModels with generateContent; gemini-2.5-flash is listed but 404s for some keys, so it is last. Tried in order when a model is missing, busy or out of quota.
-const MODELS = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-2.5-flash"];
+// Listed by ListModels with generateContent; gemini-2.5-flash is retired for new keys, so it is not used. Tried in order when a model is missing, busy or out of quota.
+const MODELS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.6-flash"];
 
 /** Pulls Google's real status + message out of an @google/genai error. */
 export function googleError(e: any): { status: number; code: string; message: string } {
@@ -44,7 +44,7 @@ async function generate(client: GoogleGenAI, req: { contents: string; config?: a
       if (res.text) return res;
       last = new ApiError(502, "The AI returned an empty response. Try again.", "EMPTY");
     } catch (e) {
-      last = e;
+      if (!last || googleError(last).status === 404) last = e; // keep the most informative error (quota beats not-found)
       if (!retryable(e)) throw e;
     }
   }
@@ -89,6 +89,75 @@ async function run(client: GoogleGenAI, prompt: string, schema?: any) {
   return schema ? JSON.parse(res.text) : res.text;
 }
 
+
+function resumeOnly(body: Body) {
+  const resume = String(body.resume || "").trim();
+  if (resume.length < 50) throw new ApiError(400, "Add your resume first. It is used for every AI feature.", "NO_RESUME");
+  return resume.slice(0, 20000);
+}
+
+function extractJson(text: string): any {
+  const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw = (m ? m[1] : text).trim();
+  const start = raw.search(/[\[{]/);
+  return JSON.parse(start >= 0 ? raw.slice(start) : raw);
+}
+
+async function parseResume(client: GoogleGenAI, body: Body) {
+  const resume = resumeOnly(body);
+  return run(client, `RESUME TEXT:\n${resume}\n\nExtract the candidate's details strictly from this text. Use an empty string or empty list when something is not stated. Do not guess. "minPay" must be empty unless the resume states a pay expectation. "targetTitles" are 3-5 job titles this person is best suited for, based only on their experience.`, {
+    type: Type.OBJECT,
+    properties: {
+      name: str, headline: str, email: str, phone: str, location: str, links: str, minPay: str,
+      skills: strs, targetTitles: strs,
+      experience: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { role: str, company: str, period: str }, required: ["role", "company", "period"] } },
+    },
+    required: ["name", "headline", "email", "phone", "location", "links", "minPay", "skills", "targetTitles", "experience"],
+  });
+}
+
+async function suggestJobs(client: GoogleGenAI, body: Body) {
+  const resume = resumeOnly(body);
+  const titles = String(body.targetRoles || "").slice(0, 300) || "(infer from resume)";
+  const loc = String(body.location || "").slice(0, 120) || "anywhere / remote";
+  const base = `CANDIDATE RESUME:\n${resume.slice(0, 8000)}\n\nTarget titles: ${titles}\nLocation: ${loc}\nMinimum pay: ${body.minCtc || "n/a"}\n\n`;
+  // 1) Try Google Search grounding (real, current results).
+  let groundingError = "";
+  try {
+    const res = await generate(client, {
+      contents: base + `Use Google Search to find real, currently open job postings and hiring companies that best match this candidate. Return ONLY a JSON array (inside a \`\`\`json block) of up to 8 items: {"title": string, "company": string, "location": string, "why": string (1-2 sentences tied to the resume), "url": string (only a page you actually saw in search results, else "")}. Never invent a company, posting or URL; return fewer items if unsure.`,
+      config: { systemInstruction: SYSTEM, tools: [{ googleSearch: {} }] },
+    });
+    const chunks: any[] = (res as any).candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const sources = chunks.filter((c) => c.web?.uri).map((c) => ({ title: String(c.web.title || ""), uri: String(c.web.uri) }));
+    if (!sources.length) throw new Error("search returned no sources");
+    const items = extractJson(res.text || "[]");
+    const hosts = new Set(sources.map((s) => s.title.toLowerCase().replace(/^www\./, "")));
+    const suggestions = (Array.isArray(items) ? items : []).slice(0, 8).map((it: any) => {
+      let url = "";
+      try { const h = new URL(String(it.url)).hostname.toLowerCase().replace(/^www\./, ""); if (hosts.has(h)) url = String(it.url); } catch { /* no url */ }
+      return { title: String(it.title || ""), company: String(it.company || ""), location: String(it.location || ""), why: String(it.why || ""), url };
+    }).filter((x: any) => x.title);
+    return { grounded: true, note: "Found with Google Search. These are suggestions from web results, not verified postings. Open the source and confirm the role is still open.", suggestions, sources: sources.slice(0, 8) };
+  } catch (e: any) {
+    const ge = googleError(e);
+    groundingError = ge.message || String(e?.message || e);
+    if (/quota|RESOURCE_EXHAUSTED/i.test(groundingError) || ge.status === 429) throw explain(e); // quota applies to plain calls too
+  }
+  // 2) Honest fallback: role titles + search queries only. No companies, no postings, no URLs invented.
+  const out = await run(client, base + "Search is not available. Suggest 6 job titles that best match this candidate, each with a short reason tied to the resume and a good job-board search query. Do NOT name specific companies or postings.", {
+    type: Type.OBJECT,
+    properties: { roles: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: str, why: str, query: str }, required: ["title", "why", "query"] } } },
+    required: ["roles"],
+  });
+  return {
+    grounded: false,
+    note: `Google Search grounding was not available for this key (${groundingError.slice(0, 160) || "unknown reason"}), so these are role titles to search for, not job postings. Use the job-board links to find real openings.`,
+    suggestions: (out.roles || []).slice(0, 6).map((r: any) => ({ title: String(r.title), company: "", location: "", why: String(r.why), url: "", query: String(r.query || r.title) })),
+    sources: [],
+  };
+}
+
 export async function handleAction(action: string, body: Body, apiKey?: string) {
   const key = apiKey || process.env.GEMINI_API_KEY;
   if (!key) throw new ApiError(401, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
@@ -97,6 +166,10 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
       await generate(new GoogleGenAI({ apiKey: key }), { contents: "Reply with the single word: ok" });
       return { result: { ok: true } };
     } catch (e: any) { throw explain(e); }
+  }
+  if (action === "parse-resume" || action === "suggest-jobs") {
+    try { const c = new GoogleGenAI({ apiKey: key }); return { result: action === "parse-resume" ? await parseResume(c, body) : await suggestJobs(c, body) }; }
+    catch (e: any) { throw explain(e); }
   }
   const j = need(body);
   const client = new GoogleGenAI({ apiKey: key });

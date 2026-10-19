@@ -18,9 +18,10 @@ const Landing = lazy(() => import('./pages/Landing'));
 const Salary = lazy(() => import('./pages/Salary'));
 import SettingsPage from './pages/Settings';
 import Privacy from './pages/Privacy';
+import Setup from './pages/Setup';
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
-  { group: 'Overview', items: [{ id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
+  { group: 'Overview', items: [{ id: 'setup', label: 'Guided setup', icon: Wand2 }, { id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
   { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
   { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Tailor & cover letter', icon: Wand2 }] },
   { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
@@ -39,7 +40,7 @@ export default function App() {
 function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const [profile, setProfile] = useLocalState<Profile>(scoped(PROFILE_KEY, uid), emptyProfile);
   const [jobs, setJobs] = useLocalState<Job[]>(scoped(JOBS_KEY, uid), []);
-  const [page, setPage] = useState<PageId>(() => (location.hash === '#/app/privacy' ? 'privacy' : 'overview'));
+  const [page, setPage] = useState<PageId>(() => (location.hash === '#/app/privacy' ? 'privacy' : (profile.resumeText || '').trim().length < 50 ? 'setup' : 'overview'));
   const [selectedJobId, setSelectedJobId] = useState('');
   const [menu, setMenu] = useState(false);
   const [inApp, setInApp] = useState(() => location.hash.startsWith('#/app'));
@@ -69,7 +70,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   };
   const hasResume = profile.resumeText.trim().length >= 50;
 
-  const Page = { overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage }[page];
+  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
