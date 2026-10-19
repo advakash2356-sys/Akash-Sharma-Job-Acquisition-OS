@@ -55,7 +55,9 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
     <Dialog open onClose={onClose} title={job.title} wide>
       {job.found && (
         <div className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm">
-          <b>Real posting found via FreeHire</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.
+          {job.found.govt
+            ? <><b>Government job notice</b> · last date to apply: <b>{job.found.govt.lastDate}</b>. {job.found.govt.official ? <>The link opens the <b>official notification</b>.</> : <>The link opens {job.found.govt.via}, a news site that lists notices. Check the official notification there before applying.</>} Found via {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}.</>
+            : <><b>Real posting found via FreeHire</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.</>}
           {job.found.fit && <p className="mt-1">{job.found.fit.kind === 'ai' ? 'AI fit' : 'Keyword match'} {job.found.fit.score}/100: {job.found.fit.summary}</p>}
         </div>
       )}
@@ -178,7 +180,7 @@ export default function Jobs() {
                   <div className="truncate text-sm text-muted-foreground">{j.company} · added {j.createdAt}</div>
                 </button>
                 {(j.score || j.found?.fit) && <span className="font-mono text-lg text-gold" title={j.score ? 'AI score' : j.found?.fit?.kind === 'ai' ? 'AI fit' : 'Keyword match'}>{j.score ? j.score.score : j.found!.fit!.score}</span>}
-                {j.found && <Badge tone="gold">FreeHire · {j.found.source}{j.found.postedAt ? ` · ${j.found.postedAt}` : ''}</Badge>}
+                {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `FreeHire · ${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
               </Card>
             ))}

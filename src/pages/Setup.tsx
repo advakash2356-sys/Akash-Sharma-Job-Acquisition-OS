@@ -6,8 +6,9 @@ import ApiKeyCard from '../components/ApiKeyCard';
 import { useApp } from '../lib/state';
 import { useAiReady } from '../lib/aiReady';
 import { callAi } from '../lib/api';
-import { boardLinks } from '../lib/boards';
-import { COUNTRY_NAMES, dedupeAgainst, deriveCountries, guessLocation, guessTitles, keywordFit, searchJobsApi, splitTitles, type FoundJob } from '../lib/jobSearch';
+import { boardLinks, GOVT_PORTALS } from '../lib/boards';
+import ManualProfile from '../components/ManualProfile';
+import { COUNTRY_NAMES, dedupeAgainst, deriveCountries, guessLocation, guessTitles, keywordFit, manualQuery, searchJobsApi, splitTitles, type FoundJob, type SearchQuery } from '../lib/jobSearch';
 import type { Job } from '../types';
 
 type St = 'idle' | 'running' | 'done' | 'error' | 'skipped';
@@ -36,6 +37,7 @@ export default function Setup() {
   const [titlesIn, setTitlesIn] = useState('');
   const [locIn, setLocIn] = useState('');
   const [tick, setTick] = useState(0);
+  const [form, setForm] = useState(false);
   const started = useRef<Record<string, number>>({});
   const ctl = useRef<AbortController | null>(null);
   const running = useRef(false);
@@ -55,16 +57,17 @@ export default function Setup() {
   const showLinks = (titles: string[], loc: string) => setLinks(titles.flatMap((t) => boardLinks(t, loc).map((l) => ({ ...l, label: `${t}: ${l.label}` }))));
 
   /** FreeHire search + (optional) Gemini scoring + add to Jobs. Does not need Gemini to work. */
-  async function searchAndAdd(titles: string[], location: string, useAi: boolean, signal: AbortSignal) {
-    const countries = deriveCountries(location);
+  async function searchAndAdd(q: SearchQuery, location: string, useAi: boolean, signal: AbortSignal) {
+    const { titles, countries } = q;
     set('research', 'running');
-    const r = await searchJobsApi(titles, countries, true, { signal, timeoutMs: LIMIT.research });
+    const r = await searchJobsApi(q, { signal, timeoutMs: LIMIT.research });
     const msgs: string[] = [];
     if (r.warnings.length) msgs.push(`Some searches failed: ${r.warnings.join('; ')}.`);
-    const where = `${countries.length ? countries.map((c) => COUNTRY_NAMES[c] || c).join('/') : 'no specific country'} and remote (global/APAC)`;
-    msgs.push(`Searched FreeHire for ${titles.join(', ')} in ${where}. Only these keywords and places are sent to FreeHire, never your resume.`);
+    const where = `${q.cities?.length ? q.cities.join('/') : countries.length ? countries.map((c) => COUNTRY_NAMES[c] || c).join('/') : 'no specific country'}${q.remote ? ' and remote (global/APAC)' : ''}`;
+    msgs.push(`Searched FreeHire${q.govt ? ' and a public government-jobs feed (SarkariMap)' : ''} for ${titles.join(', ')} in ${where}. Only job titles, places and your education level go out, never your resume text, name, age or phone.`);
+    if (q.govt) setLinks(GOVT_PORTALS);
     if (!r.jobs.length) {
-      set('research', 'done'); set('fill', 'done'); showLinks(titles, location);
+      set('research', 'done'); set('fill', 'done'); if (!q.govt) showLinks(titles, location);
       setNote(`FreeHire found no open postings for ${titles.map((t) => `"${t}"`).join(', ')}. Change the titles below and search again, or use the job-board links.`);
       setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
       setSummary('No postings added.');
@@ -100,7 +103,7 @@ export default function Setup() {
         id: `fh-${Date.now()}-${i}`, title: j.title, company: j.company, url: j.url,
         description: j.description || `${j.title} at ${j.company}. ${j.location}`,
         status: 'Saved' as const, createdAt: now, notes: '', interviews: [], source: 'Other',
-        found: { provider: 'freehire' as const, id: j.id, source: j.source, postedAt: j.postedAt, location: j.location, fit },
+        found: { provider: 'freehire' as const, id: j.id, source: j.source, postedAt: j.postedAt, location: j.location, fit, ...(j.official || j.govtFeed ? { govt: { lastDate: (j.official?.lastDate || j.govtFeed?.lastDate) as string, official: !!j.official, via: j.official ? 'official notification' : 'SarkariMap (aggregator)' } } : {}) },
       };
     }).sort((a, b) => b.found!.fit!.score - a.found!.fit!.score);
     setJobs((js) => [...jobs, ...js]);
@@ -110,13 +113,19 @@ export default function Setup() {
     setSummary(`${jobs.length} real postings added to Jobs (of ${r.total} FreeHire matches${r.cached ? ', cached' : ''}), best fit first.`);
   }
 
-  async function run(mode: 'ai' | 'skip') {
+  async function run(mode0: 'ai' | 'skip' | 'manual') {
     if (running.current) return;
+    const mode = profile.manual ? 'manual' : mode0;
     running.current = true; setErr(''); setErrStage(''); setNote(''); setSummary(''); setLinks([]);
     const c = new AbortController(); ctl.current = c;
-    setSt(mode === 'skip' ? { parse: 'skipped', research: 'idle', fill: 'idle' } : { ...initial, parse: 'idle' });
+    setSt(mode !== 'ai' ? { parse: 'skipped', research: 'idle', fill: 'idle' } : { ...initial, parse: 'idle' });
     let stage = 'parse'; let titles = splitTitles(titlesIn); let loc = locIn;
     try {
+      if (mode === 'manual') {
+        stage = 'research';
+        await searchAndAdd(manualQuery(profile), profile.location, ready, c.signal);
+        return;
+      }
       if (mode === 'ai') {
         set('parse', 'running');
         const p: any = await callAi('parse-resume', { resume: profile.resumeText }, { signal: c.signal, timeoutMs: LIMIT.parse });
@@ -138,7 +147,7 @@ export default function Setup() {
         setProfile((cur) => ({ ...cur, targetRoles: fill(cur.targetRoles, titles.join(', ')), location: fill(cur.location, loc) }));
       }
       stage = 'research';
-      await searchAndAdd(titles, loc, mode === 'ai', c.signal);
+      await searchAndAdd({ titles, countries: deriveCountries(loc), remote: true }, loc, mode === 'ai', c.signal);
     } catch (e: any) {
       const cancelled = e.code === 'CANCELLED';
       setSt((x) => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v === 'running' ? (cancelled ? 'idle' : 'error') : v])) as Record<string, St>);
@@ -150,8 +159,8 @@ export default function Setup() {
 
   // Everything automated: once the resume and key are in, start by itself (once).
   useEffect(() => {
-    if (hasResume && ready && !profile.setupDone && !auto.current && !running.current) { auto.current = true; run('ai'); }
-  }, [hasResume, ready, profile.setupDone]);
+    if (hasResume && !profile.setupDone && !auto.current && !running.current && (profile.manual || ready)) { auto.current = true; run(profile.manual ? 'manual' : 'ai'); }
+  }, [hasResume, ready, profile.setupDone, profile.manual]);
 
   const step1 = hasResume, step2 = ready;
   const Dot = ({ done, n }: { done: boolean; n: number }) => (
@@ -165,8 +174,11 @@ export default function Setup() {
       <PageHeader title="Guided setup" subtitle="Two steps from you. Then your profile and real job postings that fit you are found and scored for you." />
       <ol className="grid gap-5">
         <li><Card className={step1 ? 'opacity-90' : 'ring-1 ring-primary/30'}>
-          <div className="mb-3 flex items-center gap-3"><Dot done={step1} n={1} /><h2 className="text-2xl">Upload your resume</h2></div>
-          <ResumeDrop hasText={hasResume} onText={(t) => { edited.current = false; setProfile((p) => ({ ...p, resumeText: t, setupDone: undefined })); }} />
+          <div className="mb-3 flex flex-wrap items-center gap-3"><Dot done={step1} n={1} /><h2 className="text-2xl">{form ? 'Short form / छोटा फॉर्म' : 'Upload your resume'}</h2>
+            <button className="ml-auto cursor-pointer text-sm underline" onClick={() => setForm(!form)}>{form ? 'I have a resume' : 'No resume? Short form / रिज़्यूमे नहीं है?'}</button></div>
+          {form
+            ? <ManualProfile initial={profile.manual ? profile : { location: profile.location }} onSave={(m) => { edited.current = false; auto.current = false; setForm(false); setProfile((p) => ({ ...p, ...m })); }} />
+            : <ResumeDrop hasText={hasResume} onText={(t) => { edited.current = false; auto.current = false; setProfile((p) => ({ ...p, resumeText: t, setupDone: undefined, manual: false })); }} />}
           <p className="mt-2 text-xs text-muted-foreground">Read in your browser. It leaves your device only when an AI step runs, and then only to Google's Gemini API.</p>
         </Card></li>
         <li><div className={step1 ? '' : 'pointer-events-none opacity-50'}>
@@ -175,7 +187,7 @@ export default function Setup() {
         </div></li>
         <li><Card>
           <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={3} /><h2 className="text-2xl">Automatic</h2></div>
-          {!(step1 && step2) && <p className="text-sm text-muted-foreground">Starts by itself when steps 1 and 2 are done. No key? You can still <button className="underline cursor-pointer" disabled={!step1 || busy} onClick={() => run('skip')}>search jobs without AI</button>.</p>}
+          {!(step1 && step2) && <p className="text-sm text-muted-foreground">{profile.manual ? 'Short form saved. Search runs by itself; a Gemini key (step 2) only adds fit scores.' : 'Starts by itself when steps 1 and 2 are done.'} No key? You can still <button className="underline cursor-pointer" disabled={!step1 || busy} onClick={() => run('skip')}>search jobs without AI</button>.</p>}
           <ul className="grid gap-2 text-sm" aria-live="polite">
             {STAGES.map((s) => (
               <li key={s.id} className="flex items-center gap-2">
@@ -190,7 +202,7 @@ export default function Setup() {
           {links.length > 0 && <div className="mt-3 text-sm"><p className="mb-1 text-muted-foreground">Real job-board searches (not postings), open them yourself:</p><div className="flex flex-wrap gap-2">{links.map((l) => <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="rounded-full border border-border px-3 py-1 underline">{l.label}</a>)}</div></div>}
           {summary && <p role="status" className="mt-3 text-sm font-medium">{summary} Everything above is editable on My resume.</p>}
 
-          {step1 && (
+          {step1 && !profile.manual && (
             <div className="mt-4 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
               <div><Label htmlFor="st">Job titles to search</Label><Input id="st" value={titlesIn} onChange={(e) => { edited.current = true; setTitlesIn(e.target.value); }} placeholder="e.g. Contract Manager, Legal Operations" /></div>
               <div><Label htmlFor="sl">Location</Label><Input id="sl" value={locIn} onChange={(e) => { edited.current = true; setLocIn(e.target.value); }} placeholder="e.g. Bengaluru, India" /></div>
@@ -199,8 +211,8 @@ export default function Setup() {
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             {busy && <Button variant="outline" onClick={() => ctl.current?.abort()}><XCircle size={15} /> Cancel</Button>}
-            {step1 && step2 && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run('ai')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
-            {step1 && !busy && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
+            {step1 && (step2 || profile.manual) && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run('ai')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
+            {step1 && !busy && !profile.manual && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
             {st.fill === 'done' && <Button onClick={() => go('jobs')}>See my jobs</Button>}
             {st.parse === 'done' && <Button variant="outline" onClick={() => go('resume')}>Review my profile</Button>}
           </div>

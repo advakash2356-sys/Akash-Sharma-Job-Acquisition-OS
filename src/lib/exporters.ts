@@ -56,8 +56,20 @@ export async function exportDocx(text: string, title: string, base: string) {
 
 export interface Draft { to?: string; subject: string; body: string }
 
+export const TEST_NOTICE = '[TEST - please ignore]';
+const TEST_KEY = 'jaos_test_mode';
+export const TEST_EVENT = 'jaos-test-mode';
+export const isTestMode = () => { try { return localStorage.getItem(TEST_KEY) === '1'; } catch { return false; } };
+export function setTestMode(on: boolean) { try { on ? localStorage.setItem(TEST_KEY, '1') : localStorage.removeItem(TEST_KEY); } catch { /* ignore */ } window.dispatchEvent(new Event(TEST_EVENT)); }
+/** In test mode every draft subject and body starts with a clear test notice. */
+export function withTestNotice(d: Draft): Draft {
+  if (!isTestMode()) return d;
+  return { ...d, subject: `${TEST_NOTICE} ${d.subject}`, body: `${TEST_NOTICE}\nThis is a test draft from the app. Please ignore it.\n\n${d.body}` };
+}
+
 /** Unsent draft (X-Unsent: 1) that opens in a mail app for review. Nothing is sent. */
-export function exportEml(d: Draft, base: string) {
+export function exportEml(d0: Draft, base: string) {
+  const d = withTestNotice(d0);
   const name = `${base}.eml`;
   const body = `${d.body}\r\n\r\n--\r\n(${name})`.replace(/\r?\n/g, '\r\n');
   const eml = [`X-Unsent: 1`, `To: ${d.to || ''}`, `Subject: ${d.subject.replace(/[\r\n]+/g, ' ')}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: 8bit', '', body].join('\r\n');
@@ -65,7 +77,8 @@ export function exportEml(d: Draft, base: string) {
 }
 
 /** Opens a Gmail compose window pre-filled. The user reviews and sends it themselves. */
-export function gmailComposeUrl(d: Draft) {
+export function gmailComposeUrl(d0: Draft) {
+  const d = withTestNotice(d0);
   const q = new URLSearchParams({ view: 'cm', fs: '1', to: d.to || '', su: d.subject, body: d.body.slice(0, 1800) });
   return `https://mail.google.com/mail/?${q.toString()}`;
 }

@@ -2,7 +2,7 @@ import { AiError, fetchLimited, type CallOpts } from './api';
 import { keywordGap } from './insights';
 import type { Profile } from '../types';
 
-export interface FoundJob { id: string; title: string; company: string; location: string; url: string; postedAt: string; source: string; workMode: string; description: string; skills: string[] }
+export interface FoundJob { id: string; title: string; company: string; location: string; url: string; postedAt: string; source: string; workMode: string; description: string; skills: string[]; official?: { url: string; lastDate: string }; govtFeed?: { lastDate: string } }
 export interface SearchResult { jobs: FoundJob[]; total: number; queries: string[]; warnings: string[]; cached: boolean }
 
 const COUNTRIES: [RegExp, string][] = [
@@ -20,12 +20,41 @@ export function deriveCountries(location: string): string[] {
 }
 export const splitTitles = (s: string) => s.split(/[,;\n]/).map((t) => t.trim()).filter(Boolean).slice(0, 4);
 
-/** Sends only job titles and place filters to /api/jobs/search. Never resume text. */
-export async function searchJobsApi(titles: string[], countries: string[], remote: boolean, opts: CallOpts = {}): Promise<SearchResult> {
-  const res = await fetchLimited('/api/jobs/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titles, countries, remote }) }, { timeoutMs: 30000, ...opts }, 'The job search');
+export interface SearchQuery { titles: string[]; countries: string[]; cities?: string[]; remote: boolean; entryLevel?: boolean; govt?: boolean; education?: string }
+
+/** Sends only job titles, places, and the flags above to /api/jobs/search. Never resume text, name, age or contact details. */
+export async function searchJobsApi(q: SearchQuery, opts: CallOpts = {}): Promise<SearchResult> {
+  const res = await fetchLimited('/api/jobs/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(q) }, { timeoutMs: 30000, ...opts }, 'The job search');
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new AiError(data.error || `Job search failed (${res.status}).`, data.code);
   return data.result as SearchResult;
+}
+
+export const NCR = ['Delhi', 'New Delhi', 'Gurugram', 'Gurgaon', 'Noida', 'Ghaziabad', 'Faridabad'];
+export const isNcr = (loc: string) => /delhi|ncr|noida|gurgaon|gurugram|ghaziabad|faridabad/i.test(loc || '');
+
+/** Preferred-work chips for the short form. Hindi labels, English search terms. */
+export const WORK_CHOICES: { id: string; en: string; hi: string; terms: string[] }[] = [
+  { id: 'driver', en: 'Driver', hi: 'ड्राइवर', terms: ['driver'] },
+  { id: 'delivery', en: 'Delivery', hi: 'डिलीवरी', terms: ['delivery executive', 'delivery partner', 'delivery boy'] },
+  { id: 'warehouse', en: 'Warehouse', hi: 'वेयरहाउस', terms: ['warehouse', 'loader', 'packer'] },
+  { id: 'security', en: 'Security guard', hi: 'सिक्योरिटी गार्ड', terms: ['security guard', 'security supervisor'] },
+  { id: 'electrician', en: 'Electrician', hi: 'इलेक्ट्रीशियन', terms: ['electrician'] },
+  { id: 'helper', en: 'Helper', hi: 'हेल्पर', terms: ['helper'] },
+  { id: 'technician', en: 'Technician / Mechanic', hi: 'टेक्नीशियन / मैकेनिक', terms: ['technician', 'mechanic'] },
+  { id: 'housekeeping', en: 'Housekeeping', hi: 'हाउसकीपिंग', terms: ['housekeeping'] },
+  { id: 'field', en: 'Field / sales executive', hi: 'फील्ड / सेल्स', terms: ['field executive'] },
+  { id: 'operator', en: 'Machine operator', hi: 'मशीन ऑपरेटर', terms: ['machine operator'] },
+];
+export const EDU_LABELS: Record<string, string> = { '8': '8th pass / 8वीं', '10': '10th pass / 10वीं', '12': '12th pass / 12वीं', iti: 'ITI', diploma: 'Diploma / डिप्लोमा', graduate: 'Graduate / ग्रेजुएट' };
+
+export function manualQuery(p: { workPrefs?: string[]; location: string; education?: string; wantsGovt?: boolean }): SearchQuery {
+  const chosen = WORK_CHOICES.filter((w) => (p.workPrefs || []).includes(w.id));
+  // one term from each chosen kind first, then the rest, up to 10
+  const first = chosen.map((w) => w.terms[0]); const rest = chosen.flatMap((w) => w.terms.slice(1));
+  const titles = [...first, ...rest].slice(0, 10);
+  const countries = deriveCountries(p.location).length ? deriveCountries(p.location) : ['IN'];
+  return { titles, countries, cities: isNcr(p.location) ? NCR : p.location ? [p.location.split(',')[0].trim()] : [], remote: false, entryLevel: true, govt: !!p.wantsGovt, education: p.education || '' };
 }
 
 /** Plain keyword overlap between the resume and the posting text. No AI. */

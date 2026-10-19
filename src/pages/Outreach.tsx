@@ -3,25 +3,30 @@ import { Send } from 'lucide-react';
 import { Button, Card, EmptyState, Input, Label, PageHeader, Select } from '../components/ui';
 import { AiError_, CopyButton, RunButton, useAiAction } from '../components/AiPanel';
 import { Download, Mail } from 'lucide-react';
-import { exportEml, fileBase, gmailComposeUrl } from '../lib/exporters';
+import TestModeToggle from '../components/TestModeToggle';
+import { TEST_EVENT, exportEml, fileBase, gmailComposeUrl } from '../lib/exporters';
 import { TEMPLATES, fillTemplate } from '../lib/insights';
 import { useApp } from '../lib/state';
 import type { Job } from '../types';
 
 export default function Outreach() {
   const { jobs, setJobs, selectedJobId, go, hasResume, page, profile } = useApp();
+  const [, bumpTest] = React.useState(0);
+  React.useEffect(() => { const f = () => bumpTest((n) => n + 1); window.addEventListener(TEST_EVENT, f); return () => window.removeEventListener(TEST_EVENT, f); }, []);
   const job = jobs.find((j) => j.id === selectedJobId) || jobs[0];
   const ai = useAiAction<NonNullable<Job['outreach']>>('generate-outreach', job);
   const [to, setTo] = useState('');
   const [contact, setContact] = useState({ contactName: '', contactTitle: '' });
 
-  if (!job) return <><PageHeader title="Outreach studio" /><EmptyState icon={<Send size={32} />} title="Add a job first" body="Outreach is written for a specific role and your resume." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} /></>;
+  if (!job) return <><PageHeader title="Outreach studio" />
+      <EmptyState icon={<Send size={32} />} title="Add a job first" body="Outreach is written for a specific role and your resume." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} /></>;
   const o = job.outreach;
   const blocks: [string, string][] = o ? [['Email subject', o.emailSubject], ['Email', o.emailBody], ['LinkedIn message', o.linkedinMessage], ['5-day follow-up', o.followUp]] : [];
 
   return (
     <>
       <PageHeader title="Outreach studio" subtitle="A short email, a LinkedIn note and a follow-up, written from your resume." />
+      <TestModeToggle />
       <Card className="mb-5 grid gap-4 sm:grid-cols-3">
         <div><Label htmlFor="oj">Job</Label><Select id="oj" value={job.id} onChange={(e) => go(page, e.target.value)}>{jobs.map((j) => <option key={j.id} value={j.id}>{j.title} · {j.company}</option>)}</Select></div>
         <div><Label htmlFor="cn" hint="optional">Contact name</Label><Input id="cn" value={contact.contactName} onChange={(e) => setContact({ ...contact, contactName: e.target.value })} /></div>

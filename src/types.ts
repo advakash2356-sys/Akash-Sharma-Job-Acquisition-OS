@@ -19,6 +19,12 @@ export interface Profile {
   experience?: string;
   /** ISO time the guided auto-setup last finished. */
   setupDone?: string;
+  /** Short form instead of a resume (blue-collar and fresher flow). */
+  manual?: boolean;
+  age?: string;
+  education?: '8' | '10' | '12' | 'iti' | 'diploma' | 'graduate' | '';
+  workPrefs?: string[];
+  wantsGovt?: boolean;
 }
 
 export type JobStatus = 'Saved' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
@@ -86,6 +92,8 @@ export interface Job {
     postedAt: string;
     location: string;
     fit?: { score: number; kind: 'ai' | 'keyword'; summary: string };
+    /** Government notice. official=true means url is a .gov.in/.nic.in page; otherwise it is an aggregator page. */
+    govt?: { lastDate: string; official: boolean; via: string };
   };
 }
 
