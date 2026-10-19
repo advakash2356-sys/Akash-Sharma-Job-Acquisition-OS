@@ -10,7 +10,7 @@ const TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE = 200;
 const PER_TITLE = 25;
 const MAX_RESULTS = 40;
-const MAX_TITLES = 10;
+const MAX_TITLES = 14;
 const MAX_AGE_DAYS = 180; // older postings are dropped even if FreeHire still lists them as open
 const WINDOW_MS = 60 * 1000;
 const MAX_PER_WINDOW = 12; // searches per client per minute (each = up to 8 upstream calls; FreeHire allows 600/min)
@@ -185,7 +185,7 @@ export async function searchJobs(body: any): Promise<SearchOut> {
         if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
       }
       ok++;
-    } catch (e: any) { warnings.push(`government feed: ${e.message}`); }
+    } catch (e: any) { warnings.push(`extra government list (SarkariMap) unavailable from the server right now (${e.message}); official notices and portal links still shown`); }
   }
   if (!ok) throw new ApiError(502, `FreeHire could not be reached. ${warnings[0] || ""}`.trim(), "FREEHIRE_DOWN");
   const exact = (j: FoundJob) => (titles.some((t) => j.title.toLowerCase().includes(t.toLowerCase())) ? 1 : 0);

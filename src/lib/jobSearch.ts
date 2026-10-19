@@ -52,7 +52,7 @@ export function manualQuery(p: { workPrefs?: string[]; location: string; educati
   const chosen = WORK_CHOICES.filter((w) => (p.workPrefs || []).includes(w.id));
   // one term from each chosen kind first, then the rest, up to 10
   const first = chosen.map((w) => w.terms[0]); const rest = chosen.flatMap((w) => w.terms.slice(1));
-  const titles = [...first, ...rest].slice(0, 10);
+  const titles = [...first, ...rest].slice(0, 14);
   const countries = deriveCountries(p.location).length ? deriveCountries(p.location) : ['IN'];
   return { titles, countries, cities: isNcr(p.location) ? NCR : p.location ? [p.location.split(',')[0].trim()] : [], remote: false, entryLevel: true, govt: !!p.wantsGovt, education: p.education || '' };
 }
