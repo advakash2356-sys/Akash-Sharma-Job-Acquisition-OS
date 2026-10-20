@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Loader2, Sparkles, Copy, Check, KeyRound, FileWarning } from 'lucide-react';
 import { Button } from './ui';
 import { callAi, AiError } from '../lib/api';
@@ -10,10 +10,12 @@ import type { Job } from '../types';
 export function useAiAction<T>(action: string, job: Job | undefined) {
   const { profile, go } = useApp();
   const [loading, setLoading] = useState(false);
+  const busy = useRef(false);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
 
   const run = async (extra: Record<string, unknown> = {}): Promise<T | undefined> => {
-    if (!job) return;
+    if (!job || busy.current) return;
+    busy.current = true;
     setError(null);
     setLoading(true);
     try {
@@ -25,6 +27,7 @@ export function useAiAction<T>(action: string, job: Job | undefined) {
       const err = e as AiError;
       setError({ message: err.message, code: err.code });
     } finally {
+      busy.current = false;
       setLoading(false);
     }
   };

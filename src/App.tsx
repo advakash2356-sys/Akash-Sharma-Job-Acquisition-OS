@@ -142,7 +142,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
 
         <header className="glass sticky top-3 z-30 mx-3 mt-3 flex items-center justify-between rounded-full py-2 pl-5 pr-2 lg:hidden">
           <button onClick={leave} className="display text-2xl cursor-pointer">Job Acquisition OS</button>
-          <button onClick={() => setMenu(true)} aria-label="Open menu" className="rounded-lg p-2 hover:bg-muted cursor-pointer"><Menu size={20} /></button>
+          <button onClick={() => setMenu(true)} aria-label="Open menu" className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted cursor-pointer"><Menu size={20} /></button>
         </header>
         {menu && (
           <div className="fixed inset-0 z-40 lg:hidden" onKeyDown={(e) => e.key === 'Escape' && setMenu(false)}>

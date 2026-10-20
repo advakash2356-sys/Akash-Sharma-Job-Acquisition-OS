@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function useLocalState<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
@@ -10,7 +10,9 @@ export function useLocalState<T>(key: string, initial: T) {
       return { ...(initial as object), ...parsed } as T;
     } catch { return initial; }
   });
+  const first = useRef(value);
   useEffect(() => {
+    if (value === first.current && localStorage.getItem(key) === null) return; // untouched default: nothing to save
     try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage full or unavailable */ }
   }, [key, value]);
   return [value, setValue] as const;

@@ -81,7 +81,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           <a href="#private" className="hover:text-primary">Privacy</a>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={toggleTheme} aria-label="Toggle theme" className="rounded-full p-2 hover:bg-muted cursor-pointer">{dark ? <Sun size={16} /> : <Moon size={16} />}</button>
+          <button onClick={toggleTheme} aria-label="Toggle theme" className="grid h-11 w-11 place-items-center rounded-full hover:bg-muted cursor-pointer">{dark ? <Sun size={16} /> : <Moon size={16} />}</button>
           <button onClick={enter} className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 cursor-pointer">Start your path</button>
         </div>
       </nav>
@@ -189,15 +189,15 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="display text-xl text-foreground">Job Acquisition OS</span>
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
-            <a href="/feedback" className="label hover:text-primary">Share feedback</a>
-            <ShareButton className="label cursor-pointer hover:text-primary" />
-            <a href="/about" className="label hover:text-primary">About</a>
-            <a href="/terms" className="label hover:text-primary">Terms</a>
-            <a href="/privacy" className="label hover:text-primary">Privacy & security</a>
+            <a href="/feedback" className="label inline-flex min-h-11 items-center hover:text-primary">Share feedback</a>
+            <ShareButton className="label inline-flex min-h-11 items-center cursor-pointer hover:text-primary" />
+            <a href="/about" className="label inline-flex min-h-11 items-center hover:text-primary">About</a>
+            <a href="/terms" className="label inline-flex min-h-11 items-center hover:text-primary">Terms</a>
+            <a href="/privacy" className="label inline-flex min-h-11 items-center hover:text-primary">Privacy & security</a>
           </nav>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span><a href="/about" className="hover:text-primary">{CREDIT}</a> · {COPYRIGHT}</span>
+          <span><a href="/about" className="inline-flex min-h-11 items-center hover:text-primary">{CREDIT}</a> · {COPYRIGHT}</span>
           <span>Code under MIT licence; name and logo not licensed. No cookies: your data is kept in this browser's local storage.</span>
         </div>
       </footer>
