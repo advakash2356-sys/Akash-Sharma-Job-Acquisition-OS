@@ -48,7 +48,7 @@ export default function DocsPanel({ job }: { job: Job }) {
   const reSubject = `Application for ${job.title} – ${job.company}`;
 
   const row = (k: DocKind, icon: React.ReactNode, actions: React.ReactNode, body: React.ReactNode, text: string) => (
-    <div className="rounded-2xl border border-border p-4" data-doc={k}>
+    <div className="scroll-mt-44 rounded-2xl border border-border p-4" data-doc={k}>
       <div className="flex flex-wrap items-center gap-2">
         {icon}
         <div className="min-w-0 flex-1">
@@ -64,12 +64,12 @@ export default function DocsPanel({ job }: { job: Job }) {
         {has[k] && <CopyButton text={text} />}
       </div>
       <div className="mt-2 empty:hidden"><AiError_ error={pack.errors[k] || null} go={go} /></div>
-      {has[k] && open === k && <div className="mt-3"><FactCheckPanel text={text} resume={resumeSrc} jobText={jobText} /><div className="mt-3">{body}</div></div>}
+      {has[k] && open === k && <div className="mt-3"><FactCheckPanel text={k === 'resume' ? text.split('\n').filter((l) => !/^[A-Z][A-Z &]+$/.test(l.trim())).join('\n') : text} resume={resumeSrc} jobText={jobText} /><div className="mt-3">{body}</div></div>}
     </div>
   );
 
   return (
-    <Card id="pack" className="grid gap-4">
+    <Card id="pack" className="grid scroll-mt-44 gap-4">
       <div>
         <div className="label mb-1 text-primary">Steps 4 and 5 · Your application pack</div>
         <h2 className="text-3xl">Documents for {label}</h2>

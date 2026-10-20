@@ -28,7 +28,7 @@ export default function FlowStepper() {
     { label: 'Pick another job', run: () => go('jobs') },
   ][cur];
   return (
-    <nav aria-label="Your progress" className="glass mb-6 rounded-2xl p-3 sm:p-4 lg:sticky lg:top-3 lg:z-20" data-testid="flow-stepper">
+    <nav aria-label="Your progress" className="mb-6 rounded-2xl border border-border bg-card-solid p-3 shadow-sm sm:p-4 lg:sticky lg:top-3 lg:z-20" data-testid="flow-stepper">
       <ol className="flex gap-2 overflow-x-auto pb-1 text-xs sm:gap-3">
         {FLOW.map((s, i) => (
           <li key={s} aria-current={i === cur ? 'step' : undefined} className={cn('flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1', i === cur ? 'bg-primary text-primary-foreground' : done[i] ? 'text-primary' : 'text-muted-foreground')}>
