@@ -322,3 +322,22 @@ Result: **27 Yes, 2 Partial, 0 No, 1 user action**.
 | H28 | No sideways scroll; tap targets ≥44px (or ≥24px with spacing); text ≥12px; file upload on phone | Yes | overflow 0px; small targets: none; text <11px: 0; file input present |
 | H29 | Timezone: dates use the user's local day | Yes | UTC+14 browser: appliedAt 2026-10-21, local date 2026-10-21, UTC date 2026-10-20 |
 | H30 | Links: internal + external open; mailto and share links correct | Yes | 11 links checked; broken: none; mailto adv.akash2356@gmail.com and ?ref=share verified in persona E2E |
+
+## User feedback fixes, 20 Oct 2026 (commits 7dd7894, 16b3fe4, 0b98b38)
+
+Verified end to end on production at 5:14 PM IST, with a real Gemini key and a realistic test resume (persona "Riya Verma", customer support, Noida). Screenshots: `/workspace/launch/flow-2026-10-20-*.png` (1 upload, 2 review jobs, 3 job page, 4 generating, 5 resume review, 5b cover letter, 6 apply, 7 and 8 mobile).
+
+| Promise | Result | Evidence |
+|---|---|---|
+| Tailored resume and cover letter generate | Yes | Live run: tailor-resume 200, generate-cover-letter 200, generate-outreach 200. All three "Ready" about 8 to 20 s after "Approve & generate all" |
+| Root cause found | Yes, with a caveat | With the test key, Google returned 429 (free-tier quota) on gemini-flash-latest and gemini-3.8-flash and 503 (high demand) on gemini-3.6-flash; only gemini-flash-lite-latest answered. The old chain tried lite last, with 25 s per-model timeouts inside a 50 s budget, so a slow or busy model could use up the budget and the request failed with a timeout, quota or overload error. Now lite is second, each model gets 16 s, and the pack retries once after 30 s on a 429. This failure was reproduced with the test key; Akash's exact failing session was not available |
+| Clicking a job opens a one-stop page | Yes | `#/app/job/<id>`: details, location, posted date, fit, "Apply on employer site" (the original posting URL), job description, the pack and more tools |
+| Documents labelled and stored per job | Yes | Each row reads "<Doc> for <title> · <company>" with its generated time. Stored on the job (`tailoredResumeDoc`, `coverLetter`, `outreach`, `docsAt`). File names include the job title and company. The cover letter starts "Re: Application for <title> – <company>" |
+| ATS resume format | Yes | JSON Resume schema (MIT) structured output, one column, standard headings, real text PDF (pdftotext reads it in order) and DOCX with real headings and bullets. No app branding inside the resume |
+| No invented facts | Yes for the test run | The prompt allows facts from the resume only. The in-browser fact check found nothing new in the live run |
+| "Applying" wording removed | Yes | No "applying" on the setup or flow pages. Dashboard: "Applications you marked as sent today … the app never applies for you". Job page: "The app never applies for you" |
+| 6-step flow + Next step always visible | Yes | Stepper on every app page (sticky on desktop; fixed "Next step" bar on mobile): Upload resume → Review matched jobs → Pick a job → Generate pack → Review & download → Apply on employer site |
+| Approve & generate all | Yes | One button runs resume, cover letter and outreach for the selected job, one after another |
+| Licences | Yes | THIRD_PARTY_NOTICES.md (JSON Resume schema, RenderCV, jsonresume-theme-even, all MIT, with licence texts); README and About credit them. OpenResume (AGPL) and Awesome-CV (LPPL) rejected on licence grounds |
+
+Not done or limits: Google free-tier quotas still apply to each user's own key (if every model is out of quota, the app shows Google's message). The test used a sample resume, not Akash's own.
