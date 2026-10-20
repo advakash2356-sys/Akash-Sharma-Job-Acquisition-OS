@@ -27,7 +27,16 @@ export function usePack(job: Job | undefined) {
     inflight.current.add(kind);
     setBusy((b) => ({ ...b, [kind]: true })); setErrors((e) => ({ ...e, [kind]: undefined }));
     try {
-      const r: any = await callAi(ACTION[kind], { ...body(job), ...extra }, { timeoutMs: 75000 });
+      let r: any;
+      try { r = await callAi(ACTION[kind], { ...body(job), ...extra }, { timeoutMs: 75000 }); }
+      catch (e) {
+        // Google's free tier allows only a few requests per minute. Wait once and retry, and say so.
+        if ((e as AiError).code !== 'RATE_LIMIT') throw e;
+        setErrors((x) => ({ ...x, [kind]: { message: "Google's free-tier per-minute limit was reached. Retrying automatically in 30 seconds…", code: 'RETRYING' } }));
+        await new Promise((res) => setTimeout(res, 30000));
+        setErrors((x) => ({ ...x, [kind]: undefined }));
+        r = await callAi(ACTION[kind], { ...body(job), ...extra }, { timeoutMs: 75000 });
+      }
       const at = new Date().toISOString();
       let patch: Partial<Job>;
       if (kind === 'resume') {
