@@ -1,3 +1,4 @@
+import { aiRateLimit, checkBody, checkOrigin, clientIp } from "./server/guard.js";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -22,6 +23,7 @@ async function startServer() {
   });
   app.post("/api/jobs/search", async (req, res) => {
     try {
+      checkOrigin(req.headers); checkBody(req.body);
       rateLimit(String(req.headers["x-forwarded-for"] || req.ip || "anon").split(",")[0].trim());
       res.json({ result: await searchJobs(req.body || {}) });
     } catch (e: any) {
@@ -30,6 +32,7 @@ async function startServer() {
   });
   app.post("/api/ai/:action", async (req, res) => {
     try {
+      checkOrigin(req.headers); checkBody(req.body); aiRateLimit(clientIp(req.headers, req.ip));
       res.json(await handleAction(req.params.action, req.body || {}, keyFromHeaders(req.headers)));
     } catch (e: any) {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });

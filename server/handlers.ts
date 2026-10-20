@@ -98,6 +98,7 @@ async function run(client: GoogleGenAI, prompt: string, schema?: any, opts?: Gen
     contents: prompt,
     config: {
       systemInstruction: SYSTEM,
+      maxOutputTokens: 16384, // caps cost and runaway output (includes thinking tokens)
       ...(schema ? { responseMimeType: "application/json", responseSchema: schema } : {}),
     },
   }, opts);

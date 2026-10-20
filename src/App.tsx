@@ -37,7 +37,7 @@ function setMeta(key: string, path: string) {
   const [t, d] = PAGE_META[key] || PAGE_META.app;
   document.title = t;
   const set = (sel: string, attr: string, v: string) => document.querySelector(sel)?.setAttribute(attr, v);
-  set('meta[name="description"]', 'content', d); set('meta[property="og:title"]', 'content', t); set('meta[property="og:description"]', 'content', d);
+  set('meta[name="description"]', 'content', d); set('meta[property="og:title"]', 'content', t); set('meta[name="twitter:title"]', 'content', t); set('meta[name="twitter:description"]', 'content', d); set('meta[property="og:description"]', 'content', d);
   set('link[rel="canonical"]', 'href', SITE_URL + path); set('meta[property="og:url"]', 'content', SITE_URL + path);
 }
 const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/([a-z-]+)/); if (!m) return null; return (PAGE_IDS.includes(m[1]) ? m[1] : 'notfound') as PageId; };
