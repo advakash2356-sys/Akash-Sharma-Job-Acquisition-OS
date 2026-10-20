@@ -2,7 +2,7 @@ import { ANALYTICS_HOST, ANALYTICS_ON } from '../lib/analytics';
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button, Card, PageHeader } from '../components/ui';
-import { wipeEverything } from '../lib/storage';
+import DeleteDataButton from '../components/DeleteDataButton';
 
 const Item = ({ t, children }: { t: string; children: React.ReactNode }) => (
   <Card><h2 className="mb-2 text-3xl">{t}</h2><div className="grid gap-2 text-sm leading-relaxed text-muted-foreground">{children}</div></Card>
@@ -41,9 +41,9 @@ export default function Privacy() {
         <Item t="Feedback">
           <p>"Share feedback" builds a message in your browser. It is sent only when you press send: either as a public GitHub issue on the project (you need a GitHub account) or as an email from your own mail app to the owner. The app itself sends nothing.</p>
         </Item>
-        <Item t="Delete everything">
+        <Item t="Delete my data">
           <p>"Clear all data" on My resume removes your resume and jobs for the current account. The button below removes everything this app has saved in this browser: all accounts' resumes and jobs, API keys and preferences. Exported files you downloaded stay where you saved them. Signing out (Settings) ends the sign-in session only and keeps your saved data on this device.</p>
-          <div><Button variant="danger" onClick={() => { if (confirm('Delete all Job Acquisition OS data from this browser, including API keys? This cannot be undone.')) { wipeEverything(); setDone(true); setTimeout(() => location.reload(), 900); } }}><Trash2 size={16} /> Delete everything from this browser</Button></div>
+          <div id="delete"><DeleteDataButton label="Delete my data (everything in this browser)" /></div>
           {done && <p role="status" className="text-primary">Deleted. Reloading…</p>}
         </Item>
       </div>

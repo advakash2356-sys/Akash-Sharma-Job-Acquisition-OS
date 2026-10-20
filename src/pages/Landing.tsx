@@ -194,6 +194,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
             <a href="/about" className="label inline-flex min-h-11 items-center hover:text-primary">About</a>
             <a href="/terms" className="label inline-flex min-h-11 items-center hover:text-primary">Terms</a>
             <a href="/privacy" className="label inline-flex min-h-11 items-center hover:text-primary">Privacy & security</a>
+            <a href="/privacy#delete" className="label inline-flex min-h-11 items-center hover:text-primary">Delete my data</a>
           </nav>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">

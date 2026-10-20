@@ -5,6 +5,7 @@ import TestModeToggle from '../components/TestModeToggle';
 import PrivacyToggles from '../components/PrivacyToggles';
 import AccountCard from '../components/AccountCard';
 import { useApp } from '../lib/state';
+import DeleteDataButton from '../components/DeleteDataButton';
 
 export default function SettingsPage() {
   const { profile, setProfile, user } = useApp();
@@ -12,6 +13,7 @@ export default function SettingsPage() {
     <>
       <PageHeader eyebrow="Account" title="Settings" subtitle="Your free API key, your account and your preferences." />
       <div className="grid max-w-3xl gap-5">
+        <Card id="delete"><h2 className="mb-2 text-3xl">Delete my data</h2><p className="mb-3 text-sm text-muted-foreground">Removes everything this app saved in this browser: resumes, jobs, API keys and preferences, for every account. You will be asked to confirm.</p><DeleteDataButton /></Card>
         <ApiKeyCard prominent />
         <AccountCard user={user} />
         <Card>

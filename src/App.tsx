@@ -20,6 +20,7 @@ const SettingsPage = lazy(() => import('./pages/Settings'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Setup = lazy(() => import('./pages/Setup'));
 import ErrorBoundary from './components/ErrorBoundary';
+import DeleteDataButton from './components/DeleteDataButton';
 const NotFound = lazy(() => import('./pages/NotFound'));
 import { CREDIT, COPYRIGHT, PAGE_META, PUBLIC_PAGES, SITE_URL } from './lib/brand';
 import { track } from './lib/analytics';
@@ -128,6 +129,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
       <button onClick={() => setDark(!dark)} className=" flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-foreground/80 hover:bg-muted cursor-pointer">
         {dark ? <Sun size={17} /> : <Moon size={17} />} {dark ? 'Light theme' : 'Dark theme'}
       </button>
+      <DeleteDataButton variant="link" />
       <div className="px-2.5 text-xs text-muted-foreground"><button onClick={() => go('about')} className="cursor-pointer hover:text-primary">{CREDIT}</button> · <button onClick={() => go('terms')} className="cursor-pointer hover:text-primary">Terms</button><div className="mt-0.5">{COPYRIGHT}</div></div>
     </nav>
   );
@@ -142,13 +144,14 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
 
         <header className="glass sticky top-3 z-30 mx-3 mt-3 flex items-center justify-between rounded-full py-2 pl-5 pr-2 lg:hidden">
           <button onClick={leave} className="display text-2xl cursor-pointer">Job Acquisition OS</button>
-          <button onClick={() => setMenu(true)} aria-label="Open menu" className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted cursor-pointer"><Menu size={20} /></button>
+          <span className="flex items-center"><DeleteDataButton variant="icon" />
+          <button onClick={() => setMenu(true)} aria-label="Open menu" className="grid h-11 w-11 place-items-center rounded-lg hover:bg-muted cursor-pointer"><Menu size={20} /></button></span>
         </header>
         {menu && (
           <div className="fixed inset-0 z-40 lg:hidden" onKeyDown={(e) => e.key === 'Escape' && setMenu(false)}>
             <div className="absolute inset-0 bg-black/50" onClick={() => setMenu(false)} />
             <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-72 bg-card-solid shadow-2xl">
-              <button onClick={() => setMenu(false)} aria-label="Close menu" className="absolute right-3 top-3 rounded-lg p-2 hover:bg-muted cursor-pointer"><X size={18} /></button>
+              <button onClick={() => setMenu(false)} aria-label="Close menu" className="absolute right-3 top-3 grid h-11 w-11 place-items-center rounded-lg hover:bg-muted cursor-pointer"><X size={18} /></button>
               {sidebar}
             </div>
           </div>
