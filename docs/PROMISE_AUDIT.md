@@ -236,3 +236,9 @@ Live launch check after the rename (`scripts/live-launch-check.mjs`):
 | P17 | Jobs | AI path: guided setup with Akash's key fills roles and finds jobs | Yes | AI roles: Legal Operations Professional, Contract Manager, Contract Administrator, Legal Operations Specialist; 54 jobs, e.g. Contract Administrator Senior Associate @ pwc; Contract Administrator - Associate @ pwc; Lead Contract Administrator @ Adani Group |
 | P18 | Security | No CSP violations across the live run | Yes | 0 violations |
 | P19 | Mobile | Live landing fits 390px | Yes | overflow px 0 |
+
+## Launch-day re-check, 20 Oct 2026 (production)
+- Live launch check 19/19 Yes (Legal Ops/CLM Delhi profile: 46 real jobs on the no-AI path, 81 on the AI path, first 5 links HTTP 200; 0 CSP violations; GoatCounter channel counting verified).
+- Blue-collar persona E2E 16/16 Yes (3 NCR jobs with working links, 1 DSSSB govt notice, PDF/DOCX exports, feedback links; nothing sent).
+- Promise audit 40/44 Yes, 4 Partial, 0 No (same known limits: #14 GOOGLE_CLIENT_ID not set, #26 AI facts need human review, #33 follow-up row assertion, #43 in-memory rate limit). First run showed #25 as No only because the script expected a hard-coded 19 Oct file date; script now checks today's date (the app was right).
+- Console crawl of 10 pages: 0 console errors, 0 page errors, 0 failed requests; 11 links, 0 broken.
