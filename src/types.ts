@@ -80,6 +80,10 @@ export interface Job {
   offerAmount?: number;
   score?: JobScore;
   tailoredResume?: string;
+  /** Structured ATS resume (JSON Resume subset) tailored to THIS job. tailoredResume holds its plain text. */
+  tailoredResumeDoc?: import('./lib/resumeDoc').ResumeDoc;
+  /** When each document for this job was generated and downloaded (ISO). Labels and the guided flow read this. */
+  docsAt?: { resume?: string; cover?: string; outreach?: string; downloaded?: string };
   coverLetter?: string;
   outreach?: { emailSubject: string; emailBody: string; linkedinMessage: string; followUp: string };
   interviews: Interview[];

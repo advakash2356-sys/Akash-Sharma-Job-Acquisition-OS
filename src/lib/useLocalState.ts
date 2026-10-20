@@ -7,6 +7,7 @@ export function useLocalState<T>(key: string, initial: T) {
       if (!raw) return initial;
       const parsed = JSON.parse(raw);
       if (Array.isArray(initial)) return (Array.isArray(parsed) ? parsed : initial) as T;
+      if (initial === null || typeof initial !== 'object') return (typeof parsed === typeof initial ? parsed : initial) as T;
       return { ...(initial as object), ...parsed } as T;
     } catch { return initial; }
   });

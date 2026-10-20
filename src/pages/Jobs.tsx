@@ -9,6 +9,7 @@ import { SOURCES, keywordGap } from '../lib/insights';
 import JobFollowUp from '../components/JobFollowUp';
 import { daysLeftLabel, findDuplicate, parseNotice } from '../lib/merged';
 
+const Wrap = ({ inline, onClose, title, children }: { inline?: boolean; onClose: () => void; title: string; children: React.ReactNode }) => (inline ? <Card>{children}</Card> : <Dialog open onClose={onClose} title={title} wide>{children}</Dialog>);
 const num = (v: string) => (v.trim() && !isNaN(Number(v)) ? Number(v) : undefined);
 const scoreTone = (n: number) => (n >= 75 ? 'primary' : n >= 55 ? 'gold' : 'danger') as 'primary' | 'gold' | 'danger';
 
@@ -44,7 +45,7 @@ function AddJob({ open, onClose, onAdd, existing = [] }: { open: boolean; onClos
   );
 }
 
-function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
+export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => void; inline?: boolean }) {
   const { setJobs, go, hasResume } = useApp();
   const ai = useAiAction<JobScore>('score-job', job);
   const patch = (p: Partial<Job>) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, ...p } : j)));
@@ -55,8 +56,8 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
   const score = async () => { const r = await ai.run(); if (r) patch({ score: r }); };
 
   return (
-    <Dialog open onClose={onClose} title={job.title} wide>
-      {job.found && (
+    <Wrap inline={inline} onClose={onClose} title={job.title}>
+      {job.found && !inline && (
         <div className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm">
           {job.found.govt
             ? <><b>Government job notice</b> · last date to apply: <b>{job.found.govt.lastDate}</b> ({daysLeftLabel(job.found.govt.lastDate)}). {(() => { const n = parseNotice(job.description); const parts = [n.notificationNo && `Notice no. ${n.notificationNo}`, n.pay && `Pay stated: ${n.pay}`, n.age && `Age: ${n.age}`, n.minYears != null && `Experience: ${n.minYears}+ years`].filter(Boolean); return parts.length ? <>{parts.join(' · ')}. </> : null; })()} {job.found.govt.official ? <>The link opens the <b>official notification</b>.</> : <>The link opens {job.found.govt.via}, a news site that lists notices. Check the official notification there before applying.</>} Found via {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}.</>
@@ -120,9 +121,7 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
       </section>
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {job.status === 'Saved' && <Button onClick={() => patch({ status: 'Applied', appliedAt: today() })}>Mark applied today</Button>}
-        <Button variant="outline" onClick={() => go('tailor', job.id)}>Tailor resume & cover letter</Button>
-        <Button variant="outline" onClick={() => go('outreach', job.id)}>Write outreach</Button>
+        {!inline && <Button onClick={() => go('job', job.id)}>Open job page: apply, tailor resume, cover letter, outreach</Button>}
       </div>
 
       <JobFollowUp job={job} patch={patch} go={go} />
@@ -136,20 +135,18 @@ function JobDetail({ job, onClose }: { job: Job; onClose: () => void }) {
       <details className="mb-5 text-sm"><summary className="cursor-pointer text-muted-foreground">Job description</summary><p className="mt-2 whitespace-pre-wrap">{job.description}</p></details>
       <div className="flex justify-between">
         <Button variant="danger" onClick={() => { if (confirm('Delete this job?')) { setJobs((js) => js.filter((j) => j.id !== job.id)); onClose(); } }}><Trash2 size={16} /> Delete</Button>
-        <Button variant="outline" onClick={onClose}>Done</Button>
+        {!inline && <Button variant="outline" onClick={onClose}>Done</Button>}
       </div>
-    </Dialog>
+    </Wrap>
   );
 }
 
 export default function Jobs() {
-  const { jobs, setJobs } = useApp();
+  const { jobs, setJobs, go } = useApp();
   const [adding, setAdding] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'board'>('list');
   const [filter, setFilter] = useState<'All' | JobStatus>('All');
   const shown = jobs.filter((j) => filter === 'All' || j.status === filter);
-  const open = jobs.find((j) => j.id === openId);
 
   return (
     <>
@@ -161,7 +158,7 @@ export default function Jobs() {
           <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filter by status">
             {(['All', ...JOB_STATUSES] as const).map((st) => (
               <button key={st} role="tab" aria-selected={filter === st} onClick={() => setFilter(st)}
-                className={`rounded-full px-3 py-1 text-sm cursor-pointer ${filter === st ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
+                className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${filter === st ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
                 {st}{st !== 'All' && ` · ${jobs.filter((j) => j.status === st).length}`}
               </button>
             ))}
@@ -172,7 +169,7 @@ export default function Jobs() {
               {JOB_STATUSES.map((st) => (
                 <div key={st} className="min-w-[200px]"><div className="label mb-2 text-muted-foreground">{st} · {jobs.filter((j) => j.status === st).length}</div>
                   <div className="grid gap-2">{jobs.filter((j) => j.status === st).map((j) => (
-                    <button key={j.id} onClick={() => setOpenId(j.id)} className="glass rounded-2xl p-3 text-left cursor-pointer hover:border-primary"><div className="truncate text-sm font-medium">{j.title}</div><div className="truncate text-xs text-muted-foreground">{j.company}</div>{j.score && <div className="mt-1 font-mono text-gold">{j.score.score}</div>}</button>
+                    <button key={j.id} onClick={() => go('job', j.id)} className="glass rounded-2xl p-3 text-left cursor-pointer hover:border-primary"><div className="truncate text-sm font-medium">{j.title}</div><div className="truncate text-xs text-muted-foreground">{j.company}</div>{j.score && <div className="mt-1 font-mono text-gold">{j.score.score}</div>}</button>
                   ))}</div></div>
               ))}
             </div>
@@ -180,13 +177,15 @@ export default function Jobs() {
           <div className="grid gap-3">
             {shown.map((j) => (
               <Card key={j.id} className="flex flex-wrap items-center gap-3 p-4">
-                <button onClick={() => setOpenId(j.id)} className="min-w-0 flex-1 text-left cursor-pointer">
+                <button onClick={() => go('job', j.id)} className="min-w-0 flex-1 text-left cursor-pointer">
                   <div className="truncate font-medium">{j.title}</div>
                   <div className="truncate text-sm text-muted-foreground">{j.company} · added {j.createdAt}</div>
                 </button>
                 {(j.score || j.found?.fit) && <span className="font-mono text-lg text-gold" title={j.score ? 'AI score' : j.found?.fit?.kind === 'ai' ? 'AI fit' : 'Keyword match'}>{j.score ? j.score.score : j.found!.fit!.score}</span>}
                 {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `FreeHire · ${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
+                {(j.tailoredResume || j.coverLetter || j.outreach) && <Badge tone="primary">{[j.tailoredResume && 'Resume', j.coverLetter && 'Letter', j.outreach && 'Outreach'].filter(Boolean).join(' · ')}</Badge>}
+                <Button size="sm" variant="outline" onClick={() => go('job', j.id)}>Open job</Button>
               </Card>
             ))}
             {shown.length === 0 && <p className="text-muted-foreground">No jobs with this status.</p>}
@@ -195,7 +194,6 @@ export default function Jobs() {
         </>
       )}
       <AddJob open={adding} existing={jobs} onClose={() => setAdding(false)} onAdd={(j) => setJobs((js) => [j, ...js])} />
-      {open && <JobDetail job={open} onClose={() => setOpenId(null)} />}
     </>
   );
 }

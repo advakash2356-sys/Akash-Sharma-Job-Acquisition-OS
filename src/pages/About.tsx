@@ -15,6 +15,7 @@ export default function About() {
             <li>Jobs: <a className="underline" href="https://github.com/strelov1/freehire" target="_blank" rel="noreferrer">FreeHire</a> (MIT) open job search API.</li>
             <li>AI: Google Gemini API, with your own free key.</li>
             <li>Reading files: pdf.js (Apache-2.0) and mammoth (BSD-2). Exports: jsPDF (MIT) and docx (MIT).</li>
+            <li>Resume format: <a className="underline" href="https://github.com/jsonresume/resume-schema" target="_blank" rel="noreferrer">JSON Resume schema</a> (MIT), ATS layout adapted from <a className="underline" href="https://github.com/rendercv/rendercv" target="_blank" rel="noreferrer">RenderCV</a> (MIT) and <a className="underline" href="https://github.com/rbardini/jsonresume-theme-even" target="_blank" rel="noreferrer">jsonresume-theme-even</a> (MIT). Full notices: THIRD_PARTY_NOTICES.md in the repository.</li>
             <li>Interface: React (MIT), Tailwind CSS (MIT), lucide icons (ISC).</li>
           </ul></Card>
       </div>

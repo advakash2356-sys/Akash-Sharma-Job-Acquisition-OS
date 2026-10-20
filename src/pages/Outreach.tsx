@@ -26,7 +26,7 @@ export default function Outreach() {
 
   return (
     <>
-      <PageHeader title="Outreach studio" subtitle="A short email, a LinkedIn note and a follow-up, written from your resume." />
+      <PageHeader title="Outreach studio" subtitle={`For ${job.title} · ${job.company}. A short email, a LinkedIn note and a follow-up, written from your resume.`} />
       <TestModeToggle />
       <Card className="mb-5 grid gap-4 sm:grid-cols-3">
         <div><Label htmlFor="oj">Job</Label><Select id="oj" value={job.id} onChange={(e) => go(page, e.target.value)}>{jobs.map((j) => <option key={j.id} value={j.id}>{j.title} · {j.company}</option>)}</Select></div>

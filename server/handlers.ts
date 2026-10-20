@@ -5,7 +5,9 @@ export class ApiError extends Error {
 }
 
 // Listed by ListModels with generateContent; gemini-2.5-flash is retired for new keys, so it is not used. Tried in order when a model is missing, busy or out of quota.
-const MODELS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-flash-lite-latest"];
+// Order matters: under Google "high demand" (503) the big models either fail fast or hang. Flash-lite is the most available,
+// so it is tried second, and every call has a short timeout, so one slow model can no longer use up the whole request budget.
+const MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.6-flash", "gemini-3.8-flash"];
 
 /** Pulls Google's real status + message out of an @google/genai error. */
 export function googleError(e: any): { status: number; code: string; message: string } {
@@ -41,7 +43,7 @@ const FAST: GenOpts = { models: ["gemini-flash-lite-latest", "gemini-flash-lates
 
 /** Tries models in order. Every call has a hard timeout and the whole request has a time budget, so nothing can hang. */
 async function generate(client: GoogleGenAI, req: { contents: string; config?: any }, opts: GenOpts = {}) {
-  const { models = MODELS, perCallMs = 25000, budgetMs = 50000 } = opts;
+  const { models = MODELS, perCallMs = 16000, budgetMs = 52000 } = opts;
   const start = Date.now();
   let last: any;
   for (const model of models) {
@@ -76,9 +78,8 @@ interface Body { [k: string]: any }
 function need(body: Body) {
   const resume = String(body.resume || "").trim();
   if (resume.length < 50) throw new ApiError(400, "Add your resume first (Resume page). It is used for every AI feature.", "NO_RESUME");
-  if (!String(body.title || "").trim() || !String(body.description || "").trim()) {
-    throw new ApiError(400, "A job title and description are required.", "BAD_INPUT");
-  }
+  if (!String(body.title || "").trim()) throw new ApiError(400, "A job title is required.", "BAD_INPUT");
+  if (!String(body.description || "").trim()) body.description = `${body.title} at ${body.company || "the company"} (no description was saved for this posting).`;
   return {
     resume: resume.slice(0, 20000),
     title: String(body.title).slice(0, 200),
@@ -141,6 +142,20 @@ async function fitJobs(client: GoogleGenAI, body: Body) {
   return { fits: (out.fits || []).filter((f: any) => ids.has(String(f.id))).map((f: any) => ({ id: String(f.id), score: Math.max(0, Math.min(100, Math.round(Number(f.score) || 0))), summary: String(f.summary || "").slice(0, 300) })) };
 }
 
+const RESUME_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    basics: { type: Type.OBJECT, properties: { name: str, label: str, email: str, phone: str, location: str, url: str, summary: str }, required: ["name", "label", "email", "phone", "location", "url", "summary"] },
+    work: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { position: str, name: str, location: str, startDate: str, endDate: str, highlights: strs }, required: ["position", "name", "location", "startDate", "endDate", "highlights"] } },
+    education: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { institution: str, studyType: str, area: str, startDate: str, endDate: str, score: str }, required: ["institution", "studyType", "area", "startDate", "endDate", "score"] } },
+    skills: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: str, keywords: strs }, required: ["name", "keywords"] } },
+    projects: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: str, description: str, highlights: strs }, required: ["name", "description", "highlights"] } },
+    certificates: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: str, issuer: str, date: str }, required: ["name", "issuer", "date"] } },
+    languages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { language: str, fluency: str }, required: ["language", "fluency"] } },
+  },
+  required: ["basics", "work", "education", "skills", "projects", "certificates", "languages"],
+};
+
 export async function handleAction(action: string, body: Body, apiKey?: string) {
   const key = apiKey || process.env.GEMINI_API_KEY;
   if (!key) throw new ApiError(401, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
@@ -167,7 +182,8 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
           required: ["score", "verdict", "strengths", "gaps", "keywords", "recommendation"],
         }) };
       case "tailor-resume":
-        return { result: await run(client, `${ctx}\n\nRewrite the candidate's resume tailored to this job as clean markdown. Keep every fact true to the original; only reorder, rephrase and weave in relevant keywords. Return the full resume.`) };
+        // Structured, ATS-friendly resume in the JSON Resume schema (jsonresume.org, MIT). Rendered to PDF/DOCX in the browser.
+        return { result: await run(client, `${ctx}\n\nRewrite the candidate's resume tailored to this job, as structured data in the JSON Resume shape. Rules: use ONLY facts in the resume text (employers, titles, dates, degrees, numbers, skills). Never add a skill, tool, metric, certificate or date that is not in the resume. Use an empty string or an empty list when something is not stated. You may reorder, shorten and rephrase bullets and put the skills and experience most relevant to this job first, using the job's wording only where the resume supports it. "summary" is 2-3 sentences. Dates exactly as written in the resume.`, RESUME_SCHEMA) };
       case "generate-cover-letter":
         return { result: await run(client, `${ctx}\n\nWrite a concise (under 300 words), confident, specific cover letter from ${j.name}. No filler. Use only facts in the resume.`) };
       case "generate-outreach":

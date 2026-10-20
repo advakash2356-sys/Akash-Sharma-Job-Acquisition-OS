@@ -34,6 +34,7 @@ See `.env.example`: optional `GEMINI_API_KEY` (server fallback), optional `VITE_
 Design notes: `DESIGN.md`. License: MIT.
 
 ## Licence, credit and brand
+- Third-party work: the tailored resume uses the **JSON Resume schema** (MIT), with an ATS layout adapted from **RenderCV** (MIT) and **jsonresume-theme-even** (MIT). Full list, authors and licence texts: `THIRD_PARTY_NOTICES.md`.
 - Code: **MIT** © 2026 Akash Sync Agent (Akash Sharma). In plain words, MIT lets anyone use, copy, modify, publish and even sell this code, as long as they keep the copyright and licence notice. That is the trade-off of an open licence.
 - **Brand is not licensed** (see `NOTICE`): the name "Akash Sync Agent", the Job Acquisition OS branding (design concept "Momentum"), logo and OG card are not covered by MIT and may not be reused. Forks must rebrand.
 - The app shows "Made by Akash Sync Agent" in the footer, sidebar, About page and (optional, on by default, Settings) in exported PDF/DOCX footers.

@@ -28,9 +28,11 @@ import { getUserApiKey, KEY_EVENT } from './lib/userApiKey';
 const About = lazy(() => import('./pages/About'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Feedback = lazy(() => import('./pages/Feedback'));
+const JobPage = lazy(() => import('./pages/JobPage'));
+import FlowStepper from './components/FlowStepper';
 // Dev-only: lets the launch audit prove the error boundary catches a crash.
 const Crash = (): React.ReactElement => { throw new Error('Test crash (dev only)'); };
-const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback'];
+const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback', 'job'];
 /** '#/app/<page>' deep links. Unknown page -> 404. '#/app' alone -> null (default page). */
 const isPublic = (p: string) => (PUBLIC_PAGES as readonly string[]).includes(p);
 /** Keep <title>, description, canonical and og:url in step with the visible page. */
@@ -45,8 +47,8 @@ const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
   { group: 'Overview', items: [{ id: 'setup', label: 'Guided setup', icon: Wand2 }, { id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
-  { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
-  { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Tailor & cover letter', icon: Wand2 }] },
+  { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs (pick one)', icon: Briefcase }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
+  { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Application packs', icon: Wand2 }] },
   { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
   { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }, { id: 'privacy', label: 'Privacy & security', icon: ShieldCheck }, { id: 'feedback', label: 'Share feedback', icon: MessageSquare }, { id: 'about', label: 'About', icon: Info }] },
 ];
@@ -64,11 +66,12 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const [profile, setProfile] = useLocalState<Profile>(scoped(PROFILE_KEY, uid), emptyProfile);
   const [jobs, setJobs] = useLocalState<Job[]>(scoped(JOBS_KEY, uid), []);
   const [page, setPage] = useState<PageId>(() => hashPage() || ((profile.resumeText || '').trim().length < 50 ? 'setup' : 'overview'));
-  const [selectedJobId, setSelectedJobId] = useState('');
+  const [selectedJobId, setSelectedJobId] = useLocalState<string>(scoped('jaos_current_job', uid), (location.hash.match(/^#\/app\/job\/([^/?#]+)/) || [])[1] ? decodeURIComponent(location.hash.match(/^#\/app\/job\/([^/?#]+)/)![1]) : '');
   const [menu, setMenu] = useState(false);
+  useEffect(() => { const jm = location.hash.match(/^#\/app\/job\/([^/?#]+)/); if (jm) setSelectedJobId(decodeURIComponent(jm[1])); }, []);
   const [inApp, setInApp] = useState(() => location.hash.startsWith('#/app'));
   useEffect(() => {
-    const f = () => { setInApp(location.hash.startsWith('#/app')); const hp = hashPage(); if (hp) { setPage(hp); window.scrollTo(0, 0); } };
+    const f = () => { setInApp(location.hash.startsWith('#/app')); const jm = location.hash.match(/^#\/app\/job\/([^/?#]+)/); if (jm) setSelectedJobId(decodeURIComponent(jm[1])); const hp = hashPage(); if (hp) { setPage(hp); window.scrollTo(0, 0); } };
     window.addEventListener('hashchange', f);
     return () => window.removeEventListener('hashchange', f);
   }, []);
@@ -88,7 +91,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const go = (p: PageId, jobId?: string) => {
     if (jobId) setSelectedJobId(jobId);
     setPage(p);
-    try { const q = p === 'notfound' ? 'overview' : p; history.replaceState(null, '', `${isPublic(q) ? `/${q}` : '/'}#/app/${q}`); } catch { /* ignore */ }
+    try { const q = p === 'notfound' ? 'overview' : p; history.replaceState(null, '', `${isPublic(q) ? `/${q}` : '/'}#/app/${q}${q === 'job' && (jobId || selectedJobId) ? `/${encodeURIComponent(jobId || selectedJobId)}` : ''}`); } catch { /* ignore */ }
     setMenu(false);
     window.scrollTo(0, 0);
   };
@@ -98,7 +101,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);
   useEffect(() => { if (jobs.some((j) => j.found)) track('first_job_found'); }, [jobs]);
 
-  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, feedback: Feedback, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
+  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, feedback: Feedback, job: JobPage, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
@@ -157,7 +160,8 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 lg:py-12">
+        <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8 sm:px-8 lg:py-12">
+          {!isPublic(page) && page !== 'notfound' && <FlowStepper />}
           <div key={page} className="stagger"><ErrorBoundary key={page}><Suspense fallback={<p className="label text-muted-foreground">Loading…</p>}>{import.meta.env.DEV && location.hash === '#/app/notfound?crash' ? <Crash /> : <Page />}</Suspense></ErrorBoundary></div>
         </main>
       </div>

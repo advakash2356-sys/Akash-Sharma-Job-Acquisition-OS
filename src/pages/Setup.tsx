@@ -172,7 +172,7 @@ export default function Setup() {
 
   return (
     <>
-      <PageHeader title="Guided setup" subtitle="Two steps from you. Then your profile and real job postings that fit you are found and scored for you." />
+      <PageHeader title="Guided setup" subtitle="Step 1 of the flow: upload your resume. Then matching real job postings are found and scored for you to review. Nothing is applied for or sent." />
       <ol className="grid gap-5">
         <li><Card className={step1 ? 'opacity-90' : 'ring-1 ring-primary/30'}>
           <div className="mb-3 flex flex-wrap items-center gap-3"><Dot done={step1} n={1} /><h2 className="text-2xl">{form ? 'Short form / छोटा फॉर्म' : 'Upload your resume'}</h2>
@@ -187,7 +187,7 @@ export default function Setup() {
           <ApiKeyCard prominent={step1 && !step2} />
         </div></li>
         <li><Card>
-          <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={3} /><h2 className="text-2xl">Automatic</h2></div>
+          <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={3} /><h2 className="text-2xl">Find and score matching jobs</h2></div>
           {!(step1 && step2) && <p className="text-sm text-muted-foreground">{profile.manual ? 'Short form saved. Search runs by itself; a Gemini key (step 2) only adds fit scores.' : 'Starts by itself when steps 1 and 2 are done.'} No key? You can still <button className="underline cursor-pointer" disabled={!step1 || busy} onClick={() => run('skip')}>search jobs without AI</button>.</p>}
           <ul className="grid gap-2 text-sm" aria-live="polite">
             {STAGES.map((s) => (
@@ -214,7 +214,7 @@ export default function Setup() {
             {busy && <Button variant="outline" onClick={() => ctl.current?.abort()}><XCircle size={15} /> Cancel</Button>}
             {step1 && (step2 || profile.manual) && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run('ai')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
             {step1 && !busy && !profile.manual && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
-            {st.fill === 'done' && <Button onClick={() => go('jobs')}>See my jobs</Button>}
+            {(st.fill === 'done' || (profile.setupDone && allJobs.length > 0)) && <Button onClick={() => go('jobs')}>Next: review matched jobs</Button>}
             {st.parse === 'done' && <Button variant="outline" onClick={() => go('resume')}>Review my profile</Button>}
           </div>
         </Card></li>

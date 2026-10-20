@@ -66,7 +66,7 @@ export function milestones(jobs: Job[]): Milestone[] {
   const offers = jobs.filter((j) => j.status === 'Offer' || j.offerAmount != null).length;
   const streak = sprintStats(jobs, 0).streak;
   const m = (id: string, label: string, have: number, need: number): Milestone => ({ id, label, done: have >= need, progress: `${Math.min(have, need)}/${need}` });
-  return [m('first', 'First application sent', applied, 1), m('ten', '10 applications', applied, 10), m('tailor', '3 tailored applications', tailored, 3), m('streak', '5-day applying streak', streak, 5), m('int', 'First interview', interviews, 1), m('offer', 'First offer', offers, 1)];
+  return [m('first', 'First application sent', applied, 1), m('ten', '10 applications', applied, 10), m('tailor', '3 tailored applications', tailored, 3), m('streak', '5-day streak of applications sent', streak, 5), m('int', 'First interview', interviews, 1), m('offer', 'First offer', offers, 1)];
 }
 
 /** Job-description fingerprint (normalised word set) to spot the same posting added twice. */

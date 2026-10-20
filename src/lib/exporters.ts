@@ -9,7 +9,7 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 const stamp = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export function fileBase(profile: Profile, job: Job, kind: string) {
-  return `${slug(profile.name || 'me')}-${kind}-${slug(job.company)}-${stamp()}`;
+  return `${slug(profile.name || 'me')}-${kind}-${slug(job.title).slice(0, 24)}-${slug(job.company)}-${stamp()}`;
 }
 
 function save(blob: Blob, name: string) {
