@@ -242,3 +242,42 @@ Live launch check after the rename (`scripts/live-launch-check.mjs`):
 - Blue-collar persona E2E 16/16 Yes (3 NCR jobs with working links, 1 DSSSB govt notice, PDF/DOCX exports, feedback links; nothing sent).
 - Promise audit 40/44 Yes, 4 Partial, 0 No (same known limits: #14 GOOGLE_CLIENT_ID not set, #26 AI facts need human review, #33 follow-up row assertion, #43 in-memory rate limit). First run showed #25 as No only because the script expected a hard-coded 19 Oct file date; script now checks today's date (the app was right).
 - Console crawl of 10 pages: 0 console errors, 0 page errors, 0 failed requests; 11 links, 0 broken.
+
+## Launch hygiene checklist (section B), 20 Oct 2026
+
+Run by `scripts/hygiene-check.mjs` against production on main (29c794f). Result: **26 Yes, 3 Partial, 0 No, 1 user action**. Fixes: a2c0dbf (API origin check, size cap, per-IP AI rate limit, maxOutputTokens, server bundle not public, one title, noscript, manifest) and 29c794f (Delete everything stays empty after reload, double-click runs once, offline aborts with an error, 44px footer/header tap targets).
+
+| # | Item | Result | Evidence |
+|---|---|---|---|
+| H1 | AI traffic matches Privacy wording (own server function, then Google) | Yes | resume text went only to /api/ai/score-job (this app's function → Google Gemini, as Privacy says); direct third-party calls: 0 |
+| H2 | /privacy covers storage, AI, job provider, analytics, logs, delete; linked in footer | Yes | missing: none; footer links /feedback /about /terms /privacy /about |
+| H3 | "Delete everything" wipes localStorage, IndexedDB, cookies (after reload) | Yes | after reload: localStorage keys [], IndexedDB 0, cookies "" |
+| H4 | Export JSON works; data survives refresh | Yes | job-os-backup.json keys version,profile,jobs; jobs after refresh 1 |
+| H5 | No secrets in shipped JS; server bundle not public | Yes | 40 JS files scanned, matches: 0; /server.cjs → 404 |
+| H6 | AI route: key from env/user, origin check, size cap, per-IP rate limit, output cap | Partial | server key set: false (user's own key otherwise); bad Origin → 403; 250 KB body → 413; 36 rapid calls → 401 (in-memory per instance); maxOutputTokens 16384 |
+| H7 | CORS: no cross-origin access, no open proxy | Yes | job search from foreign Origin → 403; Access-Control-Allow-Origin: none; GET /api/ai/x → 405 |
+| H8 | One title in <title>/og/twitter (≤60), description ≤155, canonical, og:image absolute 1200x630 | Yes | "Job Acquisition OS: free job search, by Akash Sync Agent" (56); desc 150; og:image https://akash-sharma-job-acquisition-os.vercel.app/og.jpg (1200, 630); canonical https://akash-sharma-job-acquisition-os.vercel.app/ |
+| H9 | OG card matches current branding | Yes | og.jpg reads "JOB ACQUISITION OS · FREE JOB SEARCH WORKSPACE" + "Made by Akash Sync Agent" (checked visually 20 Oct) |
+| H10 | Real noscript content (h1 + description) | Yes | Job Acquisition OS: free job search workspace Find real job postings (from FreeHire, each linked to the original), score them against your r |
+| H11 | robots, sitemap (all public routes, live domain), JSON-LD without ratings | Yes | sitemap / /about /privacy /terms /feedback; robots Sitemap line; JSON-LD Organization+WebApplication, no ratings |
+| H12 | Search Console / Bing verification | User | placeholders in index.html, steps in docs/SEO_SETUP.md: Akash must verify with his Google/Microsoft account |
+| H13 | Preview cards (WhatsApp, LinkedIn, Facebook, X) | Partial | crawler UA gets 200 with og:title/og:image/twitter:card; the official debuggers (LinkedIn Post Inspector, Facebook Sharing Debugger) need Akash's login |
+| H14 | One product name: UI, meta, OG, README, manifest, emails | Yes | manifest "Job Acquisition OS", README, sidebar, title; "Momentum" only as the design-concept note; .eml has no product name in its headers (subject is the user's) |
+| H15 | Who built it: credit, feedback, About, licence/copyright | Yes | Job Acquisition OS · SHARE FEEDBACK · SHARE WITH A FRIEND · ABOUT · TERMS · PRIVACY & SECURITY · Made by Akash Sync Agent · © 2026 Akash Sync Agent (Adv. Akash Sharma) · Code under MIT licence; name a |
+| H16 | AI disclaimer near generated output | Yes | Tailor: "Rewrites use only the facts in your resume. Review everything before sending." + Fact check panel under each output; Outreach: "Send it yourself" |
+| H17 | Terms page + "powered by" attribution for job data | Yes | /terms 200; job cards badge "FreeHire · <source> · posted <date>"; About credits FreeHire (MIT) |
+| H18 | Source named, posting dates, originals open, stale flagged, empty/down states | Yes | drawer: source + posted date + "listings can be out of date" note; nonsense search → 200, 0 jobs (empty state handled); FreeHire is MIT, keyless public API (docs/FREEHIRE.md) |
+| H19 | Very long input: real error, no freeze | Yes | 413: The request is too large (365 KB). Shorten the resume or job text and try again. |
+| H20 | Offline mid-request shows an error, no freeze | Yes | shown: "You went offline, so the request was stopped. Check your connection and try again."; UI still responsive |
+| H21 | Double-click submits once | Yes | 1 request(s) from a double click |
+| H22 | Back button moves between pages | Yes | back from /about → landing h1 "Your nextofferstarts here." |
+| H23 | Slow 3G: page usable, no blank screen | Yes | h1 visible after 0.9 s on 400 ms / 500 kbps |
+| H24 | Random URL → 404; crash boundary; zero console errors | Yes | 404 page ok; crash boundary proven in dev (launch audit L17); console errors on 10 pages: 0 (the expected 404 on /nope-xyz excluded) |
+| H25 | favicon, apple-touch-icon, manifest, theme-color, html lang | Yes | icons 200,200,200,200; manifest icons 3 |
+| H26 | Security headers + HTTPS only | Yes | CSP (frame-ancestors none, upgrade-insecure-requests), HSTS, nosniff, Referrer-Policy; http:// → port 80 unreachable from this box; vercel.app is HSTS-preloaded so browsers never use http |
+| H27 | Public access without login | Yes | production 200 with no cookies; preview deployments still need Vercel login (user setting) |
+| H28 | No sideways scroll; tap targets ≥44px (or ≥24px with spacing); text ≥12px; file upload on phone | Partial | overflow 0px; small targets: overview Reset timer:32, jobs All:28, jobs Delivery ExecutiveAc:43, setup No resume? Short for:20, setup search jobs without :20; text <11px: 0; file input present |
+| H29 | Timezone: dates use the user's local day | Yes | UTC+14 browser: appliedAt 2026-10-21, local date 2026-10-21, UTC date 2026-10-20 |
+| H30 | Links: internal + external open; mailto and share links correct | Yes | 10 links checked; broken: none; mailto adv.akash2356@gmail.com and ?ref=share verified in persona E2E |
+
+Partials: H6 rate limit is in-memory per serverless instance (no shared store on the free tier). H13 official preview debuggers need Akash's login. H28 a few in-app text buttons are 20 to 32 px tall.
