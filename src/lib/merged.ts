@@ -29,6 +29,22 @@ export function factCheck(output: string, resume: string, jobText = ''): FactChe
   return { numbers: numbers.slice(0, 20), terms, cliches };
 }
 
+/** Removes every sentence that contains a number or name the fact check cannot find in the resume or the job post.
+ *  Returns the cleaned text and the removed sentences so the user can see (and restore by hand) what was cut. */
+export function stripUnsupported(text: string, resume: string, jobText = ''): { text: string; removed: string[] } {
+  if (!text) return { text, removed: [] };
+  const r = factCheck(text, resume, jobText);
+  const flags = [...r.numbers.map((n) => (n.match(/\d[\d,.]*/) || [n])[0].replace(/[.,]$/, '')), ...r.terms];
+  if (!flags.length) return { text, removed: [] };
+  const removed: string[] = [];
+  const out = text.split('\n').map((line) => {
+    if (/^\s*(dear|hi|hello|regards|best|sincerely|thank)/i.test(line)) return line;
+    const parts = line.match(/[^.!?]+[.!?]*\s*/g) || [line];
+    return parts.filter((p) => { const bad = flags.some((f) => p.includes(f)); if (bad && p.trim()) removed.push(p.trim()); return !bad; }).join('').trimEnd();
+  }).join('\n').replace(/\n{3,}/g, '\n\n');
+  return { text: out, removed };
+}
+
 const csvCell = (v: unknown) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 export function jobsCsv(jobs: Job[]) {
   const head = ['title', 'company', 'status', 'applied_at', 'added', 'url', 'source', 'posted', 'location', 'fit_score', 'fit_kind', 'govt_last_date', 'salary_min', 'salary_max', 'offer', 'interviews', 'notes'];

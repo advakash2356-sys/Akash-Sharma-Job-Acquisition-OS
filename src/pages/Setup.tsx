@@ -9,7 +9,7 @@ import { useAiReady } from '../lib/aiReady';
 import { callAi } from '../lib/api';
 import { boardLinks, GOVT_PORTALS } from '../lib/boards';
 import ManualProfile from '../components/ManualProfile';
-import { COUNTRY_NAMES, dedupeAgainst, deriveCountries, guessLocation, guessTitles, keywordFit, manualQuery, searchJobsApi, splitTitles, type FoundJob, type SearchQuery } from '../lib/jobSearch';
+import { COUNTRY_NAMES, dedupeAgainst, deriveCountries, guessLocation, guessTitles, keywordFit, locationAdjust, manualQuery, placeQuery, searchJobsApi, splitTitles, type FoundJob, type SearchQuery } from '../lib/jobSearch';
 import type { Job } from '../types';
 
 type St = 'idle' | 'running' | 'done' | 'error' | 'skipped';
@@ -33,6 +33,8 @@ export default function Setup() {
   const [err, setErr] = useState('');
   const [errStage, setErrStage] = useState('');
   const [note, setNote] = useState('');
+  const [remoteOk, setRemoteOk] = useState(false);
+  const [added, setAdded] = useState(-1);
   const [summary, setSummary] = useState('');
   const [links, setLinks] = useState<{ label: string; url: string }[]>([]);
   const [titlesIn, setTitlesIn] = useState('');
@@ -71,7 +73,7 @@ export default function Setup() {
       set('research', 'done'); set('fill', 'done'); if (!q.govt) showLinks(titles, location);
       setNote(`FreeHire found no open postings for ${titles.map((t) => `"${t}"`).join(', ')}. Change the titles below and search again, or use the job-board links.`);
       setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
-      setSummary('No postings added.');
+      setSummary('No postings added.'); setAdded(0);
       return;
     }
     set('research', 'done'); set('fill', 'running');
@@ -99,7 +101,9 @@ export default function Setup() {
     if (aiNote) msgs.push(aiNote);
     const now = today();
     const jobs: Job[] = fresh.map((j: FoundJob, i: number) => {
-      const fit = fits.get(j.id) || { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const };
+      const base = fits.get(j.id) || { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const };
+      const la = locationAdjust(j.location, q);
+      const fit = { ...base, score: Math.max(0, Math.min(100, base.score + la.delta)), summary: `${base.summary} Location: ${j.location || 'not stated'} (${la.label}${la.delta ? `, ${la.delta}` : ''}).` };
       return {
         id: `fh-${Date.now()}-${i}`, title: j.title, company: j.company, url: j.url,
         description: j.description || `${j.title} at ${j.company}. ${j.location}`,
@@ -111,13 +115,14 @@ export default function Setup() {
     setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
     set('fill', 'done');
     setNote(msgs.join(' '));
+    setAdded(jobs.length);
     setSummary(`${jobs.length} real postings added to Jobs (of ${r.total} FreeHire matches${r.cached ? ', cached' : ''}), best fit first.`);
   }
 
   async function run(mode0: 'ai' | 'skip' | 'manual') {
     if (running.current) return;
     const mode = profile.manual ? 'manual' : mode0;
-    running.current = true; setErr(''); setErrStage(''); setNote(''); setSummary(''); setLinks([]);
+    running.current = true; setAdded(-1); setErr(''); setErrStage(''); setNote(''); setSummary(''); setLinks([]);
     const c = new AbortController(); ctl.current = c;
     setSt(mode !== 'ai' ? { parse: 'skipped', research: 'idle', fill: 'idle' } : { ...initial, parse: 'idle' });
     let stage = 'parse'; let titles = splitTitles(titlesIn); let loc = locIn;
@@ -138,7 +143,7 @@ export default function Setup() {
           set('parse', 'skipped'); stage = 'research';
           titles = g; if (!loc) loc = guessLocation(profile.resumeText);
           setProfile((cur) => ({ ...cur, targetRoles: fill(cur.targetRoles, titles.join(', ')), location: fill(cur.location, loc) }));
-          await searchAndAdd({ titles, countries: deriveCountries(loc), remote: true }, loc, false, c.signal);
+          await searchAndAdd(placeQuery(titles, loc, remoteOk), loc, false, c.signal);
           setNote((n) => `Gemini could not read the resume (${String(e.message).slice(0, 160)}), so titles were taken from the resume text. ${n}`);
           return;
         }
@@ -160,7 +165,7 @@ export default function Setup() {
         setProfile((cur) => ({ ...cur, targetRoles: fill(cur.targetRoles, titles.join(', ')), location: fill(cur.location, loc) }));
       }
       stage = 'research';
-      await searchAndAdd({ titles, countries: deriveCountries(loc), remote: true }, loc, mode === 'ai', c.signal);
+      await searchAndAdd(placeQuery(titles, loc, remoteOk), loc, mode === 'ai', c.signal);
     } catch (e: any) {
       const cancelled = e.code === 'CANCELLED';
       setSt((x) => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v === 'running' ? (cancelled ? 'idle' : 'error') : v])) as Record<string, St>);
@@ -213,12 +218,14 @@ export default function Setup() {
           {err && <p role="alert" className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm text-danger">{err}{errStage === 'parse' && ' You can continue without AI: FreeHire job search does not need Gemini.'}</p>}
           {note && <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm">{note}</p>}
           {links.length > 0 && <div className="mt-3 text-sm"><p className="mb-1 text-muted-foreground">Real job-board searches (not postings), open them yourself:</p><div className="flex flex-wrap gap-2">{links.map((l) => <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="rounded-full border border-border px-3 py-1 underline">{l.label}</a>)}</div></div>}
+          {added === 0 && <p className="mt-3 rounded-lg border border-border px-3 py-2 text-sm" data-testid="zero-jobs">No matching postings right now. Try a broader or English title (for example "Delivery Driver" instead of a full sentence), check the location, tick "Also include remote jobs" below, or open the job-board links above. Then press Run again.</p>}
           {summary && <p role="status" className="mt-3 text-sm font-medium">{summary} Everything above is editable on My resume.</p>}
 
           {step1 && !profile.manual && (
             <div className="mt-4 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
               <div><Label htmlFor="st">Job titles to search</Label><Input id="st" value={titlesIn} onChange={(e) => { edited.current = true; setTitlesIn(e.target.value); }} placeholder="e.g. Contract Manager, Legal Operations" /></div>
               <div><Label htmlFor="sl">Location</Label><Input id="sl" value={locIn} onChange={(e) => { edited.current = true; setLocIn(e.target.value); }} placeholder="e.g. Bengaluru, India" /></div>
+              <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={remoteOk} onChange={(e) => setRemoteOk(e.target.checked)} className="h-4 w-4" /> Also include remote jobs open worldwide (otherwise only jobs in your country)</label>
               <p className="text-xs text-muted-foreground sm:col-span-2">Only these titles, the country and a remote flag go to FreeHire. Never your resume text. Suggested from your resume text, edit freely.</p>
             </div>
           )}
@@ -226,7 +233,7 @@ export default function Setup() {
             {busy && <Button variant="outline" onClick={() => ctl.current?.abort()}><XCircle size={15} /> Cancel</Button>}
             {step1 && (step2 || profile.manual) && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run('ai')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
             {step1 && !busy && !profile.manual && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
-            {(st.fill === 'done' || (profile.setupDone && allJobs.length > 0)) && <Button onClick={() => go('jobs')}>Next: review matched jobs</Button>}
+            {allJobs.length > 0 && added !== 0 && (st.fill === 'done' || profile.setupDone) && <Button onClick={() => go('jobs')}>Next: review matched jobs</Button>}
             {st.parse === 'done' && <Button variant="outline" onClick={() => go('resume')}>Review my profile</Button>}
           </div>
         </Card></li>

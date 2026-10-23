@@ -3,6 +3,7 @@ import { callAi, AiError } from './api';
 import { normalise, resumeText } from './resumeDoc';
 import { useApp } from './state';
 import type { Job } from '../types';
+import { stripUnsupported } from './merged';
 
 export type DocKind = 'resume' | 'cover' | 'outreach';
 export const DOC_LABEL: Record<DocKind, string> = { resume: 'Tailored resume', cover: 'Cover letter', outreach: 'Outreach messages' };
@@ -43,8 +44,17 @@ export function usePack(job: Job | undefined) {
         const doc = typeof r === 'string' ? null : normalise(r);
         if (typeof r !== 'string' && !doc) throw new AiError('The AI returned a resume in an unexpected shape. Try again.', 'EMPTY');
         patch = doc ? { tailoredResumeDoc: doc, tailoredResume: resumeText(doc) } : { tailoredResume: r };
-      } else if (kind === 'cover') patch = { coverLetter: String(r) };
-      else patch = { outreach: r };
+      } else {
+        // Auto-remove claims the fact check cannot find in the resume or job post; keep a list so the user sees what was cut.
+        const src = `${job.company} ${job.title}`;
+        const cut = (t: string) => stripUnsupported(String(t || ''), `${profile.resumeText} ${profile.name}`, `${job.description} ${src}`);
+        if (kind === 'cover') { const c = cut(r); patch = { coverLetter: c.text, removedClaims: { ...job.removedClaims, cover: c.removed } }; }
+        else {
+          const o: any = { ...r }; const rm: string[] = [];
+          for (const k of ['emailBody', 'linkedinMessage', 'followUp']) { const c = cut(o[k]); o[k] = c.text; rm.push(...c.removed); }
+          patch = { outreach: o, removedClaims: { ...job.removedClaims, outreach: rm } };
+        }
+      }
       setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, ...patch, docsAt: { ...j.docsAt, [kind]: at } } : j)));
       return true;
     } catch (e) {
@@ -53,7 +63,12 @@ export function usePack(job: Job | undefined) {
     } finally { inflight.current.delete(kind); setBusy((b) => ({ ...b, [kind]: false })); }
   }
   /** "Approve & generate all": the three requests run one after another (gentler on free-tier limits). */
-  async function all() { for (const k of ['resume', 'cover', 'outreach'] as DocKind[]) await one(k); }
+  const allRunning = useRef(false);
+  async function all() {
+    if (allRunning.current) return; // a second press before the button disables must not start a second run
+    allRunning.current = true;
+    try { for (const k of ['resume', 'cover', 'outreach'] as DocKind[]) await one(k); } finally { allRunning.current = false; }
+  }
   const any = Object.values(busy).some(Boolean);
   return { one, all, busy, errors, any };
 }

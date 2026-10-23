@@ -85,6 +85,8 @@ export interface Job {
   /** When each document for this job was generated and downloaded (ISO). Labels and the guided flow read this. */
   docsAt?: { resume?: string; cover?: string; outreach?: string; downloaded?: string };
   coverLetter?: string;
+  /** Sentences auto-removed from AI drafts because the fact check could not find them in the resume or job post. */
+  removedClaims?: { cover?: string[]; outreach?: string[] };
   outreach?: { emailSubject: string; emailBody: string; linkedinMessage: string; followUp: string };
   interviews: Interview[];
   source?: string;

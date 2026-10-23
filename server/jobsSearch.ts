@@ -43,14 +43,65 @@ export function rateLimit(client: string) {
 
 const clean = (s: unknown, n: number) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
+/** Common Hindi (Devanagari) job words mapped to the English titles FreeHire indexes. Unknown Devanagari words are dropped. */
+const HINDI: [RegExp, string][] = [
+  [/ड्राइवर|चालक|ड्राईवर/g, "Driver"], [/डिलीवरी|डिलिवरी/g, "Delivery"], [/गोदाम|वेयरहाउस|वेयर हाउस/g, "Warehouse"], [/हेल्पर|सहायक/g, "Helper"],
+  [/सुरक्षा गार्ड|गार्ड|चौकीदार/g, "Security Guard"], [/रसोइया|कुक|बावर्ची/g, "Cook"], [/इलेक्ट्रीशियन|बिजली मिस्त्री/g, "Electrician"], [/प्लंबर/g, "Plumber"],
+  [/शिक्षक|अध्यापक|टीचर/g, "Teacher"], [/नर्स/g, "Nurse"], [/लेखाकार|अकाउंटेंट/g, "Accountant"], [/सेल्स|बिक्री/g, "Sales"], [/कार्यकारी|एग्जीक्यूटिव/g, "Executive"],
+  [/ऑपरेटर/g, "Operator"], [/मैकेनिक|मिस्त्री/g, "Mechanic"], [/दर्जी|टेलर/g, "Tailor"], [/सफाई कर्मचारी|सफाई/g, "Housekeeping"], [/क्लर्क|लिपिक/g, "Clerk"],
+  [/रिसेप्शनिस्ट/g, "Receptionist"], [/कंप्यूटर ऑपरेटर/g, "Computer Operator"], [/डेटा एंट्री/g, "Data Entry"], [/पैकर|पैकिंग/g, "Packer"], [/लोडर/g, "Loader"],
+  [/वकील|अधिवक्ता/g, "Lawyer"], [/कानूनी/g, "Legal"], [/प्रबंधक|मैनेजर/g, "Manager"], [/वेल्डर/g, "Welder"], [/फिटर/g, "Fitter"], [/कारपेंटर|बढ़ई/g, "Carpenter"],
+];
+export function englishTitle(t: string): string {
+  if (!/[\u0900-\u097F]/.test(t)) return t;
+  let out = t; for (const [re, en] of HINDI) out = out.replace(re, ` ${en} `);
+  return out.replace(/[\u0900-\u097F]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** US states (so "Sellersburg, IN" is Indiana, not India). */
+const US_STATES = new Set("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split(" "));
+const US_NAMES = /\b(united states|usa|u\.s\.|alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
+const IN_PLACES = /\b(india|delhi|new delhi|ncr|gurugram|gurgaon|noida|ghaziabad|faridabad|bengaluru|bangalore|mumbai|navi mumbai|thane|hyderabad|chennai|pune|kolkata|ahmedabad|jaipur|kochi|lucknow|chandigarh|indore|bhopal|nagpur|surat|vadodara|coimbatore|visakhapatnam|patna|bhubaneswar|mohali|kanpur|ludhiana|mysuru|mysore|trivandrum|thiruvananthapuram|goa|haryana|karnataka|maharashtra|tamil nadu|telangana|uttar pradesh|west bengal|gujarat|rajasthan|kerala|punjab)\b/i;
+const OTHER: [RegExp, string][] = [[/\b(united kingdom|england|scotland|london|manchester|uk)\b/i, "GB"], [/\b(canada|toronto|vancouver|ontario)\b/i, "CA"], [/\b(germany|berlin|munich)\b/i, "DE"], [/\bsingapore\b/i, "SG"], [/\b(uae|dubai|abu dhabi)\b/i, "AE"], [/\b(australia|sydney|melbourne)\b/i, "AU"], [/\b(philippines|manila)\b/i, "PH"], [/\b(pakistan|karachi|lahore)\b/i, "PK"], [/\b(netherlands|amsterdam)\b/i, "NL"], [/\b(ireland|dublin)\b/i, "IE"], [/\b(france|paris)\b/i, "FR"], [/\b(poland|warsaw)\b/i, "PL"], [/\b(mexico)\b/i, "MX"], [/\b(brazil)\b/i, "BR"], [/\b(spain|madrid)\b/i, "ES"]];
+/** Countries a posting is in, from FreeHire's country list plus the location text. Empty = not stated (e.g. "Remote"). */
+export function jobCountries(location: string, codes: string[] = []): string[] {
+  const loc = location || "";
+  const foreign = new Set<string>();
+  for (const part of loc.split(/[;|/]/)) {
+    const bits = part.split(",").map((x) => x.trim()).filter(Boolean);
+    // "Sellersburg, IN", "IN, US", "AL, GA, IN, TX": US state codes, not India.
+    if (bits.some((x) => /^[A-Z]{2}$/.test(x) && US_STATES.has(x) && x !== "IN") || (bits.length > 1 && /^IN$/.test(bits[bits.length - 1]) && !IN_PLACES.test(part)) || bits.some((x) => /^(US|USA|us|usa)$/.test(x))) foreign.add("US");
+  }
+  if (US_NAMES.test(loc.replace(/\bnew delhi\b/gi, "")) || /\b(US|USA|U\.S\.A?\.?)\b/.test(loc)) foreign.add("US");
+  for (const [re, c] of OTHER) if (re.test(loc)) foreign.add(c);
+  const explicitIndia = /\bindia\b|\bIND\b/i.test(loc.replace(/indiana/gi, ""));
+  const out = new Set<string>(foreign);
+  // FreeHire sometimes reads the Indiana code "IN" as India; trust its IN only when nothing points abroad.
+  for (const c of codes.map((x) => (x === "UK" ? "GB" : x))) if (c !== "IN" || !foreign.size || explicitIndia) out.add(c);
+  if (explicitIndia || (IN_PLACES.test(loc) && !foreign.size)) out.add("IN");
+  if (foreign.size && !explicitIndia) out.delete("IN");
+  return [...out];
+}
+/** Keep only postings in the user's country. A posting with no country stated is kept only when the user asked for remote roles and it says remote/worldwide. */
+export function placeOk(location: string, codes: string[], workMode: string, countries: string[], remote: boolean): boolean {
+  if (!countries.length) return remote;
+  // Zip codes or US state codes anywhere ("TX - KAO Logistics", "VA-Richmond", "IN 46552") mean the US.
+  if (!countries.includes("US") && (/\b\d{5}(-\d{4})?\b/.test(location) && !/india/i.test(location) || (location.match(/\b[A-Z]{2}\b/g) || []).some((x) => US_STATES.has(x) && x !== "IN") || /^[A-Z]{2}-/.test(location))) return false;
+  // India: the location text itself must name India or an Indian place; FreeHire's country code alone is not enough.
+  if (countries.length === 1 && countries[0] === "IN" && !IN_PLACES.test(location) && !/\bIND\b/.test(location)) return remote && /remote|anywhere|worldwide|global|apac|asia/i.test(location) && !jobCountries(location, []).length;
+  const cs = jobCountries(location, codes);
+  if (cs.length) return cs.some((c) => countries.includes(c));
+  return remote && (/remote|anywhere|worldwide|global|apac|asia/i.test(location) || /remote/i.test(workMode));
+}
+
 export type Education = "8" | "10" | "12" | "iti" | "diploma" | "graduate" | "";
 export function parseInput(body: any) {
-  const titles = [...new Set((Array.isArray(body?.titles) ? body.titles : []).map((t: unknown) => clean(t, 80)).filter((t: string) => t.length >= 2))].slice(0, MAX_TITLES) as string[];
+  const titles = [...new Set((Array.isArray(body?.titles) ? body.titles : []).map((t: unknown) => englishTitle(clean(t, 80))).filter((t: string) => t.length >= 2))].slice(0, MAX_TITLES) as string[];
   const govt = body?.govt === true;
   if (!titles.length && !govt) throw new ApiError(400, "Add at least one target job title to search for.", "BAD_INPUT");
   const countries = [...new Set((Array.isArray(body?.countries) ? body.countries : []).map((c: unknown) => String(c).toUpperCase()).filter((c: string) => /^[A-Z]{2}$/.test(c)))].slice(0, 3) as string[];
   const cities = [...new Set((Array.isArray(body?.cities) ? body.cities : []).map((c: unknown) => clean(c, 40)).filter((c: string) => /^[A-Za-z .'-]{2,40}$/.test(c)))].slice(0, 8) as string[];
-  const remote = body?.remote !== false;
+  const remote = body?.remote === true; // remote/abroad only when the user opts in
   if (!countries.length && !cities.length && !remote && !govt) throw new ApiError(400, "Pick a place or include remote roles.", "BAD_INPUT");
   const entryLevel = body?.entryLevel === true;
   const education = (["8", "10", "12", "iti", "diploma", "graduate"].includes(String(body?.education)) ? String(body.education) : "") as Education;
@@ -61,15 +112,27 @@ const STOP = new Set(["and", "the", "for", "with", "job", "jobs"]);
 const SENIOR = /\b(managers?|engineers?|analysts?|developers?|architects?|directors?|head|lead|principal|consultants?|scientists?|vp|president|specialists?|software|programmers?|designers?|migrations?)\b/i;
 /** Every word of one searched title must start a word in the posting title. Cuts FreeHire's loose stemmed matches. */
 export function titleRelevant(jobTitle: string, titles: string[], entryLevel: boolean) {
-  const jt = jobTitle.toLowerCase();
+  const words = jobTitle.toLowerCase().split(/[^a-z0-9+#]+/).filter(Boolean);
+  const at = (t: string, from: number) => { for (let i = from; i < words.length; i++) if (words[i].startsWith(t)) return i; return -1; };
   return titles.some((q) => {
     const toks = q.toLowerCase().split(/[^a-z0-9+#]+/).filter((t) => t.length >= 3 && !STOP.has(t));
-    if (!toks.length || !toks.every((t) => new RegExp(`\\b${t.replace(/[+#]/g, "\\$&")}`).test(jt))) return false;
+    if (!toks.length) return false;
+    // Words in the searched order, close together ("Contract Analyst" no longer matches "Paralegal Analyst - Contract Data ...").
+    const ordered = (ts: string[], start = 0) => { let i = at(ts[0], start); if (i < 0) return false; const first = i; for (const t of ts.slice(1)) { i = at(t, i + 1); if (i < 0) return false; } return i - first <= ts.length + 1; };
+    let ok = ordered(toks);
+    // "Manager - Legal Operations" form: head noun first, then a qualifier of 2+ words.
+    if (!ok && toks.length >= 3) { const h = at(toks[toks.length - 1], 0); ok = h >= 0 && ordered(toks.slice(0, -1), h + 1); }
+    if (!ok) return false;
+    // Head noun of the search must be the role, not a modifier: "Driver" does not match "Driver Development Engineer".
+    const seg = jobTitle.toLowerCase().split(/\s[-–|(]\s?|,|\//)[0] || "";
+    const sw = seg.split(/[^a-z0-9+#]+/).filter(Boolean); const hi = sw.findIndex((w) => w.startsWith(toks[toks.length - 1]));
+    if (hi >= 0 && sw.slice(hi + 1).some((w) => ROLE.test(w) && !q.toLowerCase().includes(w))) return false;
     if (entryLevel) { const m = jobTitle.match(SENIOR); if (m && !q.toLowerCase().includes(m[1].toLowerCase())) return false; }
     return true;
   });
 }
 
+const ROLE = /^(engineers?|developers?|managers?|analysts?|controllers?|specialists?|officers?|executives?|consultants?|designers?|architects?|scientists?|technicians?|assistance|projects?|programs?|leads?|directors?|coordinators?|associates?|systems?|software)$/;
 const GOV_URL = /https?:\/\/[^\s"'<>)]*\.(?:gov|nic)\.in[^\s"'<>)]*/gi;
 const ELIGIBLE: Record<string, RegExp> = {
   "8": /\b(8th|10th|12th|matric|class (?:viii|x|xii)|any qualification|intermediate)\b/i,
@@ -144,6 +207,7 @@ export async function searchJobs(body: any): Promise<SearchOut> {
   for (const t of titles) {
     const base = { q: t.includes(" ") ? `"${t}"` : t, q_fields: "title", limit: String(PER_TITLE) };
     if (place) reqs.push({ label: `"${t}" in ${(cities.length ? cities : countries).join("/")}`, params: { ...base, ...place } });
+    if (cities.length && countries.length) reqs.push({ label: `"${t}" in ${countries.join("/")}`, params: { ...base, countries: countries.join(",") } });
     if (remote) reqs.push({ label: `"${t}" remote (global/APAC)`, params: { ...base, work_mode: "remote", regions: "global,apac" } });
   }
   if (govt) {
@@ -166,11 +230,7 @@ export async function searchJobs(body: any): Promise<SearchOut> {
         j.official = g; j.url = g.url; j.description = clean(stripHtml(String(raw.description || "")), 1800);
       } else {
         if (!titleRelevant(j.title, titles, entryLevel)) continue;
-        if (countries.length && j.countryCodes?.length && !j.countryCodes.some((c) => countries.includes(c))) continue;
-        if (!remote && cities.length && !cities.some((c) => j.location.toLowerCase().includes(c.toLowerCase()))) continue;
-        if (countries.includes("IN") && !/india/i.test(j.location) && /united states|usa|canada|united kingdom|australia|, (us|uk|ca|au)$/i.test(j.location)) continue;
-        const tail = j.location.split(",").pop()!.trim().toLowerCase();
-        if (countries.length && /^[a-z]{2}$/.test(tail) && !countries.map((c) => c.toLowerCase()).includes(tail)) continue;
+        if (!placeOk(j.location, j.countryCodes || [], j.workMode, countries, remote)) continue;
         if (j.postedAt && Date.now() - Date.parse(j.postedAt) > MAX_AGE_DAYS * 86400000) continue;
       }
       const s = `${j.title}|${j.company}|${j.location}`.toLowerCase();

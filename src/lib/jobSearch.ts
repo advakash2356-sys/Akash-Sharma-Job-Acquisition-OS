@@ -57,6 +57,23 @@ export function manualQuery(p: { workPrefs?: string[]; location: string; educati
   return { titles, countries, cities: isNcr(p.location) ? NCR : p.location ? [p.location.split(',')[0].trim()] : [], remote: false, entryLevel: true, govt: !!p.wantsGovt, education: p.education || '' };
 }
 
+/** Search scope from the user's location: their city (all of NCR for Delhi-area places) plus the rest of their country.
+ *  Defaults to India. Other countries are searched only through the opt-in remote flag. */
+export function placeQuery(titles: string[], location: string, remote: boolean): SearchQuery {
+  const countries = deriveCountries(location).length ? deriveCountries(location) : ['IN'];
+  const city = (location || '').split(',')[0].trim();
+  const cities = isNcr(location) ? NCR : city && !/^(india|remote)$/i.test(city) && /^[A-Za-z .'-]{2,40}$/.test(city) ? [city] : [];
+  return { titles, countries, cities, remote };
+}
+
+/** Location part of the fit: 0 in the user's city/NCR, -10 elsewhere in their country, -15 remote/unstated. */
+export function locationAdjust(jobLocation: string, q: SearchQuery): { delta: number; label: string } {
+  const l = (jobLocation || '').toLowerCase();
+  if (q.cities?.some((c) => l.includes(c.toLowerCase()))) return { delta: 0, label: `in ${q.cities.length > 2 ? 'your area' : q.cities[0]}` };
+  if (q.countries.includes('IN') && /india|delhi|mumbai|bengaluru|bangalore|hyderabad|chennai|pune|kolkata|noida|gurugram|gurgaon|ahmedabad|jaipur|kochi|haryana|karnataka|maharashtra|tamil nadu|telangana|uttar pradesh/.test(l)) return { delta: -10, label: 'elsewhere in India' };
+  return { delta: -15, label: 'remote / location not stated' };
+}
+
 /** Plain keyword overlap between the resume and the posting text. No AI. */
 export function keywordFit(resume: string, j: FoundJob) {
   const text = `${j.title} ${j.skills.join(' ')} ${j.description}`;

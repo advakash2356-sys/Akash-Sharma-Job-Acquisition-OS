@@ -64,6 +64,13 @@ export default function DocsPanel({ job }: { job: Job }) {
         {has[k] && <CopyButton text={text} />}
       </div>
       <div className="mt-2 empty:hidden"><AiError_ error={pack.errors[k] || null} go={go} /></div>
+      {has[k] && k !== 'resume' && (job.removedClaims?.[k as 'cover' | 'outreach']?.length || 0) > 0 && (
+        <details className="mt-2 rounded-lg border border-gold/40 bg-muted/50 p-3 text-sm" data-testid={`removed-${k}`}>
+          <summary className="cursor-pointer font-medium">Removed {job.removedClaims![k as 'cover' | 'outreach']!.length} sentence(s) not backed by your resume or the job post</summary>
+          <ul className="mt-2 list-disc pl-5 text-muted-foreground">{job.removedClaims![k as 'cover' | 'outreach']!.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          <p className="mt-1 text-xs">If any of these is true, add it to your resume and regenerate, or edit the copied text yourself.</p>
+        </details>
+      )}
       {has[k] && open === k && <div className="mt-3"><FactCheckPanel text={k === 'resume' ? text.split('\n').filter((l) => !/^[A-Z][A-Z &]+$/.test(l.trim())).join('\n') : text} resume={resumeSrc} jobText={jobText} /><div className="mt-3">{body}</div></div>}
     </div>
   );
