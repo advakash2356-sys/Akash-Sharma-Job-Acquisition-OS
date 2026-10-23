@@ -25,11 +25,11 @@ function ShareButton({ className }: { className: string }) {
 
 const STEPS = [
   ['01', 'Bring your resume', 'Upload a PDF, DOCX or TXT, or fill a short Hindi/English form if you have none. Saved in your browser.'],
-  ['02', 'Find real jobs', 'Real postings from FreeHire with the original link, plus government notices with an official link and a future last date. Verify before you apply.'],
+  ['02', 'Find real jobs', 'Real postings from FreeHire, Himalayas and Remote OK with the original link, filtered by where you can work, plus government notices with an official link and a future last date. Verify before you apply.'],
   ['03', 'Score the role', 'A fit score with strengths, gaps and missing keywords (AI with your free Gemini key, otherwise a labelled keyword match).'],
   ['04', 'Tailor and reach out', 'Resume, cover letter and outreach drafts from your resume only, with a fact check. You read and send them yourself.'],
-  ['05', 'Face the screen', 'A simulated recruiter read, plus interview prep for every round.'],
-  ['06', 'Land the offer', 'Follow-up reminders for your calendar, pay you log on each job, and your weekly pace.'],
+  ['05', 'Face the screen', 'A simulated recruiter read, prep for each round (recruiter, hiring manager, technical, final, salary) and a mock interview with feedback.'],
+  ['06', 'Land the offer', 'Track each stage to the offer, with next actions, reminders for your calendar, pay you log on each job, and your weekly pace.'],
 ];
 
 export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; toggleTheme: () => void; enter: () => void }) {
@@ -172,7 +172,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           <Tile cls="md:col-span-2" icon={<ScanSearch />} title="Recruiter's 6-second read" body="A simulated shortlist read, plus a keyword match against the job description." />
           <Tile cls="md:col-span-1" icon={<TrendingUp />} title="Pay charts" body="Pay you log on jobs, against your minimum." />
           <Tile cls="md:col-span-2" icon={<Mail />} title="Outreach & templates" body="Open in Gmail or download .eml. You always press send." />
-          <Tile cls="md:col-span-2" icon={<Route />} title="Interview prep" body="Likely questions, answer outlines and what to ask." />
+          <Tile cls="md:col-span-2" icon={<Route />} title="Interview prep" body="Per round: likely questions, STAR drafts from your resume, red flags, questions to ask, and a mock interview." />
           <Tile cls="md:col-span-2" icon={<Download />} title="Weekly report" body="Your week of applications, as a PDF." />
         </div>
       </section>
@@ -182,7 +182,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         <img src="/desk-offer.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
         <div className="relative mx-auto max-w-5xl text-center">
           <Lock className="reveal mx-auto mb-5 text-[#ff6a2b]" />
-          <h2 className="display reveal text-[clamp(2.6rem,8vw,7rem)] leading-[0.92]">Your data lives in <span className="italic text-[#ff6a2b]">your browser.</span></h2>
+          <h2 className="display reveal text-[clamp(2.6rem,8vw,7rem)] leading-[0.92]">Your resume lives in <span className="italic text-[#ff6a2b]">your browser.</span></h2>
           <p className="reveal mx-auto mt-6 max-w-xl text-white/70">Your resume, jobs and API key are saved in this browser's local storage, not in our database. When you use an AI feature, the text it needs goes through this app to Google Gemini for that request. If you sign in, your name, email and visit dates are kept in the owner's private Google Sheet (see Privacy). Export a backup any time.</p>
           <button onClick={enter} className="reveal mt-10 inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-8 py-4 text-lg font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight /></button>
         </div>
