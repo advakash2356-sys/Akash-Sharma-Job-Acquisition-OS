@@ -1,4 +1,4 @@
-import { AiError, fetchLimited, type CallOpts } from './api';
+import { AiError, authedFetch, fetchLimited, type CallOpts } from './api';
 import { keywordGap } from './insights';
 import type { Profile } from '../types';
 import { inferCandidate, type Candidate, type Decision, type WorkMode } from './eligibility';
@@ -25,7 +25,7 @@ export interface SearchQuery { titles: string[]; countries: string[]; cities?: s
 
 /** Sends only job titles, places, and the flags above to /api/jobs/search. Never resume text, name, age or contact details. */
 export async function searchJobsApi(q: SearchQuery, opts: CallOpts = {}): Promise<SearchResult> {
-  const res = await fetchLimited('/api/jobs/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(q) }, { timeoutMs: 30000, ...opts }, 'The job search');
+  const res = await authedFetch('/api/jobs/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(q) }, { timeoutMs: 30000, ...opts }, 'The job search');
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new AiError(data.error || `Job search failed (${res.status}).`, data.code);
   return data.result as SearchResult;

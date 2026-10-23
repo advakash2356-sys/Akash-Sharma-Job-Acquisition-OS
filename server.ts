@@ -1,3 +1,4 @@
+import { requireUser } from "./server/requireUser.js";
 import { adminCheck, adminData, adminSaveConfig } from "./server/admin.js";
 import { funnelEvent } from "./server/events.js";
 import { googleClientId, signIn, visit } from "./server/users.js";
@@ -50,7 +51,7 @@ async function startServer() {
   app.all("/api/comments", (req, res) => commentsHandler(req, res));
   app.post("/api/jobs/search", async (req, res) => {
     try {
-      checkOrigin(req.headers); checkBody(req.body);
+      checkOrigin(req.headers); await requireUser(req.headers); checkBody(req.body);
       rateLimit(String(req.headers["x-forwarded-for"] || req.ip || "anon").split(",")[0].trim());
       res.json({ result: await searchJobs(req.body || {}) });
     } catch (e: any) {
@@ -59,7 +60,7 @@ async function startServer() {
   });
   app.post("/api/ai/:action", async (req, res) => {
     try {
-      checkOrigin(req.headers); checkBody(req.body); aiRateLimit(clientIp(req.headers, req.ip));
+      checkOrigin(req.headers); await requireUser(req.headers); checkBody(req.body); aiRateLimit(clientIp(req.headers, req.ip));
       res.json(await handleAction(req.params.action, req.body || {}, keyFromHeaders(req.headers)));
     } catch (e: any) {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });

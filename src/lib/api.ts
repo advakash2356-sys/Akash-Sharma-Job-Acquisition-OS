@@ -1,4 +1,5 @@
 import { getUserApiKey } from './userApiKey';
+import { getIdToken, refreshIdToken, requestReauth } from './googleAuth';
 
 export class AiError extends Error {
   constructor(message: string, public code?: string) { super(message); }
@@ -28,11 +29,24 @@ export async function fetchLimited(url: string, init: RequestInit, opts: CallOpt
   } finally { clearTimeout(timer); opts.signal?.removeEventListener('abort', onAbort); window.removeEventListener('offline', onOffline); }
 }
 
+/** App API call with the Google ID token. On 401: refresh silently and retry once; if that fails, ask the user to sign in
+ *  again in a dialog (the page and any typed work stay as they are), then retry. */
+export async function authedFetch(url: string, init: RequestInit, opts: CallOpts = {}, what = 'The request'): Promise<Response> {
+  const go = (t: string) => fetchLimited(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...(t ? { Authorization: `Bearer ${t}` } : {}) } }, opts, what);
+  let res = await go(await getIdToken());
+  if (res.status !== 401) return res;
+  const t = await refreshIdToken();
+  if (t) { res = await go(t); if (res.status !== 401) return res; }
+  let t2 = '';
+  try { t2 = await requestReauth(); } catch { throw new AiError('Please sign in again to continue. Your work on this page is kept.', 'AUTH_REQUIRED'); }
+  return go(t2);
+}
+
 export async function callAi<T = any>(action: string, body: Record<string, unknown>, opts: CallOpts = {}): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const key = getUserApiKey();
   if (key) headers['x-user-gemini-key'] = key;
-  const res = await fetchLimited(`/api/ai/${action}`, { method: 'POST', headers, body: JSON.stringify(body) }, opts, 'The AI request');
+  const res = await authedFetch(`/api/ai/${action}`, { method: 'POST', headers, body: JSON.stringify(body) }, opts, 'The AI request');
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new AiError(data.error || (res.status === 504 ? 'The server timed out waiting for Google.' : `Request failed (${res.status}).`), data.code);
   return data.result as T;

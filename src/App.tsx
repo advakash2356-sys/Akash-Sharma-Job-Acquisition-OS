@@ -4,6 +4,7 @@ import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
 import { funnel, getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
 import SignInGate, { SignInUnavailable } from './components/SignInGate';
+import ReauthPrompt from './components/ReauthPrompt';
 import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
 import { setKeyNamespace } from './lib/userApiKey';
 import { useLocalState } from './lib/useLocalState';
@@ -158,6 +159,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   return (
     <Ctx.Provider value={{ profile, setProfile, jobs, setJobs, page, go, selectedJobId, hasResume, user }}>
       <div className="app-bg" aria-hidden="true" />
+      <ReauthPrompt />
       <div className="min-h-screen lg:grid lg:grid-cols-[270px_1fr]">
         <aside className="sticky top-0 hidden h-screen p-4 lg:block"><div className="glass h-full overflow-hidden rounded-[28px]">{sidebar}</div></aside>
 
