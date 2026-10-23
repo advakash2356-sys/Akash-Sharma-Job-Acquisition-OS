@@ -44,7 +44,7 @@ export default function Privacy() {
           <p><b>No guarantee:</b> we take reasonable care, but no website, host or Google service can be guaranteed secure or always available. Avoid pasting anything you would not want processed this way.</p>
         </Item>
         <Item t="Your API key">
-          <p>Your Gemini key is stored only in this browser (per account; a signed-in account without its own key uses the guest-mode key saved on the same browser). When you press an AI button, the key is sent in a request header to this app's own serverless function, which uses it to call Google for that single request. The code does not store or log the key.</p>
+          <p>Your Gemini key is stored only in this browser (per account; a signed-in account without its own key uses a key saved on the same browser before sign-in was required). When you press an AI button, the key is sent in a request header to this app's own serverless function, which uses it to call Google for that single request. The code does not store or log the key.</p>
           <p>Vercel, which hosts the site, keeps standard request metadata (such as the address and status of requests) as any host does. If the site owner has set a shared server key and you have not added your own, your requests use that key instead.</p>
         </Item>
         <Item t="What is sent to Google">

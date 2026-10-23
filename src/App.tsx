@@ -3,7 +3,7 @@ import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settin
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
 import { funnel, getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
-import SignInGate from './components/SignInGate';
+import SignInGate, { SignInUnavailable } from './components/SignInGate';
 import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
 import { setKeyNamespace } from './lib/userApiKey';
 import { useLocalState } from './lib/useLocalState';
@@ -137,7 +137,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
       ))}
       <button onClick={() => go('settings')} className="mt-auto flex items-center gap-3 rounded-2xl border border-border px-3 py-2 text-left text-sm cursor-pointer hover:bg-muted">
         {user?.photo ? <img src={user.photo} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs text-primary">{(user?.name || 'G')[0]}</span>}
-        <span className="min-w-0"><span className="block truncate">{user?.name || 'Guest mode'}</span><span className="label block text-muted-foreground">{user ? 'Google account' : 'Sign in in Settings'}</span></span>
+        <span className="min-w-0"><span className="block truncate">{user?.name || 'Not signed in'}</span><span className="label block text-muted-foreground">{user ? 'Google account' : 'Sign in to use the app'}</span></span>
       </button>
       <button onClick={() => setDark(!dark)} className=" flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-foreground/80 hover:bg-muted cursor-pointer">
         {dark ? <Sun size={17} /> : <Moon size={17} />} {dark ? 'Light theme' : 'Dark theme'}
@@ -149,8 +149,11 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
 
   if (!inApp) return <ErrorBoundary><Suspense fallback={<div className="min-h-screen bg-[#0d0b0a]" />}><Landing dark={dark} toggleTheme={toggleTheme} enter={enter} /></Suspense></ErrorBoundary>;
 
-  if (!user && !isPublic(page) && gate) return <SignInGate openPrivacy={() => go('privacy')} back={leave} />;
-  if (!user && !isPublic(page) && gate === null) return <div className="min-h-screen bg-background" />;
+  // Sign-in is required for every app feature. Public pages (privacy, terms, security, accessibility, about, feedback) stay open.
+  if (!user && !isPublic(page)) {
+    if (gate === null) return <div className="min-h-screen bg-background" />;
+    return gate ? <SignInGate openPrivacy={() => go('privacy')} back={leave} /> : <SignInUnavailable back={leave} />;
+  }
 
   return (
     <Ctx.Provider value={{ profile, setProfile, jobs, setJobs, page, go, selectedJobId, hasResume, user }}>

@@ -32,3 +32,17 @@ export default function SignInGate({ openPrivacy, back }: { openPrivacy: () => v
     </main>
   );
 }
+
+/** Shown instead of the app when the site has no Google client ID: there is no guest access. */
+export function SignInUnavailable({ back }: { back: () => void }) {
+  return (
+    <main data-testid="signin-unavailable" className="grid min-h-screen place-items-center bg-background p-4">
+      <div className="glass w-full max-w-lg rounded-[28px] p-7">
+        <h1 className="display mb-2 text-4xl">Sign-in unavailable</h1>
+        <p className="mb-4 text-sm text-muted-foreground">The app needs Google sign-in, and sign-in is not set up on this site right now. Please try again later. The privacy, terms, security, accessibility and feedback pages are still open.</p>
+        <button onClick={back} className="text-sm text-primary underline cursor-pointer">Back to home</button>
+        <p className="mt-4 text-xs text-muted-foreground">Made by Akash Sync Agent</p>
+      </div>
+    </main>
+  );
+}

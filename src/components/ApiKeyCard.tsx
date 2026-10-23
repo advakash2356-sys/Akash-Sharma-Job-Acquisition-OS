@@ -49,7 +49,7 @@ export default function ApiKeyCard({ prominent }: { prominent?: boolean }) {
         {hasKey && <Button variant="danger" onClick={() => { clearUserApiKey(); setValue(''); setMsg({ ok: true, text: 'Key removed from this browser.' }); }}><Trash2 size={16} /> Remove</Button>}
       </div>
       <p data-testid="free-tier-warning" className="mt-3 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-sm">Free Gemini keys: Google may use what you send on its free tier to improve its products, and people at Google may review it. Use a paid (billing-enabled) key, or leave out sensitive details such as ID numbers, health or family information. <a className="underline text-primary" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Google's terms</a></p>
-      {usingGuestKey() && <p className="mt-3 text-sm text-muted-foreground">Using the key you saved in guest mode on this browser. Save a key here to give this account its own.</p>}
+      {usingGuestKey() && <p className="mt-3 text-sm text-muted-foreground">Using the key saved on this browser before sign-in was required. Save a key here to give this account its own.</p>}
       {msg && <p role="status" className={`mt-3 text-sm ${msg.ok ? 'text-primary' : 'text-danger'}`}>{msg.text}</p>}
       <div className="mt-4 flex gap-3 rounded-2xl bg-muted p-3 text-sm text-muted-foreground">
         <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />

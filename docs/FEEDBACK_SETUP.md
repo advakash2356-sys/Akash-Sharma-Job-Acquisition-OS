@@ -22,7 +22,7 @@ Until steps 1 to 5 are done, the site shows both forms but says the inbox is "no
 
 ## Google sign-in and the Users tab
 1. Google Cloud Console > APIs & Services > Credentials > Create credentials > OAuth client ID > Web application. Authorised JavaScript origins: `https://akash-sharma-job-acquisition-os.vercel.app` (and `http://localhost:3000` for testing). No redirect URI is needed. The app uses only the client ID; never put the client secret anywhere in this project.
-2. Vercel > Environment Variables (Production): `GOOGLE_CLIENT_ID` = the client ID (ends in `.apps.googleusercontent.com`). Redeploy. The sign-in screen then appears before the app. Without it, the app keeps working in guest mode.
+2. Vercel > Environment Variables (Production): `GOOGLE_CLIENT_ID` = the client ID (ends in `.apps.googleusercontent.com`). Redeploy. The sign-in screen then appears before the app. Without it, app pages show "Sign-in unavailable" (there is no guest mode).
 3. Paste the new `Code.gs`, run **setup** once (it adds the **Users** tab), then Deploy > Manage deployments > Edit > New version.
 4. Users tab columns: Email, Name, Mobile (self-entered, unverified), First seen / Last seen (IST), Visits (sign-ins plus at most one visit a day per device), Device IDs, Device hints, Multiple accounts on this device (flag only, nobody is blocked), Consent given (IST), Last user agent. Delete a row when someone asks for deletion.
 
