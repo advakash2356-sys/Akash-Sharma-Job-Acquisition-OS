@@ -4,6 +4,8 @@ import { Badge, Button, Card, Dialog, EmptyState, Input, Label, PageHeader, Sele
 import { AiError_, RunButton, useAiAction } from '../components/AiPanel';
 import { useApp } from '../lib/state';
 import { uid, today } from '../lib/utils';
+import { setStage } from '../lib/tracker';
+import JobFacts from '../components/JobFacts';
 import { JOB_STATUSES, type Job, type JobScore, type JobStatus, type RecruiterReview } from '../types';
 import { SOURCES, keywordGap } from '../lib/insights';
 import JobFollowUp from '../components/JobFollowUp';
@@ -70,7 +72,7 @@ export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => v
         <span>{job.company}</span>
         {job.url && <a href={job.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline"><ExternalLink size={13} /> Open posting</a>}
         <Select className="ml-auto h-9 w-40" aria-label="Status" value={job.status}
-          onChange={(e) => patch({ status: e.target.value as JobStatus, appliedAt: e.target.value === 'Applied' && !job.appliedAt ? today() : job.appliedAt })}>
+          onChange={(e) => patch({ ...setStage(job, e.target.value as JobStatus) })}>
           {JOB_STATUSES.map((st) => <option key={st}>{st}</option>)}
         </Select>
       </div>
@@ -188,6 +190,7 @@ export default function Jobs() {
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
                 {(j.tailoredResume || j.coverLetter || j.outreach) && <Badge tone="primary">{[j.tailoredResume && 'Resume', j.coverLetter && 'Letter', j.outreach && 'Outreach'].filter(Boolean).join(' · ')}</Badge>}
                 <Button size="sm" variant="outline" onClick={() => go('job', j.id)}>Open job</Button>
+                <div className="basis-full"><JobFacts job={j} compact /></div>
               </Card>
             ))}
             {shown.length === 0 && <p className="text-muted-foreground">No jobs with this status.</p>}

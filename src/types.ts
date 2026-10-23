@@ -32,8 +32,10 @@ export interface Profile {
   elig?: Partial<import('./lib/eligibility').Candidate>;
 }
 
-export type JobStatus = 'Saved' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
-export const JOB_STATUSES: JobStatus[] = ['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
+// Pipeline idea (stages + per-stage dates + next action) informed by JobSync (MIT, Gsync) and JobHunter (MIT); no code copied. See THIRD_PARTY_NOTICES.md.
+export type JobStatus = 'Saved' | 'Applied' | 'Screening' | 'Interviewing' | 'Offer' | 'Accepted' | 'Rejected' | 'Withdrawn';
+export const JOB_STATUSES: JobStatus[] = ['Saved', 'Applied', 'Screening', 'Interviewing', 'Offer', 'Accepted', 'Rejected', 'Withdrawn'];
+export const OPEN_STATUSES: JobStatus[] = ['Saved', 'Applied', 'Screening', 'Interviewing', 'Offer'];
 
 export interface JobScore {
   score: number;
@@ -93,6 +95,13 @@ export interface Job {
   removedClaims?: { cover?: string[]; outreach?: string[] };
   outreach?: { emailSubject: string; emailBody: string; linkedinMessage: string; followUp: string };
   interviews: Interview[];
+  /** Date (yyyy-mm-dd) each stage was reached. */
+  stageAt?: Partial<Record<JobStatus, string>>;
+  /** The next thing to do for this job, with an optional due date (reminder). */
+  nextAction?: { text: string; due?: string; done?: boolean };
+  /** Per-stage prep and mock interview transcripts. */
+  stagePrep?: Partial<Record<string, import('./lib/prep').StagePrep>>;
+  mock?: Partial<Record<string, import('./lib/prep').MockTurn[]>>;
   source?: string;
   /** Follow-up notes the user marked as sent (cadence stops after 2). */
   followUpsSent?: number;

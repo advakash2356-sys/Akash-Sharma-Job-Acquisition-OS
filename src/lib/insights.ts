@@ -27,9 +27,9 @@ export function sprintStats(jobs: Job[], target: number) {
 }
 
 export function funnel(jobs: Job[]) {
-  const applied = jobs.filter((j) => ['Applied', 'Interviewing', 'Offer', 'Rejected'].includes(j.status) || j.appliedAt).length;
-  const interviewing = jobs.filter((j) => j.status === 'Interviewing' || j.status === 'Offer' || j.interviews.length > 0).length;
-  const offers = jobs.filter((j) => j.status === 'Offer' || j.offerAmount != null).length;
+  const applied = jobs.filter((j) => ['Applied', 'Screening', 'Interviewing', 'Offer', 'Accepted', 'Rejected', 'Withdrawn'].includes(j.status) || j.appliedAt).length;
+  const interviewing = jobs.filter((j) => ['Interviewing', 'Offer', 'Accepted'].includes(j.status) || j.interviews.length > 0).length;
+  const offers = jobs.filter((j) => j.status === 'Offer' || j.status === 'Accepted' || j.offerAmount != null).length;
   return { saved: jobs.length, applied, interviewing, offers };
 }
 

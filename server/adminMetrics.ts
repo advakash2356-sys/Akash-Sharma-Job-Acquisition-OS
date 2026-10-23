@@ -50,6 +50,11 @@ export function computeMetrics(users: Row[], events: Row[], feedback: Row[], now
     { step: "Job viewed", users: did("job_viewed") },
     { step: "Documents generated", users: did("docs_generated") },
     { step: "Clicked apply", users: did("apply_click") },
+    { step: "Marked applied", users: did("stage_applied") },
+    { step: "Screening", users: did("stage_screening") },
+    { step: "Interviewing", users: did("stage_interviewing") },
+    { step: "Offer", users: did("stage_offer") },
+    { step: "Accepted", users: did("stage_accepted") },
   ].map((s) => ({ ...s, ofSignups: pct(s.users, first.size) }));
 
   const channels: Record<string, number> = {};

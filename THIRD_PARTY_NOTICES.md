@@ -325,3 +325,9 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## Ideas used (no code copied)
+| Project | Licence | What we took |
+|---|---|---|
+| [JobSync](https://github.com/Gsync/jobsync) (Gsync) | MIT | The idea of an application tracker with stages, per-stage dates, tasks/next actions and an interview question bank. Our code is our own. |
+| [JobHunter](https://github.com/aashishbharti04/jobhunter) (aashishbharti04) | MIT | The idea of follow-up reminder dates flagged as overdue / due today on a pipeline dashboard. Our code is our own. |
