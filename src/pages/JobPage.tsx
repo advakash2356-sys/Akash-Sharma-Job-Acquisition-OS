@@ -17,15 +17,17 @@ export default function JobPage() {
   return (
     <>
       <button onClick={() => go('jobs')} className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-primary cursor-pointer"><ArrowLeft size={15} /> All jobs</button>
-      <PageHeader eyebrow={job.company} title={job.title} subtitle={job.found ? `Real posting found via FreeHire (source: ${job.found.source}). Postings can go stale: check it is still open on the employer's site.` : 'A job you added yourself.'} />
+      <PageHeader eyebrow={job.company} title={job.title} subtitle={job.found ? `Real posting found via ${job.found.source === 'Himalayas' || job.found.source === 'Remote OK' ? job.found.source : 'FreeHire'} (source: ${job.found.source}). Postings can go stale: check it is still open on the employer's site.` : 'A job you added yourself.'} />
       <Card className="mb-5 grid gap-4">
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           {job.found?.location && <span className="inline-flex items-center gap-1"><MapPin size={14} /> {job.found.location}</span>}
           {job.found?.postedAt && <span className="inline-flex items-center gap-1"><CalendarDays size={14} /> Posted {job.found.postedAt}</span>}
+          {job.found?.decision && <Badge tone={job.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge">{job.found.decision.badge}</span></Badge>}
           {job.found?.govt && <Badge tone="gold">Govt · last date {job.found.govt.lastDate}</Badge>}
           {fit != null && <Badge tone="gold">Fit {fit}/100 {job.score ? '(AI)' : job.found?.fit?.kind === 'ai' ? '(AI)' : '(keyword)'}</Badge>}
           <Badge>{job.status}</Badge>
         </div>
+        {job.found?.decision && <p className="text-sm" data-testid="elig-reason"><b>Who can apply:</b> {job.found.decision.reason}{job.found.evidence?.length ? <span className="text-muted-foreground"> Based on: {job.found.evidence.join('; ')}.</span> : null}</p>}
         <div>
           <div className="label mb-2 text-primary">Step 6 · Apply yourself</div>
           <div className="flex flex-wrap items-center gap-2">

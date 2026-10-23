@@ -61,7 +61,8 @@ export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => v
         <div className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm">
           {job.found.govt
             ? <><b>Government job notice</b> · last date to apply: <b>{job.found.govt.lastDate}</b> ({daysLeftLabel(job.found.govt.lastDate)}). {(() => { const n = parseNotice(job.description); const parts = [n.notificationNo && `Notice no. ${n.notificationNo}`, n.pay && `Pay stated: ${n.pay}`, n.age && `Age: ${n.age}`, n.minYears != null && `Experience: ${n.minYears}+ years`].filter(Boolean); return parts.length ? <>{parts.join(' · ')}. </> : null; })()} {job.found.govt.official ? <>The link opens the <b>official notification</b>.</> : <>The link opens {job.found.govt.via}, a news site that lists notices. Check the official notification there before applying.</>} Found via {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}.</>
-            : <><b>Real posting found via FreeHire</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.</>}
+            : <><b>Real posting found via {job.found.source === 'Himalayas' || job.found.source === 'Remote OK' ? job.found.source : 'FreeHire'}</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.</>}
+          {job.found.decision && <p className="mt-1" data-testid="elig-reason"><b>{job.found.decision.badge}.</b> {job.found.decision.reason}</p>}
           {job.found.fit && <p className="mt-1">{job.found.fit.kind === 'ai' ? 'AI fit' : 'Keyword match'} {job.found.fit.score}/100: {job.found.fit.summary}</p>}
         </div>
       )}
@@ -182,7 +183,8 @@ export default function Jobs() {
                   <div className="truncate text-sm text-muted-foreground">{j.company} · added {j.createdAt}</div>
                 </button>
                 {(j.score || j.found?.fit) && <span className="font-mono text-lg text-gold" title={j.score ? 'AI score' : j.found?.fit?.kind === 'ai' ? 'AI fit' : 'Keyword match'}>{j.score ? j.score.score : j.found!.fit!.score}</span>}
-                {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `FreeHire · ${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
+                {j.found?.decision && <Badge tone={j.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge" title={j.found.decision.reason}>{j.found.decision.badge}</span></Badge>}
+                {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `${j.found.source === 'Himalayas' || j.found.source === 'Remote OK' ? '' : 'FreeHire · '}${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
                 {(j.tailoredResume || j.coverLetter || j.outreach) && <Badge tone="primary">{[j.tailoredResume && 'Resume', j.coverLetter && 'Letter', j.outreach && 'Outreach'].filter(Boolean).join(' · ')}</Badge>}
                 <Button size="sm" variant="outline" onClick={() => go('job', j.id)}>Open job</Button>

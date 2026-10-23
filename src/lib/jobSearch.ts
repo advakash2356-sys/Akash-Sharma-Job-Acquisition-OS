@@ -1,9 +1,10 @@
 import { AiError, fetchLimited, type CallOpts } from './api';
 import { keywordGap } from './insights';
 import type { Profile } from '../types';
+import { inferCandidate, type Candidate, type Decision, type WorkMode } from './eligibility';
 
-export interface FoundJob { id: string; title: string; company: string; location: string; url: string; postedAt: string; source: string; workMode: string; description: string; skills: string[]; official?: { url: string; lastDate: string }; govtFeed?: { lastDate: string } }
-export interface SearchResult { jobs: FoundJob[]; total: number; queries: string[]; warnings: string[]; cached: boolean }
+export interface FoundJob { id: string; title: string; company: string; location: string; url: string; postedAt: string; source: string; workMode: string; description: string; skills: string[]; official?: { url: string; lastDate: string }; govtFeed?: { lastDate: string }; mode?: WorkMode; decision?: Decision; eligibility?: { evidence: string[] } }
+export interface SearchResult { jobs: FoundJob[]; total: number; queries: string[]; warnings: string[]; cached: boolean; hidden?: { total: number; reasons: { badge: string; count: number; example: string }[] }; sources?: string[] }
 
 const COUNTRIES: [RegExp, string][] = [
   [/india|bengaluru|bangalore|mumbai|delhi|gurgaon|gurugram|noida|hyderabad|chennai|pune|kolkata|ahmedabad|jaipur|kochi/i, 'IN'],
@@ -20,7 +21,7 @@ export function deriveCountries(location: string): string[] {
 }
 export const splitTitles = (s: string) => s.split(/[,;\n]/).map((t) => t.trim()).filter(Boolean).slice(0, 4);
 
-export interface SearchQuery { titles: string[]; countries: string[]; cities?: string[]; remote: boolean; entryLevel?: boolean; govt?: boolean; education?: string }
+export interface SearchQuery { titles: string[]; countries: string[]; cities?: string[]; remote: boolean; candidate?: Candidate; location?: string; entryLevel?: boolean; govt?: boolean; education?: string }
 
 /** Sends only job titles, places, and the flags above to /api/jobs/search. Never resume text, name, age or contact details. */
 export async function searchJobsApi(q: SearchQuery, opts: CallOpts = {}): Promise<SearchResult> {
@@ -57,21 +58,26 @@ export function manualQuery(p: { workPrefs?: string[]; location: string; educati
   return { titles, countries, cities: isNcr(p.location) ? NCR : p.location ? [p.location.split(',')[0].trim()] : [], remote: false, entryLevel: true, govt: !!p.wantsGovt, education: p.education || '' };
 }
 
-/** Search scope from the user's location: their city (all of NCR for Delhi-area places) plus the rest of their country.
- *  Defaults to India. Other countries are searched only through the opt-in remote flag. */
-export function placeQuery(titles: string[], location: string, remote: boolean): SearchQuery {
-  const countries = deriveCountries(location).length ? deriveCountries(location) : ['IN'];
-  const city = (location || '').split(',')[0].trim();
-  const cities = isNcr(location) ? NCR : city && !/^(india|remote)$/i.test(city) && /^[A-Za-z .'-]{2,40}$/.test(city) ? [city] : [];
-  return { titles, countries, cities, remote };
+/** Search scope from the candidate's eligibility profile (inferred from the resume, editable on My resume):
+ *  on-site/hybrid in their city (all of NCR for Delhi-area places) and country (plus relocation countries), remote only where they are eligible. */
+export function candidateOf(p: Pick<Profile, 'location' | 'resumeText' | 'targetRoles' | 'headline' | 'elig'>, loc = p.location): Candidate {
+  return inferCandidate({ location: loc, resumeText: p.resumeText, targetRoles: p.targetRoles, headline: p.headline, elig: p.elig });
+}
+export function placeQuery(titles: string[], location: string, p: Pick<Profile, 'location' | 'resumeText' | 'targetRoles' | 'headline' | 'elig'>): SearchQuery {
+  const cand = candidateOf(p, location || p.location);
+  const city = cand.city || (location || '').split(',')[0].trim();
+  const cities = isNcr(location) || isNcr(city) ? NCR : city && !/^(india|remote)$/i.test(city) && /^[A-Za-z .'-]{2,40}$/.test(city) ? [city] : [];
+  return { titles, countries: [cand.residence], cities, remote: cand.modes.includes('remote'), candidate: cand, location };
 }
 
-/** Location part of the fit: 0 in the user's city/NCR, -10 elsewhere in their country, -15 remote/unstated. */
-export function locationAdjust(jobLocation: string, q: SearchQuery): { delta: number; label: string } {
+/** Location part of the fit, from the eligibility decision: 0 near you or eligible remote, -10 elsewhere in your country or relocation, -15 unclear. */
+export function locationAdjust(jobLocation: string, q: SearchQuery, d?: Decision): { delta: number; label: string } {
   const l = (jobLocation || '').toLowerCase();
+  if (d?.kind === 'remote-ok') return { delta: 0, label: d.badge };
+  if (d?.kind === 'remote-unclear') return { delta: -15, label: d.badge };
+  if (d?.kind === 'relocate') return { delta: -10, label: d.badge };
   if (q.cities?.some((c) => l.includes(c.toLowerCase()))) return { delta: 0, label: `in ${q.cities.length > 2 ? 'your area' : q.cities[0]}` };
-  if (q.countries.includes('IN') && /india|delhi|mumbai|bengaluru|bangalore|hyderabad|chennai|pune|kolkata|noida|gurugram|gurgaon|ahmedabad|jaipur|kochi|haryana|karnataka|maharashtra|tamil nadu|telangana|uttar pradesh/.test(l)) return { delta: -10, label: 'elsewhere in India' };
-  return { delta: -15, label: 'remote / location not stated' };
+  return { delta: -10, label: d?.badge || 'elsewhere in your country' };
 }
 
 /** Plain keyword overlap between the resume and the posting text. No AI. */

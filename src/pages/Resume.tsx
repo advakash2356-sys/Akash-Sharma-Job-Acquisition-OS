@@ -4,6 +4,7 @@ import { download, jobsCsv } from '../lib/merged';
 import React, { useRef, useState } from 'react';
 import { Upload, Download, FileJson, Trash2, UserRound } from 'lucide-react';
 import { Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
+import EligibilityCard from '../components/EligibilityCard';
 import { useApp } from '../lib/state';
 import ResumeDrop from '../components/ResumeDrop';
 import { emptyProfile, type Profile } from '../types';
@@ -56,6 +57,7 @@ export default function ResumePage() {
           <div><Label htmlFor="af" hint="optional">Available from</Label><Input id="af" value={profile.availableFrom || ''} onChange={(e) => setProfile((p) => ({ ...p, availableFrom: e.target.value }))} placeholder="e.g. 1 Dec 2026, or immediately" /></div>
         </Card>
 
+        <EligibilityCard />
         <Card className="grid gap-4">
           <div><Label htmlFor="sk" hint="comma separated">Skills</Label><Input id="sk" value={profile.skills || ''} onChange={set('skills')} placeholder="Filled by guided setup, edit freely" /></div>
           <div><Label htmlFor="ex" hint="short summary">Experience</Label><Textarea id="ex" rows={3} value={profile.experience || ''} onChange={set('experience')} placeholder="Roles, companies and years" /></div>

@@ -28,6 +28,8 @@ export interface Profile {
   education?: '8' | '10' | '12' | 'iti' | 'diploma' | 'graduate' | '';
   workPrefs?: string[];
   wantsGovt?: boolean;
+  /** Where the candidate can work: residence, work authorisations, relocation, modes, shift. Defaults are inferred; every field is editable. */
+  elig?: Partial<import('./lib/eligibility').Candidate>;
 }
 
 export type JobStatus = 'Saved' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
@@ -107,6 +109,10 @@ export interface Job {
     postedAt: string;
     location: string;
     fit?: { score: number; kind: 'ai' | 'keyword'; summary: string };
+    /** Work mode and the eligibility decision for this candidate, with the reason shown as a badge. */
+    mode?: import('./lib/eligibility').WorkMode;
+    decision?: import('./lib/eligibility').Decision;
+    evidence?: string[];
     /** Government notice. official=true means url is a .gov.in/.nic.in page; otherwise it is an aggregator page. */
     govt?: { lastDate: string; official: boolean; via: string };
   };

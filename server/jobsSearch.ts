@@ -1,5 +1,6 @@
 import { ApiError } from "./handlers.js";
 import { dmy, govtNotices } from "./govtFeed.js";
+import { classifyMode, countryCode, decide, extractEligibility, inferCandidate, COUNTRY_NAME, type Candidate, type Decision, type Eligibility, type WorkMode } from "../src/lib/eligibility.js";
 
 /**
  * Real job postings from FreeHire's public keyless API (https://freehire.me/docs/api, MIT).
@@ -24,8 +25,12 @@ export interface FoundJob {
   countryCodes?: string[];
   /** From the SarkariMap RSS feed: an aggregator page, not the official notice. */
   govtFeed?: { lastDate: string };
+  /** Structured restrictions from the source (Himalayas): empty array = worldwide. */
+  locationRestrictions?: string[]; timezoneRestrictions?: number[];
+  mode?: WorkMode; eligibility?: Eligibility; decision?: Decision;
 }
-export interface SearchOut { jobs: FoundJob[]; total: number; queries: string[]; warnings: string[]; cached: boolean; provider: "freehire" }
+export interface HiddenSummary { total: number; reasons: { badge: string; count: number; example: string }[] }
+export interface SearchOut { jobs: FoundJob[]; total: number; queries: string[]; warnings: string[]; cached: boolean; provider: "freehire"; hidden?: HiddenSummary; candidate?: Candidate; sources?: string[] }
 
 const cache = new Map<string, { at: number; out: SearchOut }>();
 const hits = new Map<string, number[]>();
@@ -105,7 +110,54 @@ export function parseInput(body: any) {
   if (!countries.length && !cities.length && !remote && !govt) throw new ApiError(400, "Pick a place or include remote roles.", "BAD_INPUT");
   const entryLevel = body?.entryLevel === true;
   const education = (["8", "10", "12", "iti", "diploma", "graduate"].includes(String(body?.education)) ? String(body.education) : "") as Education;
-  return { titles, countries, cities, remote, entryLevel, govt, education };
+  // Candidate eligibility profile (residence, authorisations, relocation, modes, shift). Legacy callers send only countries/remote.
+  const raw = body?.candidate && typeof body.candidate === "object" ? body.candidate : null;
+  const candidate = inferCandidate({ location: clean(body?.location, 80) || cities[0] || (countries[0] ? COUNTRY_NAME[countries[0]] : ""), targetRoles: titles.join(", "),
+    elig: raw ? { residence: clean(raw.residence, 40), city: clean(raw.city, 40), authorizedIn: Array.isArray(raw.authorizedIn) ? raw.authorizedIn.slice(0, 10).map((x: unknown) => clean(x, 40)) : undefined,
+      relocate: raw.relocate === true, relocateCountries: Array.isArray(raw.relocateCountries) ? raw.relocateCountries.slice(0, 10).map((x: unknown) => clean(x, 40)) : undefined,
+      modes: Array.isArray(raw.modes) ? raw.modes.map(String) as WorkMode[] : undefined, shift: clean(raw.shift, 8) as Candidate["shift"], tzOffset: Number.isFinite(Number(raw.tzOffset)) ? Number(raw.tzOffset) : undefined }
+      : { residence: countries[0] || "", modes: remote ? ["onsite", "hybrid", "remote"] : ["onsite", "hybrid"] } });
+  if (!countries.length && candidate.residence) countries.push(candidate.residence);
+  if (candidate.relocate) for (const c of [...candidate.relocateCountries, ...candidate.authorizedIn]) if (!countries.includes(c) && countries.length < 4) countries.push(c);
+  return { titles, countries, cities, remote: remote || candidate.modes.includes("remote"), entryLevel, govt, education, candidate };
+}
+
+const strip = (h: unknown) => String(h ?? "").replace(/<br\s*\/?>|<\/p>|<\/li>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+
+/** Himalayas public Jobs API (free; show with a visible source link, do not pass on to other boards: himalayas.app/terms#api). */
+async function himalayas(title: string, residence: string): Promise<FoundJob[]> {
+  const u = new URL("https://himalayas.app/jobs/api/search");
+  u.searchParams.set("q", title); if (COUNTRY_NAME[residence]) u.searchParams.set("country", COUNTRY_NAME[residence]); u.searchParams.set("limit", "20");
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
+  try {
+    const r = await fetch(u, { signal: ctl.signal, headers: { accept: "application/json", "user-agent": "job-acquisition-os (personal job search; links back to Himalayas)" } });
+    if (!r.ok) throw new Error(`Himalayas answered HTTP ${r.status}`);
+    const j: any = await r.json();
+    return (Array.isArray(j?.jobs) ? j.jobs : []).map((x: any): FoundJob | null => {
+      const url = String(x.applicationLink || x.guid || ""); if (!/^https:\/\/himalayas\.app\//.test(url) || !x.title || !x.companyName) return null;
+      const lr = Array.isArray(x.locationRestrictions) ? x.locationRestrictions.map((v: unknown) => clean(v, 40)) : [];
+      const t = Number(x.pubDate) * 1000;
+      return { id: `him-${clean(x.guid, 200)}`, title: clean(x.title, 160), company: clean(x.companyName, 120), url, listingUrl: url, location: lr.length ? `Remote (${lr.slice(0, 5).join(", ")})` : "Remote (worldwide)",
+        postedAt: Number.isFinite(t) && t > 0 ? new Date(t).toISOString().slice(0, 10) : "", source: "Himalayas", workMode: "remote", description: strip(x.description || x.excerpt).slice(0, 6000),
+        skills: Array.isArray(x.categories) ? x.categories.slice(0, 8).map((c: unknown) => clean(c, 30)) : [], locationRestrictions: lr,
+        timezoneRestrictions: Array.isArray(x.timezoneRestrictions) ? x.timezoneRestrictions.filter((n: unknown) => typeof n === "number") : [], countryCodes: lr.map(countryCode).filter(Boolean) };
+    }).filter(Boolean) as FoundJob[];
+  } finally { clearTimeout(tm); }
+}
+
+/** Remote OK public API: one feed, cached 6 hours. Terms: link back to the Remote OK job page and name Remote OK as the source. */
+let rok: { at: number; data: any[] } | null = null;
+async function remoteOk(titles: string[], entryLevel: boolean): Promise<FoundJob[]> {
+  if (!rok || Date.now() - rok.at > 6 * 3600e3) {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
+    try { const r = await fetch("https://remoteok.com/api", { signal: ctl.signal, headers: { accept: "application/json", "user-agent": "job-acquisition-os (personal job search; links back to Remote OK)" } }); if (!r.ok) throw new Error(`Remote OK answered HTTP ${r.status}`); const d: any = await r.json(); rok = { at: Date.now(), data: Array.isArray(d) ? d.slice(1) : [] }; }
+    finally { clearTimeout(tm); }
+  }
+  return rok.data.filter((x) => x?.position && titleRelevant(String(x.position), titles, entryLevel)).map((x): FoundJob | null => {
+    const url = String(x.url || ""); if (!/^https:\/\/remoteok\.com\//.test(url)) return null;
+    return { id: `rok-${clean(x.id, 40)}`, title: clean(x.position, 160), company: clean(x.company, 120) || "Company not named", url, listingUrl: url, location: `Remote${x.location ? ` (${clean(x.location, 80)})` : ""}`,
+      postedAt: clean(x.date, 10), source: "Remote OK", workMode: "remote", description: strip(x.description).slice(0, 6000), skills: Array.isArray(x.tags) ? x.tags.slice(0, 8).map((t: unknown) => clean(t, 30)) : [], countryCodes: [] };
+  }).filter(Boolean) as FoundJob[];
 }
 
 const STOP = new Set(["and", "the", "for", "with", "job", "jobs"]);
@@ -173,7 +225,7 @@ function validate(raw: any): FoundJob | null {
     postedAt: Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : "",
     source: clean(raw.source, 40) || "freehire",
     workMode: clean(raw.work_mode, 12),
-    description: clean(raw.description, 1800),
+    description: strip(raw.description).slice(0, 6000),
     skills: Array.isArray(raw.skills) ? raw.skills.slice(0, 12).map((s: unknown) => clean(s, 30)) : [],
     listingUrl: url,
     countryCodes: Array.isArray(raw.countries) ? raw.countries.map((c: unknown) => String(c).toUpperCase()) : [],
@@ -196,45 +248,56 @@ async function fetchOne(params: Record<string, string>): Promise<{ data: any[]; 
 }
 
 export async function searchJobs(body: any): Promise<SearchOut> {
-  const { titles, countries, cities, remote, entryLevel, govt, education } = parseInput(body);
-  const key = JSON.stringify([titles.map((t) => t.toLowerCase()), countries, cities, remote, entryLevel, govt, education]);
+  const { titles, countries, cities, remote, entryLevel, govt, education, candidate } = parseInput(body);
+  const key = JSON.stringify([titles.map((t) => t.toLowerCase()), countries, cities, remote, entryLevel, govt, education, candidate]);
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return { ...hit.out, cached: true };
+  const local = candidate.modes.includes("onsite") || candidate.modes.includes("hybrid");
 
-  const reqs: { label: string; params: Record<string, string>; govt?: boolean }[] = [];
-  // FreeHire ORs cities with countries, so with cities we send only cities and keep the country as a local filter (stops Delhi, USA).
-  const place = cities.length ? { cities: cities.join(",") } : countries.length ? { countries: countries.join(",") } : null;
+  const reqs: { label: string; params?: Record<string, string>; govt?: boolean; ext?: () => Promise<FoundJob[]> }[] = [];
+  // FreeHire ORs cities with countries, so cities and countries are separate requests; every result is then checked by the eligibility logic.
   for (const t of titles) {
     const base = { q: t.includes(" ") ? `"${t}"` : t, q_fields: "title", limit: String(PER_TITLE) };
-    if (place) reqs.push({ label: `"${t}" in ${(cities.length ? cities : countries).join("/")}`, params: { ...base, ...place } });
-    if (cities.length && countries.length) reqs.push({ label: `"${t}" in ${countries.join("/")}`, params: { ...base, countries: countries.join(",") } });
-    if (remote) reqs.push({ label: `"${t}" remote (global/APAC)`, params: { ...base, work_mode: "remote", regions: "global,apac" } });
+    if (local && cities.length) reqs.push({ label: `"${t}" in ${cities.join("/")}`, params: { ...base, cities: cities.join(",") } });
+    if (local && countries.length) reqs.push({ label: `"${t}" in ${countries.join("/")}`, params: { ...base, countries: countries.join(",") } });
+    if (remote) {
+      reqs.push({ label: `"${t}" remote (FreeHire, any region; eligibility checked per posting)`, params: { ...base, work_mode: "remote" } });
+      reqs.push({ label: `"${t}" remote open to ${COUNTRY_NAME[candidate.residence] || candidate.residence} (Himalayas)`, ext: () => himalayas(t, candidate.residence) });
+    }
   }
+  if (remote && titles.length) reqs.push({ label: `remote feed (Remote OK)`, ext: () => remoteOk(titles, entryLevel) });
   if (govt) {
     for (const q of ["Last Date Apply Online notification", "Recruitment 2026 Posts", education === "10" || education === "8" ? "Eligibility 10th pass" : "Eligibility 12th pass"]) {
       reqs.push({ label: `government notices: ${q}`, govt: true, params: { q, source: "telegram", countries: "IN", sort: "posted_at", limit: "100" } });
     }
   }
-  const results = await Promise.allSettled(reqs.map((r) => fetchOne(r.params)));
+  const results = await Promise.allSettled(reqs.map((r) => (r.ext ? r.ext().then((jobs) => ({ data: jobs, total: jobs.length, pre: true })) : fetchOne(r.params!).then((v) => ({ ...v, pre: false })))));
   const warnings: string[] = [];
   const seen = new Set<string>(); const sig = new Set<string>(); const jobs: FoundJob[] = [];
+  const hidden = new Map<string, { count: number; example: string }>();
   let total = 0, ok = 0;
   results.forEach((r, i) => {
     if (r.status === "rejected") { warnings.push(`${reqs[i].label}: ${r.reason?.message || "failed"}`); return; }
     ok++; if (!reqs[i].govt) total += r.value.total;
     for (const raw of r.value.data) {
-      const j = validate(raw); if (!j) continue;
+      const j = r.value.pre ? (raw as FoundJob) : validate(raw); if (!j) continue;
+      const s = `${j.title}|${j.company}|${j.location}`.toLowerCase();
+      if (seen.has(j.id) || seen.has(j.url) || sig.has(s)) continue;
       if (reqs[i].govt) {
         const g = govtInfo(String(raw.description || ""), education);
         if (!g) continue;
         j.official = g; j.url = g.url; j.description = clean(stripHtml(String(raw.description || "")), 1800);
       } else {
         if (!titleRelevant(j.title, titles, entryLevel)) continue;
-        if (!placeOk(j.location, j.countryCodes || [], j.workMode, countries, remote)) continue;
         if (j.postedAt && Date.now() - Date.parse(j.postedAt) > MAX_AGE_DAYS * 86400000) continue;
+        const m = classifyMode(j);
+        const el = extractEligibility({ ...j, mode: m.mode });
+        const d = decide(j, m.mode, el, candidate);
+        seen.add(j.id); seen.add(j.url); sig.add(s);
+        if (!d.show) { const h = hidden.get(d.badge) || { count: 0, example: `${j.title} · ${j.company}` }; h.count++; hidden.set(d.badge, h); continue; }
+        j.mode = m.mode; j.eligibility = el; j.decision = { ...d, reason: `${d.reason} Work mode: ${m.why}.` };
+        j.description = j.description.slice(0, 1800);
       }
-      const s = `${j.title}|${j.company}|${j.location}`.toLowerCase();
-      if (seen.has(j.id) || seen.has(j.url) || sig.has(s)) continue;
       seen.add(j.id); seen.add(j.url); sig.add(s); jobs.push(j);
     }
   });
@@ -247,11 +310,18 @@ export async function searchJobs(body: any): Promise<SearchOut> {
       ok++;
     } catch (e: any) { warnings.push(`extra government list (SarkariMap) unavailable from the server right now (${e.message}); official notices and portal links still shown`); }
   }
-  if (!ok) throw new ApiError(502, `FreeHire could not be reached. ${warnings[0] || ""}`.trim(), "FREEHIRE_DOWN");
+  if (!ok) throw new ApiError(502, `The job sources could not be reached. ${warnings[0] || ""}`.trim(), "FREEHIRE_DOWN");
   const exact = (j: FoundJob) => (titles.some((t) => j.title.toLowerCase().includes(t.toLowerCase())) ? 1 : 0);
   const near = (j: FoundJob) => (cities.some((c) => `${j.location}`.toLowerCase().includes(c.toLowerCase())) ? 1 : 0);
-  jobs.sort((a, b) => (b.official || b.govtFeed ? 1 : 0) - (a.official || a.govtFeed ? 1 : 0) || (a.official?.lastDate || a.govtFeed?.lastDate || "9").localeCompare(b.official?.lastDate || b.govtFeed?.lastDate || "9") * ((a.official || a.govtFeed) && (b.official || b.govtFeed) ? 1 : 0) || near(b) - near(a) || exact(b) - exact(a) || b.postedAt.localeCompare(a.postedAt));
-  const out: SearchOut = { jobs: jobs.slice(0, MAX_RESULTS + 15), total, queries: reqs.map((r) => r.label), warnings, cached: false, provider: "freehire" };
+  const rank: Record<string, number> = { local: 3, "remote-ok": 3, relocate: 1, "remote-unclear": 0 };
+  const pri = (j: FoundJob) => (j.decision ? rank[j.decision.kind] ?? 0 : 2);
+  jobs.sort((a, b) => (b.official || b.govtFeed ? 1 : 0) - (a.official || a.govtFeed ? 1 : 0) || (a.official?.lastDate || a.govtFeed?.lastDate || "9").localeCompare(b.official?.lastDate || b.govtFeed?.lastDate || "9") * ((a.official || a.govtFeed) && (b.official || b.govtFeed) ? 1 : 0) || pri(b) - pri(a) || near(b) - near(a) || exact(b) - exact(a) || b.postedAt.localeCompare(a.postedAt));
+  // Keep a mix: unclear-eligibility postings never crowd out confirmed ones.
+  const capped = jobs.filter((j) => j.decision?.kind !== "remote-unclear").slice(0, MAX_RESULTS + 15);
+  capped.push(...jobs.filter((j) => j.decision?.kind === "remote-unclear").slice(0, Math.max(8, MAX_RESULTS + 15 - capped.length)));
+  const hiddenSum: HiddenSummary = { total: [...hidden.values()].reduce((a, b) => a + b.count, 0), reasons: [...hidden.entries()].map(([badge, v]) => ({ badge, ...v })).sort((a, b) => b.count - a.count).slice(0, 12) };
+  const sources = [...new Set(capped.map((j) => j.source === "Himalayas" || j.source === "Remote OK" ? j.source : "FreeHire"))];
+  const out: SearchOut = { jobs: capped, total, queries: reqs.map((r) => r.label), warnings, cached: false, provider: "freehire", hidden: hiddenSum, candidate, sources };
   if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value as string);
   cache.set(key, { at: Date.now(), out });
   return out;

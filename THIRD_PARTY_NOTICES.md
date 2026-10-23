@@ -11,6 +11,10 @@ Job Acquisition OS (MIT, © 2026 Akash Sync Agent) reuses or adapts the followin
 | FreeHire | Public job search API (called, not copied) | strelov1 | MIT | https://github.com/strelov1/freehire |
 | jsPDF | PDF export (npm dependency) | James Hall and contributors | MIT | https://github.com/parallax/jsPDF |
 | docx | DOCX export (npm dependency) | Dolan Miu | MIT | https://github.com/dolanmiu/docx |
+| JobSpy | Work-mode rules adapted, not code (`src/lib/eligibility.ts`): a posting tagged remote and hybrid is hybrid; "Hybrid - City" location labels; schema.org TELECOMMUTE also covers hybrid, so a remote flag alone is not trusted | Cullen Watson | MIT | https://github.com/speedyapply/JobSpy |
+| work-in-timezone | Idea of parsing "+05:30" offsets to hours and treating time-zone eligibility as an overlap of offset ranges (`offsetToHours` in `src/lib/eligibility.ts`, rewritten) | Michal Kvasničák | MIT | https://github.com/michalkvasnicak/work-in-timezone |
+| Himalayas Jobs API | Remote job data (locationRestrictions, timezoneRestrictions). Shown with a visible source name and link to the Himalayas job page; not passed on to other job boards (himalayas.app/terms#api) | Himalayas | API terms (data, not code) | https://himalayas.app/api |
+| Remote OK API | Remote job data, cached 6 hours. Every job links to its Remote OK page and names Remote OK as the source, as its API terms require | Remote OK | API terms (data, not code) | https://remoteok.com/api |
 
 Projects that were reviewed and **not** used: giscus (MIT; every commenter must log in with GitHub, and team replies would show a GitHub username, not "Akash Sync Agent team"), remark42 (MIT; needs its own always-on server), dwyl/learn-to-send-email-via-google-script-html-no-server (GPL-2.0, excluded by licence), Reactive Resume (MIT, a full app; nothing copied), OpenResume (AGPL-3.0, excluded by licence), Awesome-CV (LPPL, LaTeX, excluded).
 
@@ -300,3 +304,24 @@ Modified by Akash Sync Agent in 2026 (see the header of `scripts/apps-script/Cod
    limitations under the License.
 
 ```
+
+
+## JobSpy: licence
+MIT License
+
+Copyright (c) 2023 Cullen Watson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## work-in-timezone: licence
+Copyright 2019 Michal Kvasničák (https://github.com/michalkvasnicak)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
