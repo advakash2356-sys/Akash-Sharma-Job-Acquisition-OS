@@ -43,7 +43,7 @@ export const REGIONS: Record<string, string[]> = {
 };
 const REGION_RE: [RegExp, string][] = [
   [/\bEMEA\b/i, 'EMEA'], [/\bAPAC\b|\bAsia[- ]Pacific\b/i, 'APAC'], [/\bLATAM\b|\bLatin America\b|\bSouth America\b|\bCentral America\b/i, 'LATAM'],
-  [/\b(?:the )?EU\b|\bEuropean Union\b/, 'EU'], [/\bEurope\b|\bEuropean\b/i, 'Europe'], [/\bNorth America\b/i, 'North America'], [/\bAmericas\b/i, 'Americas'],
+  [/\b(?:the )?EU\b|\bEuropean Union\b/, 'EU'], [/\bEurope\b|\bEuropean\b/i, 'Europe'], [/\bNorth America\b|\bNAMER\b|\bNORAM\b/i, 'North America'], [/\bAmericas\b/i, 'Americas'],
   [/\bSouth Asia\b/i, 'South Asia'], [/\bAsia\b/i, 'Asia'], [/\bMiddle East\b|\bMENA\b/i, 'Middle East'], [/\bAfrica\b/i, 'Africa'], [/\bOceania\b|\bANZ\b/i, 'Oceania'],
 ];
 
@@ -122,7 +122,7 @@ export function extractEligibility(j: { location?: string; description?: string;
     for (const r of j.locationRestrictions) { const c = countryCode(r); if (c) countries.add(c); else { const rg = REGION_RE.find(([re]) => re.test(r)); if (rg) regions.add(rg[1]); } }
     if (j.locationRestrictions.length) ev.push(`source restricts to: ${j.locationRestrictions.slice(0, 6).join(', ')}`);
   }
-  if (/\b(?:work from )?anywhere(?: in the world)?\b|\bworldwide\b|\bglobal(?:ly)? remote\b|\bremote[- ]global\b|\bany (?:country|location|timezone)\b|\bfrom any country\b/i.test(`${loc} ${d}`) && !/\banywhere in (?!the world)(?:the )?(?!world)\w+/i.test(`${loc} ${d}`)) { worldwide = true; ev.push('says worldwide / anywhere'); }
+  if (/\b(?:work|remote|hire|hiring|apply|located|live|based) (?:from )?anywhere\b|\banywhere in the world\b|^\s*(?:remote[ ,(-]*)?anywhere\s*\)?\s*$|\bworldwide\b|\bglobal(?:ly)? remote\b|\bremote[- ]global\b|\bany (?:country|location|timezone)\b|\bfrom any country\b/im.test(`${loc}\n${d}`) && !/\banywhere in (?!the world)(?:the )?(?!world)\w+/i.test(`${loc} ${d}`)) { worldwide = true; ev.push('says worldwide / anywhere'); }
   // "Remote - US", "Remote (Canada)", "US only", "must be based/located/residing in X", "open to candidates in X"
   const tp = (j.title || '').match(/\(([^)]{2,40})\)|[-–|]\s*([A-Z][A-Za-z ]{1,30}?)\s*(?:only)?$/);
   if (tp && j.mode !== 'onsite') { const cs = countriesIn(tp[1] || tp[2] || ''); if (cs.length) { cs.forEach((c) => countries.add(c)); ev.push(`title names ${cs.join(', ')}`); } }

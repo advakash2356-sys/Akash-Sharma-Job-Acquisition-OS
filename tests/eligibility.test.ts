@@ -37,6 +37,8 @@ test('eligibility extraction from text', () => {
   assert.equal(w.worldwide, true); assert.equal(w.contractorOk, true); assert.ok(w.tz && w.tz.max <= -4);
   const r = extractEligibility({ mode: 'remote', location: 'Remote - EMEA', description: '' });
   assert.ok(r.regions.includes('EMEA'));
+  assert.equal(extractEligibility({ mode: 'remote', location: 'Remote', description: 'Identify friction anywhere legal work touches the business.' }).worldwide, false);
+  assert.ok(extractEligibility({ mode: 'remote', location: 'Remote-NAMER', description: '' }).regions.includes('North America'));
   const u = extractEligibility({ mode: 'remote', location: 'Remote', description: 'Great team.' });
   assert.equal(u.unclear, true);
 });
