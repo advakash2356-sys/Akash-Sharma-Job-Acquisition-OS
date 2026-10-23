@@ -50,12 +50,37 @@ export async function adminWhoami(auth: unknown) { await requireAdmin(auth); ret
 export async function adminData(auth: unknown) {
   const p = await requireAdmin(auth);
   const d = await script({ type: "admin-read" });
+  let inputs: any = {}; try { inputs = d.inputs ? JSON.parse(d.inputs) : {}; } catch { /* empty */ }
   let pricing = DEFAULT_PRICING; try { if (d.config) pricing = sanitizePricing(JSON.parse(d.config)); } catch { /* keep default */ }
-  return { admin: p.email, metrics: computeMetrics(d.users || [], d.events || [], d.feedback || []), pricing, goatcounter: "https://akashsyncagent.goatcounter.com" };
+  return { admin: p.email, metrics: computeMetrics(d.users || [], d.events || [], d.feedback || []), pricing, inputs, banner: d.banner || "", autoReplyMode: d.autoReplyMode || "test",
+    comments: (d.comments || []).map((c: string[]) => ({ at: c[0], id: c[1], name: c[2], email: c[3], message: c[4], page: c[5], approved: c[6], reply: c[7] })).reverse(),
+    adminLog: (d.adminLog || []).map((l: string[]) => ({ at: l[0], admin: l[1], action: l[2], target: l[3], details: l[4] })).reverse(),
+    feedbackRows: (d.feedback || []).length, goatcounter: "https://akashsyncagent.goatcounter.com" };
+}
+const OPS = ["fb-status", "fb-reply", "comment-moderate", "banner", "autoreply-mode", "inputs-save", "user-review", "user-delete"];
+/** Every admin change: token re-verified, op allow-listed, and logged by the Apps Script in the "Admin log" tab with the admin's email. */
+export async function adminOp(auth: unknown, body: any) {
+  const p = await requireAdmin(auth);
+  const op = String(body?.op || "");
+  if (!OPS.includes(op)) throw new ApiError(400, "Unknown admin action.", "BAD_INPUT");
+  if (op === "user-delete" && body?.confirm !== body?.email) throw new ApiError(400, "Type the email again to confirm deletion.", "CONFIRM");
+  const { op: _o, confirm: _c, ...rest } = body || {};
+  const d = await script({ type: "admin-op", op, ...rest, admin: p.email });
+  bannerCache = { at: 0, text: "" };
+  return d;
+}
+let bannerCache = { at: 0, text: "" };
+/** Public announcement text for /api/status, cached for a minute so visitors never wait on the Sheet. */
+export async function publicBanner(): Promise<string> {
+  if (!communityConfigured()) return "";
+  if (Date.now() - bannerCache.at < 60_000) return bannerCache.text;
+  bannerCache.at = Date.now();
+  try { const d = await script({ type: "public-config" }); bannerCache.text = String(d.banner || "").slice(0, 300); } catch { /* keep last */ }
+  return bannerCache.text;
 }
 export async function adminSaveConfig(auth: unknown, body: any) {
-  await requireAdmin(auth);
+  const p = await requireAdmin(auth);
   const pricing = sanitizePricing(body?.pricing);
-  await script({ type: "config-save", config: pricing });
+  await script({ type: "config-save", config: pricing, admin: p.email });
   return { ok: true, pricing };
 }

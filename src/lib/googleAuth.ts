@@ -110,12 +110,12 @@ export function rememberSource(src: string, consented: boolean) { if (src) pendi
 
 export type FunnelEvent = 'profile_done' | 'job_viewed' | 'docs_generated' | 'apply_click' | `stage_${'applied' | 'screening' | 'interviewing' | 'offer' | 'accepted' | 'rejected' | 'withdrawn' | 'saved'}`;
 /** Signed-in users only: one funnel step per day per device, to the private Events tab. Silent, best effort. */
-export function funnel(event: FunnelEvent) {
+export function funnel(event: FunnelEvent, detail = '') {
   const u = getSession(); if (!u?.email) return;
   try {
     const k = `jaos_fn_${event}`, today = new Date().toDateString();
     if (localStorage.getItem(k) === today) return; localStorage.setItem(k, today);
-    fetch('/api/auth/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: u.email, deviceId: deviceId(), event, source: firstSource() }), keepalive: true }).catch(() => {});
+    fetch('/api/auth/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: u.email, deviceId: deviceId(), event, source: firstSource(), detail }), keepalive: true }).catch(() => {});
   } catch { /* ignore */ }
 }
 

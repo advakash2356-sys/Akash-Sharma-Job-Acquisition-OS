@@ -1,5 +1,6 @@
 import { requireUser } from "./server/requireUser.js";
-import { adminCheck, adminData, adminSaveConfig, adminWhoami } from "./server/admin.js";
+import { publicBanner } from "./server/admin.js";
+import { adminCheck, adminData, adminOp, adminSaveConfig, adminWhoami } from "./server/admin.js";
 import { funnelEvent } from "./server/events.js";
 import { googleClientId, signIn, visit } from "./server/users.js";
 import { aiRateLimit, checkBody, checkOrigin, clientIp } from "./server/guard.js";
@@ -19,7 +20,7 @@ async function startServer() {
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-  app.get("/api/status", (_req, res) => res.json({ serverKey: serverKeyConfigured(), googleClientId: googleClientId() || null }));
+  app.get("/api/status", async (_req, res) => res.json({ serverKey: serverKeyConfigured(), googleClientId: googleClientId() || null, banner: await publicBanner() }));
   app.post("/api/auth/google", async (req, res) => {
     try {
       checkOrigin(req.headers);
@@ -38,6 +39,7 @@ async function startServer() {
       checkOrigin(req.headers);
       const a = req.params.action;
       if (a === "check" && req.method === "POST") return res.json(await adminCheck(req.body));
+      if (a === "op" && req.method === "POST") return res.json(await adminOp(req.headers.authorization, req.body));
       if (a === "whoami" && req.method === "GET") return res.json(await adminWhoami(req.headers.authorization));
       if (a === "data" && req.method === "GET") return res.json(await adminData(req.headers.authorization));
       if (a === "config" && req.method === "POST") return res.json(await adminSaveConfig(req.headers.authorization, req.body));

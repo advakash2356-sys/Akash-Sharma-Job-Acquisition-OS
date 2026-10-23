@@ -2,6 +2,7 @@ import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import ConsentBanner from './components/ConsentBanner';
+import SiteBanner from './components/SiteBanner';
 import './index.css';
 import { CONSENT_EVENT, countVisit, statsOptedOut, visitSource } from './lib/analytics';
 import { rememberSource } from './lib/googleAuth';
@@ -20,6 +21,7 @@ if (!isAdmin) {
 const Root = isAdmin ? lazy(() => import('./admin/AdminApp')) : App;
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    {!isAdmin && <SiteBanner />}
     <Suspense fallback={null}><Root /></Suspense>
     {!isAdmin && <ConsentBanner />}
   </StrictMode>,

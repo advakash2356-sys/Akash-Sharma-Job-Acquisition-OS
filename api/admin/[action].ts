@@ -1,5 +1,5 @@
 import { ApiError } from "../../server/handlers.js";
-import { adminCheck, adminData, adminSaveConfig, adminWhoami } from "../../server/admin.js";
+import { adminCheck, adminData, adminOp, adminSaveConfig, adminWhoami } from "../../server/admin.js";
 import { checkOrigin } from "../../server/guard.js";
 
 export default async function handler(req: any, res: any) {
@@ -8,6 +8,7 @@ export default async function handler(req: any, res: any) {
     checkOrigin(req.headers);
     const a = String(req.query?.action || "");
     if (a === "check" && req.method === "POST") return res.status(200).json(await adminCheck(req.body));
+    if (a === "op" && req.method === "POST") return res.status(200).json(await adminOp(req.headers.authorization, req.body));
     if (a === "whoami" && req.method === "GET") return res.status(200).json(await adminWhoami(req.headers.authorization));
     if (a === "data" && req.method === "GET") return res.status(200).json(await adminData(req.headers.authorization));
     if (a === "config" && req.method === "POST") return res.status(200).json(await adminSaveConfig(req.headers.authorization, req.body));

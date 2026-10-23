@@ -21,7 +21,7 @@ export default function Privacy() {
         <Item t="What we collect, and why">
           <ul className="list-disc pl-5" data-testid="collect-list">
             <li><b>When you sign in with Google:</b> your Google name and email; a mobile number only if you type one (we do not verify it); when you first and last used the app and how many times; a random id this browser keeps for this site; a short device hint (a hash of screen size, language, timezone and platform); your browser's user agent; and which shared link you first came from (for example ref=linkedin), if any.</li>
-            <li><b>Usage steps, signed-in users only:</b> that you filled your profile, viewed a job, generated documents or clicked an apply link, at most once a day per step. Not what the job or document was.</li>
+            <li><b>Usage steps, signed-in users only:</b> that you filled your profile (with your first target role, country of residence and preferred work modes), viewed a job, generated documents, clicked an apply link, or moved a job to a new stage, at most once a day per step. Not which job, or what a document said.</li>
             <li><b>Feedback and comments:</b> what you type (name and email only if you give them, rating, message) and the page.</li>
           </ul>
           <p><b>Why:</b> to run the service and let you in, understand how it is used and what to improve, reply to feedback, and spot misuse (for example many accounts on one device, which is only flagged for the owner and not used to block anyone). We do not sell this data or use it for ads.</p>

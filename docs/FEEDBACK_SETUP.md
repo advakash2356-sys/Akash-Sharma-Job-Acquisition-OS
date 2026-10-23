@@ -40,3 +40,9 @@ Until steps 1 to 5 are done, the site shows both forms but says the inbox is "no
 - Data comes from the Users, Events and Feedback tabs through the Apps Script (`admin-read`, secret-protected, called only by the server). Paste the latest Code.gs, run **setup** (adds the **Events** tab), and deploy a new version.
 - Funnel events (profile filled, job viewed, documents generated, apply click) are logged only for signed-in users, once per step per day per device, starting from this release. Channel = `?ref=` / `utm_source` of the first visit.
 - Pricing config: saved as Script Property `PRICING_CONFIG`. Master switch is OFF by default and the public site does not read it. No payment integration: going live needs a Razorpay account, keys in Vercel env, a checkout and a webhook (not built).
+
+## Admin upgrade (24 Oct)
+- Paste the latest Code.gs, run **setup** (adds the **Admin log** tab and the Events "Detail" column), deploy a new version.
+- Sign in to the app normally with adv.akash2356@gmail.com: an **Admin** link appears in the sidebar (the server confirms the email from your Google ID token). It opens /admin.
+- Tabs: Overview (charts), Pitch (India ₹ / US $, TAM/SAM/SOM and unit-economics inputs you enter), Users (search, CSV, mark reviewed, DPDP delete), Feedback (status, reply, CSV), Comments (publish / hide / flag abusive), Settings (site banner, auto-reply test/live, pricing), Audit log.
+- Every change re-verifies your token on the server and is written to the Admin log tab with your email.

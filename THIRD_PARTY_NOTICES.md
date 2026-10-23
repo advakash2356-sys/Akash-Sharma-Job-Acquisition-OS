@@ -331,3 +331,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 |---|---|---|
 | [JobSync](https://github.com/Gsync/jobsync) (Gsync) | MIT | The idea of an application tracker with stages, per-stage dates, tasks/next actions and an interview question bank. Our code is our own. |
 | [JobHunter](https://github.com/aashishbharti04/jobhunter) (aashishbharti04) | MIT | The idea of follow-up reminder dates flagged as overdue / due today on a pipeline dashboard. Our code is our own. |
+
+## Admin charts
+| Package | Licence | Use |
+|---|---|---|
+| [Recharts](https://github.com/recharts/recharts) 2.x (Recharts Group) | MIT | Charts on the owner-only /admin page (lazy-loaded; not downloaded by the public site). Its dependencies are MIT, ISC (d3 modules) and BSD-3-Clause; full texts ship in node_modules and the bundled licence comments. |

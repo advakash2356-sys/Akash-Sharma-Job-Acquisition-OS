@@ -15,7 +15,8 @@ const COMMENT_HEAD = ['Timestamp (IST)', 'Comment ID', 'Name', 'Email (private)'
 
 const USERS_HEAD = ['Email', 'Name', 'Mobile (self-entered, unverified)', 'First seen (IST)', 'Last seen (IST)', 'Visits', 'Device IDs', 'Device hints', 'Multiple accounts on this device', 'Consent given (IST)', 'Last user agent'];
 
-const EVENTS_HEAD = ['Time (IST)', 'Date (IST)', 'Email', 'Event', 'Source', 'Device ID'];
+const EVENTS_HEAD = ['Time (IST)', 'Date (IST)', 'Email', 'Event', 'Source', 'Device ID', 'Detail'];
+const ADMINLOG_HEAD = ['Time (IST)', 'Admin', 'Action', 'Target', 'Details'];
 const FUNNEL_EVENTS = ['signup', 'signin', 'visit', 'profile_done', 'job_viewed', 'docs_generated', 'apply_click', 'stage_saved', 'stage_applied', 'stage_screening', 'stage_interviewing', 'stage_offer', 'stage_accepted', 'stage_rejected', 'stage_withdrawn'];
 const SOURCE_OK = /^[a-z0-9_-]{0,40}$/;
 
@@ -41,6 +42,8 @@ function setup() {
   const c = tab_('Comments', COMMENT_HEAD);
   tab_('Users', USERS_HEAD);
   tab_('Events', EVENTS_HEAD);
+  tab_('Admin log', ADMINLOG_HEAD);
+  const ev = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Events'); ev.getRange(1, 1, 1, EVENTS_HEAD.length).setValues([EVENTS_HEAD]);
   c.getRange('G2:G').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['yes', 'no'], true).build());
   if (!secret_()) PropertiesService.getScriptProperties().setProperty('SHARED_SECRET', Utilities.getUuid() + Utilities.getUuid());
   Logger.log('SHARED_SECRET (put this in Vercel as FEEDBACK_SECRET): ' + secret_());
@@ -77,7 +80,9 @@ function doPost(e) {
     if (b.type === 'visit') return json_(upsertUser_(b, false));
     if (b.type === 'event') return json_(event_(b));
     if (b.type === 'admin-read') return json_(adminRead_());
-    if (b.type === 'config-save') return json_(configSave_(b.config));
+    if (b.type === 'config-save') { adminLog_(b.admin, 'pricing-save', '', JSON.stringify(b.config).slice(0, 300)); return json_(configSave_(b.config)); }
+    if (b.type === 'admin-op') return json_(adminOp_(b));
+    if (b.type === 'public-config') return json_({ ok: true, banner: PropertiesService.getScriptProperties().getProperty('SITE_BANNER') || '' });
     return json_({ ok: false, error: 'unknown type' });
   } catch (err) {
     return json_({ ok: false, error: String(err).slice(0, 200) });
@@ -207,9 +212,9 @@ function autoReply() {
 }
 
 /* ---------- Funnel events (signed-in users only) and admin read ---------- */
-function logEvent_(email, ev, source, dev) {
+function logEvent_(email, ev, source, dev, detail) {
   const src = String(source || '').toLowerCase();
-  tab_('Events', EVENTS_HEAD).appendRow([now_(), now_().slice(0, 10), email, ev, SOURCE_OK.test(src) ? src : '', clean_(dev, 64)]);
+  tab_('Events', EVENTS_HEAD).appendRow([now_(), now_().slice(0, 10), email, ev, SOURCE_OK.test(src) ? src : '', clean_(dev, 64), clean_(detail, 200)]);
 }
 /** Only for a row whose email AND device id came from a verified sign-in. */
 function event_(b) {
@@ -219,7 +224,7 @@ function event_(b) {
   const rows = n > 0 ? sh.getRange(2, 1, n, USERS_HEAD.length).getValues() : [];
   const r = rows.find(function (x) { return String(x[0]).toLowerCase() === email; });
   if (!r || String(r[6]).split(',').map(function (x) { return x.trim(); }).indexOf(dev) < 0) return { ok: false, error: 'unknown user' };
-  logEvent_(email, ev, b.source, dev);
+  logEvent_(email, ev, b.source, dev, b.detail);
   return { ok: true };
 }
 function rows_(name, head, max) {
@@ -230,12 +235,42 @@ function rows_(name, head, max) {
 }
 /** Everything the admin dashboard needs. Only the website's server can call this (secret), and it only does so after checking the admin's Google ID token. */
 function adminRead_() {
+  const P = PropertiesService.getScriptProperties();
   return { ok: true, users: rows_('Users', USERS_HEAD, 20000), feedback: rows_('Feedback', FEEDBACK_HEAD, 2000), events: rows_('Events', EVENTS_HEAD, 50000),
-    config: PropertiesService.getScriptProperties().getProperty('PRICING_CONFIG') || '' };
+    comments: rows_('Comments', COMMENT_HEAD, 2000), adminLog: rows_('Admin log', ADMINLOG_HEAD, 500),
+    config: P.getProperty('PRICING_CONFIG') || '', inputs: P.getProperty('ADMIN_INPUTS') || '', banner: P.getProperty('SITE_BANNER') || '', autoReplyMode: P.getProperty('AUTO_REPLY_MODE') || 'test' };
 }
 function configSave_(cfg) {
   const s = JSON.stringify(cfg || {});
   if (s.length > 8000) return { ok: false, error: 'config too large' };
   PropertiesService.getScriptProperties().setProperty('PRICING_CONFIG', s);
   return { ok: true };
+}
+
+/* ---------- Admin operations: only the website's server calls these, after verifying the admin's Google ID token. Every one is logged. ---------- */
+function adminLog_(admin, action, target, details) { tab_('Admin log', ADMINLOG_HEAD).appendRow([now_(), clean_(admin, 120), clean_(action, 40), clean_(target, 160), clean_(details, 500)]); }
+function findRow_(sh, col, val) { const n = sh.getLastRow() - 1; if (n < 1) return -1; const v = sh.getRange(2, col, n, 1).getValues(); for (let i = 0; i < v.length; i++) if (String(v[i][0]).replace(/^'/, '').toLowerCase() === String(val).toLowerCase()) return i + 2; return -1; }
+function deleteWhere_(name, col, val) { const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name); if (!sh) return 0; let n = 0; for (let r = sh.getLastRow(); r >= 2; r--) if (String(sh.getRange(r, col).getValue()).replace(/^'/, '').toLowerCase() === String(val).toLowerCase()) { sh.deleteRow(r); n++; } return n; }
+function adminOp_(b) {
+  const P = PropertiesService.getScriptProperties(), ss = SpreadsheetApp.getActiveSpreadsheet(), op = String(b.op || ''), a = b.admin || '';
+  if (op === 'fb-status') { const sh = ss.getSheetByName('Feedback'); const r = Number(b.row); if (!sh || r < 2 || r > sh.getLastRow()) return { ok: false, error: 'bad row' }; sh.getRange(r, 8).setValue(clean_(b.status, 30)); adminLog_(a, op, 'Feedback row ' + r, b.status); return { ok: true }; }
+  if (op === 'fb-reply') {
+    const sh = ss.getSheetByName('Feedback'); const r = Number(b.row); if (!sh || r < 2 || r > sh.getLastRow()) return { ok: false, error: 'bad row' };
+    const email = String(sh.getRange(r, 3).getValue()).replace(/^'/, ''); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: 'no email on this row' };
+    const text = String(b.text || '').slice(0, 4000); if (text.length < 5) return { ok: false, error: 'empty reply' };
+    const test = (P.getProperty('AUTO_REPLY_MODE') || 'test') !== 'live';
+    MailApp.sendEmail({ to: test ? NOTIFY : email, name: 'Akash Sync Agent team', subject: (test ? '[TEST - please ignore] ' : '') + 'Re: your feedback on Job Acquisition OS', body: (test ? '[TEST - please ignore] This would have gone to ' + email + '.\n\n' : '') + text });
+    sh.getRange(r, 8).setValue('replied'); adminLog_(a, op, 'Feedback row ' + r, (test ? 'TEST to owner: ' : 'to ' + email + ': ') + text.slice(0, 200)); return { ok: true, test: test };
+  }
+  if (op === 'comment-moderate') { const sh = ss.getSheetByName('Comments'); const r = sh ? findRow_(sh, 2, b.id) : -1; if (r < 0) return { ok: false, error: 'no such comment' }; sh.getRange(r, 7).setValue(b.approved === 'yes' ? 'yes' : 'no'); adminLog_(a, op, 'Comment ' + b.id, 'approved=' + (b.approved === 'yes' ? 'yes' : 'no') + (b.flag ? ' flagged: ' + clean_(b.flag, 100) : '')); return { ok: true }; }
+  if (op === 'banner') { const t = clean_(b.text, 300); t ? P.setProperty('SITE_BANNER', t) : P.deleteProperty('SITE_BANNER'); adminLog_(a, op, '', t || '(cleared)'); return { ok: true }; }
+  if (op === 'autoreply-mode') { const m = b.mode === 'live' ? 'live' : 'test'; P.setProperty('AUTO_REPLY_MODE', m); adminLog_(a, op, '', m); return { ok: true }; }
+  if (op === 'inputs-save') { const s = JSON.stringify(b.inputs || {}); if (s.length > 4000) return { ok: false, error: 'too large' }; P.setProperty('ADMIN_INPUTS', s); adminLog_(a, op, '', s.slice(0, 300)); return { ok: true }; }
+  if (op === 'user-review') { const sh = ss.getSheetByName('Users'); const r = sh ? findRow_(sh, 1, b.email) : -1; if (r < 0) return { ok: false, error: 'no such user' }; const cur = String(sh.getRange(r, 9).getValue()); sh.getRange(r, 9).setValue(cur.replace(/ · reviewed.*$/, '') + ' · reviewed ' + now_() + (b.note ? ': ' + clean_(b.note, 100) : '')); adminLog_(a, op, b.email, b.note || ''); return { ok: true }; }
+  if (op === 'user-delete') {
+    const email = clean_(b.email, 120).toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: 'bad email' };
+    const n = { users: deleteWhere_('Users', 1, email), events: deleteWhere_('Events', 3, email), feedback: deleteWhere_('Feedback', 3, email), comments: deleteWhere_('Comments', 4, email) };
+    adminLog_(a, op, email, 'DPDP deletion: ' + JSON.stringify(n)); return { ok: true, deleted: n };
+  }
+  return { ok: false, error: 'unknown op' };
 }

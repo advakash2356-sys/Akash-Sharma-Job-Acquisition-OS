@@ -21,7 +21,7 @@ export const THEMES: [string, RegExp][] = [
 
 export function computeMetrics(users: Row[], events: Row[], feedback: Row[], now = Date.now()) {
   const today = istToday(now);
-  const ev = events.map((e) => ({ day: d0(e[1] || e[0]), email: String(e[2]).toLowerCase(), type: e[3], source: e[4] || "" })).filter((e) => !isNaN(e.day) && e.email);
+  const ev = events.map((e) => ({ day: d0(e[1] || e[0]), email: String(e[2]).toLowerCase(), type: e[3], source: e[4] || "", detail: e[6] || "" })).filter((e) => !isNaN(e.day) && e.email);
   const activeIn = (from: number, to: number) => new Set(ev.filter((e) => e.day >= from && e.day <= to).map((e) => e.email)).size;
   const dau = activeIn(today, today), wau = activeIn(today - 6 * DAY, today), mau = activeIn(today - 29 * DAY, today);
   const wauPrev = activeIn(today - 13 * DAY, today - 7 * DAY);
@@ -29,7 +29,7 @@ export function computeMetrics(users: Row[], events: Row[], feedback: Row[], now
   for (const u of users) { const t = d0(u[3]); if (!isNaN(t)) first.set(String(u[0]).toLowerCase(), t); }
   const signupsIn = (a: number, b: number) => [...first.values()].filter((t) => t >= a && t <= b).length;
   const s7 = signupsIn(today - 6 * DAY, today), sPrev = signupsIn(today - 13 * DAY, today - 7 * DAY);
-  const trend = Array.from({ length: 30 }, (_, i) => { const t = today - (29 - i) * DAY; return { day: iso(t), signups: signupsIn(t, t), active: activeIn(t, t) }; });
+  const trend = Array.from({ length: 30 }, (_, i) => { const t = today - (29 - i) * DAY; return { day: iso(t), signups: signupsIn(t, t), active: activeIn(t, t), wau: activeIn(t - 6 * DAY, t) }; });
 
   // Weekly cohorts (by signup week, Monday start). W1 = active 7-13 days after signup, W4 = 28-34 days.
   const byUser = new Map<string, Set<number>>();
@@ -64,6 +64,20 @@ export function computeMetrics(users: Row[], events: Row[], feedback: Row[], now
   const themes = THEMES.map(([t, re]) => ({ theme: t, count: fb.filter((f) => re.test(f.message || "")).length })).filter((t) => t.count).sort((a, b) => b.count - a.count);
   const ratings = fb.map((f) => f.rating).filter((r): r is number => !!r);
 
+  // Breakdowns from real rows only: latest profile_done detail per user; device class from the user agent.
+  const lastDetail = new Map<string, Record<string, string>>();
+  for (const e of ev) if (e.type === "profile_done" && e.detail) lastDetail.set(e.email, Object.fromEntries(e.detail.split(";").map((kv) => kv.split("=")).filter((x) => x.length === 2).map(([k, v]) => [k.trim(), v.trim()])));
+  const tally = (vals: string[]) => { const m: Record<string, number> = {}; for (const v of vals) if (v) m[v] = (m[v] || 0) + 1; const out = Object.entries(m).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value })); return out.length ? out : null; };
+  const details = [...lastDetail.values()];
+  const device = (ua: string) => /ipad|tablet/i.test(ua) ? "Tablet" : /mobi|android|iphone/i.test(ua) ? "Mobile" : ua ? "Desktop" : "";
+  const breakdowns = {
+    channel: tally(ev.filter((e) => e.type === "signup").map((e) => e.source || "direct / unknown")),
+    workMode: tally(details.flatMap((d) => (d.modes || "").split("+"))),
+    role: tally(details.map((d) => d.role || "")),
+    country: tally(details.map((d) => d.country || "")),
+    device: tally(users.map((u) => device(String(u[10] || "")))),
+  };
+  const sentiment = ratings.length ? [{ name: "Positive (4-5)", value: ratings.filter((r) => r >= 4).length }, { name: "Neutral (3)", value: ratings.filter((r) => r === 3).length }, { name: "Negative (1-2)", value: ratings.filter((r) => r <= 2).length }].filter((x) => x.value) : null;
   const flagged = users.filter((u) => /^yes/i.test(u[8] || "")).length;
   return {
     asOf: iso(today),
@@ -75,6 +89,7 @@ export function computeMetrics(users: Row[], events: Row[], feedback: Row[], now
     funnel: first.size ? funnel : null,
     channels: Object.keys(channels).length ? Object.entries(channels).sort((a, b) => b[1] - a[1]).map(([source, signups]) => ({ source, signups })) : null,
     themes: themes.length ? themes : null,
+    breakdowns, sentiment,
     revenue: { conversion: null, mrr: null, arpu: null, note: "No payments yet. These fill in once a payment provider (Razorpay) is connected." },
     users: users.map((u) => ({ email: u[0], name: u[1], mobile: u[2], firstSeen: u[3], lastSeen: u[4], visits: Number(u[5]) || 0, devices: String(u[6] || "").split(",").filter((x) => x.trim()).length, multi: u[8] || "" })),
     feedback: fb.reverse(),
