@@ -25,7 +25,7 @@ export default function Terms() {
           <p>Job postings come from third-party sources (FreeHire, official government sites) with their original links. They can be out of date or wrong: check the employer's or official page before you apply. AI-written text can contain mistakes; the Fact check helps, but you are responsible for what you send.</p>
         </S>
         <S t="Your data">
-          <p>Your data stays in your browser's local storage. See <a className="underline text-primary" href="/privacy">Privacy & security</a> for exactly what goes where.</p>
+          <p>Your resume, jobs and API key stay in your browser's local storage; sign-in and feedback details go to the owner's private Google Sheet. See <a className="underline text-primary" href="/privacy">Privacy & security</a> for exactly what goes where.</p>
         </S>
         <S t="Fair use">
           <p>Do not use the app to spam employers, scrape sites, or break any law or platform terms. The job search has a rate limit to keep it fair.</p>

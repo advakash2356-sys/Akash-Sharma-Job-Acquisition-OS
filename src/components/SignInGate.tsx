@@ -16,7 +16,7 @@ export default function SignInGate({ openPrivacy, back }: { openPrivacy: () => v
       <div className="glass w-full max-w-lg rounded-[28px] p-7">
         <div className="mb-2 flex items-center gap-2 text-primary"><ShieldCheck size={20} /><span className="text-sm font-medium">Job Acquisition OS</span></div>
         <h1 className="display mb-2 text-4xl">Sign in to continue</h1>
-        <p className="mb-5 text-sm text-muted-foreground">Sign in with Google to use the app. Your resume and jobs still stay in this browser.</p>
+        <p className="mb-5 text-sm text-muted-foreground">Sign in with Google to use the app. Your resume, jobs and API key stay in this browser; they are not sent to the Sheet.</p>
         <label className="mb-1 block text-sm font-medium" htmlFor="gate-mobile">Mobile number (optional, not verified)</label>
         <input id="gate-mobile" inputMode="tel" autoComplete="tel" maxLength={20} value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+91 98xxxxxxxx" className="mb-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm" />
         <p className="mb-4 text-xs text-muted-foreground">Only if you want us to be able to reach you. We do not check it by OTP.</p>

@@ -38,7 +38,7 @@ export default function Overview() {
         <div className="relative px-6 pb-8 pt-28 text-[#f4ede2] sm:px-10 sm:pt-40">
           <p className="label mb-2 text-[#ffb089]">{new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}</p>
           <h1 className="display text-5xl leading-[0.95] sm:text-7xl">{profile.name ? `Keep going, ${profile.name.split(' ')[0]}.` : 'Your path starts here.'}</h1>
-          <p className="mt-3 max-w-xl text-white/75">{target ? `Applications you marked as sent today: ${sp.today} of ${target}. You apply on each employer's site; the app never applies for you.` : 'Set a daily target in Settings.'} {sp.streak > 0 && `${sp.streak}-day streak.`}</p>
+          <p className="mt-3 max-w-xl text-white/75">{target ? `Applications you marked as sent today: ${sp.today} of ${target}. You apply on each employer's site; the app does not apply for you.` : 'Set a daily target in Settings.'} {sp.streak > 0 && `${sp.streak}-day streak.`}</p>
         </div>
       </section>
 

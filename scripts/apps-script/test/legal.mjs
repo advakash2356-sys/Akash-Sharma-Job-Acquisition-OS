@@ -1,0 +1,12 @@
+import puppeteer from 'puppeteer-core';
+const B = process.env.B || 'http://localhost:3000', T = process.env.TAG || 'local';
+const br = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] }); const p = await br.newPage(); await p.setViewport({ width: 1280, height: 900 });
+const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.goto(B + '/', { waitUntil: 'networkidle2' }); await new Promise(r => setTimeout(r, 1200));
+const body = await p.evaluate(() => document.body.innerText);
+console.log('badge new:', /sign in with Google/i.test(body), '| "no sign-up" gone:', !/no sign.?up/i.test(body));
+await p.screenshot({ path: `/workspace/launch/legal-2026-10-24-${T}-landing.png` });
+await p.goto(B + '/privacy', { waitUntil: 'networkidle2' }); await new Promise(r => setTimeout(r, 1200));
+for (const id of ['collect-list', 'processors-list', 'dpdp-consent']) console.log(id, !!(await p.$(`[data-testid=${id}]`)));
+await (await p.$('[data-testid=collect-list]')).scrollIntoView(); await p.screenshot({ path: `/workspace/launch/legal-2026-10-24-${T}-privacy.png` });
+console.log('errors', errs); await br.close();

@@ -16,7 +16,7 @@ function ShareButton({ className }: { className: string }) {
   const url = `${SITE_URL}/?ref=share`;
   const share = async () => {
     track('share');
-    const data = { title: 'Job Acquisition OS: a free job search workspace', text: 'Free job search workspace: real postings, tailored resumes, your data stays in your browser.', url };
+    const data = { title: 'Job Acquisition OS: a free job search workspace', text: 'Free job search workspace (early access): real postings, tailored resumes; your resume and API key stay in your browser.', url };
     try { if (navigator.share) { await navigator.share(data); return; } } catch { return; }
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { prompt('Copy this link', url); }
   };
@@ -110,7 +110,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           <div className="hero-fade mt-8 flex flex-wrap items-center gap-3">
             <button onClick={enter} className="inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-6 py-3 font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight size={18} /></button>
             <a href="#path" className="px-3 py-3 text-white/80 underline-offset-4 hover:underline">See how it works</a>
-            <span className="label ml-2 hidden text-white/60 sm:block">Free · data saved in your browser · no sign-up</span>
+            <span className="label ml-2 hidden text-white/60 sm:block">Free during early access · your resume & API key stay in your browser · sign in with Google</span>
           </div>
           <p className="hero-fade mt-4 max-w-2xl text-sm text-white/75" data-testid="early-access-hero">Free during early access. Paid plans may be introduced later; we'll give advance notice and no one is charged without opting in.</p>
           {PROOF && <p className="hero-fade label mt-4 text-white/70" data-testid="social-proof">{PROOF.users.toLocaleString()} job seekers have started a search (as of {PROOF.asOf})</p>}
@@ -183,7 +183,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         <div className="relative mx-auto max-w-5xl text-center">
           <Lock className="reveal mx-auto mb-5 text-[#ff6a2b]" />
           <h2 className="display reveal text-[clamp(2.6rem,8vw,7rem)] leading-[0.92]">Your data lives in <span className="italic text-[#ff6a2b]">your browser.</span></h2>
-          <p className="reveal mx-auto mt-6 max-w-xl text-white/70">Resume, jobs and API key are saved in local storage, with no database. When you use an AI feature, the text it needs goes through this app to Google Gemini for that request. Export a backup any time.</p>
+          <p className="reveal mx-auto mt-6 max-w-xl text-white/70">Your resume, jobs and API key are saved in this browser's local storage, not in our database. When you use an AI feature, the text it needs goes through this app to Google Gemini for that request. If you sign in, your name, email and visit dates are kept in the owner's private Google Sheet (see Privacy). Export a backup any time.</p>
           <button onClick={enter} className="reveal mt-10 inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-8 py-4 text-lg font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight /></button>
         </div>
       </section>
@@ -203,7 +203,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span><a href="/about" className="inline-flex min-h-11 items-center hover:text-primary">{CREDIT}</a> · {COPYRIGHT}</span>
-          <span>Code under MIT licence; name and logo not licensed. No cookies: your data is kept in this browser's local storage.</span>
+          <span>Code under MIT licence; name and logo not licensed. This site sets no cookies of its own (Google sign-in may set Google's). Your resume and jobs are kept in this browser's local storage.</span>
         </div>
       </footer>
     </div>

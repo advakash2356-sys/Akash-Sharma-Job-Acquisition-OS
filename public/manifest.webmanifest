@@ -1,7 +1,7 @@
 {
   "name": "Job Acquisition OS",
   "short_name": "Job Acq OS",
-  "description": "Free job search workspace by Akash Sync Agent. Real jobs, tailored resumes, data stays in your browser.",
+  "description": "Free job search workspace by Akash Sync Agent. Real jobs, tailored resumes; your resume and API key stay in your browser.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

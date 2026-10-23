@@ -228,7 +228,7 @@ export default function Setup() {
               <div><Label htmlFor="st">Job titles to search</Label><Input id="st" value={titlesIn} onChange={(e) => { edited.current = true; setTitlesIn(e.target.value); }} placeholder="e.g. Contract Manager, Legal Operations" /></div>
               <div><Label htmlFor="sl">Location</Label><Input id="sl" value={locIn} onChange={(e) => { edited.current = true; setLocIn(e.target.value); }} placeholder="e.g. Bengaluru, India" /></div>
               <p className="text-sm sm:col-span-2" data-testid="elig-summary">{eligSummary(candidateOf(profile, locIn || profile.location))} <button className="cursor-pointer underline" onClick={() => go('resume')}>Change where you can work</button></p>
-              <p className="text-xs text-muted-foreground sm:col-span-2">Only these titles, the country and a remote flag go to FreeHire. Never your resume text. Suggested from your resume text, edit freely.</p>
+              <p className="text-xs text-muted-foreground sm:col-span-2">Only these titles, the country and a remote flag go to job sources (FreeHire, Himalayas, Remote OK). Not your resume text. Suggested from your resume text, edit freely.</p>
             </div>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
