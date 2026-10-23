@@ -380,3 +380,16 @@ Not run: the AI items (scoring, tailored docs, "Approve & generate all" pressed 
 | Live link crawl | PASS: 14 links, 0 broken |
 | Lighthouse mobile (live) | / 97/100/100/100 LCP 2.4 s; /feedback 91, /terms 90, /privacy 92 (A11y/BP/SEO 100). The earlier 71 was the local unminified server |
 | OG/Twitter tags | PASS: all present; og.jpg 200 image/jpeg 1200x630 |
+
+## 23 Oct 2026, ~6:00 PM IST: location launch blocker fixed (commit f2101f3), re-tested on production
+Tester found the Delhi driver persona got 7 US jobs (FreeHire tags Indiana "IN" as India; remote/global queries were on by default).
+Fixes: country-only results by default (location text must name India or an Indian place; US state codes, zip codes and FreeHire's mis-tagged "IN" rejected); city + country queries; remote/worldwide only via an opt-in checkbox; ordered title matching plus head-noun check ("Contract Analyst" no longer matches "Paralegal Analyst – Contract…", "Driver" no longer matches "Driver Development Engineer"); fit score minus 10 outside the user's city, minus 15 remote/unstated; cover letter/outreach prompts forbid unstated facts and cross-country licence claims, and sentences the fact check flags are auto-removed and listed under "Removed N sentence(s)…"; Hindi titles mapped to English; zero results hide "Next: review matched jobs" and show guidance; "Approve & generate all" single-run guard (a fast double press had produced a duplicate cover-letter call).
+
+| Persona (production, AI path) | Jobs | In India | In NCR | Other country |
+|---|---|---|---|---|
+| Driver / Warehouse Helper, Delhi (tester's driver.txt) | 6 | 6 | 2 | 0 (was 7/7 US) |
+| Legal Ops & CLM, Gurugram | 11 | 11 | 2 | 0 |
+| Hindi titles ड्राइवर, डिलीवरी ड्राइवर (API) | 6 | 6 | 2 | 0 (was 0 results) |
+
+Full production e2e: 28/28 (incl. AI scoring, docs, triple-press, fact check, .eml test mode, I applied, offline, odd searches, delete). Zero-jobs guidance and the removed-claims panel verified live.
+Known limits: NCR counts are low because FreeHire has few NCR postings for these titles; one weak match ("Legal Entity Controller - Associate", fit 10) still appears at the bottom of the legal list.
