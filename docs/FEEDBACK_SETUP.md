@@ -19,3 +19,9 @@ Until steps 1 to 5 are done, the site shows both forms but says the inbox is "no
 - **Comments**: a row in the Comments tab with Approved = `no`, plus an email. Set **Approved** to `yes` to publish. Type in **Team reply** to answer: it shows as "Akash Sync Agent team" (the date fills in). Set Approved back to `no` to hide. The site refreshes about once a minute.
 - **Spam protection**: hidden honeypot field, minimum fill time, length and link limits, spam-word filter, 5 posts per 10 minutes per IP, posts only from this website, and nothing public until you approve it.
 - After editing the code: Deploy > Manage deployments > Edit > New version (keeps the same URL).
+
+## Google sign-in and the Users tab
+1. Google Cloud Console > APIs & Services > Credentials > Create credentials > OAuth client ID > Web application. Authorised JavaScript origins: `https://akash-sharma-job-acquisition-os.vercel.app` (and `http://localhost:3000` for testing). No redirect URI is needed. The app uses only the client ID; never put the client secret anywhere in this project.
+2. Vercel > Environment Variables (Production): `GOOGLE_CLIENT_ID` = the client ID (ends in `.apps.googleusercontent.com`). Redeploy. The sign-in screen then appears before the app. Without it, the app keeps working in guest mode.
+3. Paste the new `Code.gs`, run **setup** once (it adds the **Users** tab), then Deploy > Manage deployments > Edit > New version.
+4. Users tab columns: Email, Name, Mobile (self-entered, unverified), First seen / Last seen (IST), Visits (sign-ins plus at most one visit a day per device), Device IDs, Device hints, Multiple accounts on this device (flag only, nobody is blocked), Consent given (IST), Last user agent. Delete a row when someone asks for deletion.

@@ -1,3 +1,4 @@
+import { googleClientId, signIn, visit } from "./server/users.js";
 import { aiRateLimit, checkBody, checkOrigin, clientIp } from "./server/guard.js";
 import express from "express";
 import feedbackHandler from "./api/feedback.js";
@@ -15,13 +16,18 @@ async function startServer() {
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-  app.get("/api/status", (_req, res) => res.json({ serverKey: serverKeyConfigured() }));
+  app.get("/api/status", (_req, res) => res.json({ serverKey: serverKeyConfigured(), googleClientId: googleClientId() || null }));
   app.post("/api/auth/google", async (req, res) => {
     try {
-      res.json(await verifyGoogleIdToken(req.body?.credential));
+      checkOrigin(req.headers);
+      res.json(await signIn(req.body, String(req.headers["user-agent"] || "")));
     } catch (e: any) {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
     }
+  });
+  app.post("/api/auth/visit", async (req, res) => {
+    try { checkOrigin(req.headers); res.json(await visit(req.body, clientIp(req.headers, req.socket?.remoteAddress))); }
+    catch (e: any) { res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code }); }
   });
   app.all("/api/feedback", (req, res) => feedbackHandler(req, res));
   app.all("/api/comments", (req, res) => commentsHandler(req, res));

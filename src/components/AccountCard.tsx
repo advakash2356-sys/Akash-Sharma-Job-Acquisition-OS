@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LogOut, UserRound } from 'lucide-react';
 import { Button, Card } from './ui';
-import { googleEnabled, renderGoogleButton, signOutUser, type AuthUser } from '../lib/googleAuth';
+import { isClientId, loadClientId, renderGoogleButton, signOutUser, type AuthUser } from '../lib/googleAuth';
 import { importGuestData } from '../lib/storage';
 
 export default function AccountCard({ user }: { user: AuthUser | null }) {
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const btn = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (!user && btn.current) renderGoogleButton(btn.current, setErr); }, [user]);
+  const [googleEnabled, setOn] = useState(false);
+  useEffect(() => { loadClientId().then((id) => setOn(isClientId(id))); }, []);
+  useEffect(() => { if (!user && googleEnabled && btn.current) renderGoogleButton(btn.current, setErr); }, [user, googleEnabled]);
   return (
     <Card>
       <div className="mb-1 flex items-center gap-3"><UserRound size={20} className="text-primary" /><h2 className="text-3xl">Account</h2></div>
@@ -27,9 +29,9 @@ export default function AccountCard({ user }: { user: AuthUser | null }) {
         </>
       ) : (
         <>
-          <p className="mb-4 text-sm text-muted-foreground">You are using guest mode: everything works and stays on this device. Sign in with Google to keep a separate, named workspace per person on a shared browser.</p>
+          <p className="mb-4 text-sm text-muted-foreground">You are using guest mode. Sign in with Google to keep a separate, named workspace per person on a shared browser.</p>
           {googleEnabled ? <div ref={btn} className="min-h-[44px]" /> : <Button disabled>Sign in with Google</Button>}
-          {!googleEnabled && <p className="mt-3 text-sm text-muted-foreground">Google sign-in is not set up on this deployment yet. The site owner needs to add a Google client ID (see GOOGLE_SIGNIN_SETUP.md). Guest mode is unaffected.</p>}
+          {!googleEnabled && <p className="mt-3 text-sm text-muted-foreground">Google sign-in is not set up on this deployment yet. The site owner needs to add a Google client ID (see GOOGLE_SIGNIN_SETUP.md). Until then the app works in guest mode without sign-in.</p>}
           {err && <p role="alert" className="mt-3 text-sm text-danger">{err}</p>}
         </>
       )}

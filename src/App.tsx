@@ -2,7 +2,8 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X, MessageSquare, Info } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
-import { getSession, watchAuth, type AuthUser } from './lib/googleAuth';
+import { getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
+import SignInGate from './components/SignInGate';
 import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
 import { setKeyNamespace } from './lib/userApiKey';
 import { useLocalState } from './lib/useLocalState';
@@ -73,6 +74,9 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const [menu, setMenu] = useState(false);
   useEffect(() => { const jm = location.hash.match(/^#\/app\/job\/([^/?#]+)/); if (jm) setSelectedJobId(decodeURIComponent(jm[1])); }, []);
   const [inApp, setInApp] = useState(() => location.hash.startsWith('#/app'));
+  const [gate, setGate] = useState<boolean | null>(null);
+  useEffect(() => { loadClientId().then((id) => setGate(isClientId(id))); }, []);
+  useEffect(() => { pingVisit(user); }, [user]);
   useEffect(() => {
     const f = () => { setInApp(location.hash.startsWith('#/app')); const jm = location.hash.match(/^#\/app\/job\/([^/?#]+)/); if (jm) setSelectedJobId(decodeURIComponent(jm[1])); const hp = hashPage(); if (hp) { setPage(hp); window.scrollTo(0, 0); } };
     window.addEventListener('hashchange', f);
@@ -141,6 +145,9 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   );
 
   if (!inApp) return <ErrorBoundary><Suspense fallback={<div className="min-h-screen bg-[#0d0b0a]" />}><Landing dark={dark} toggleTheme={toggleTheme} enter={enter} /></Suspense></ErrorBoundary>;
+
+  if (!user && !isPublic(page) && gate) return <SignInGate openPrivacy={() => go('privacy')} back={leave} />;
+  if (!user && !isPublic(page) && gate === null) return <div className="min-h-screen bg-background" />;
 
   return (
     <Ctx.Provider value={{ profile, setProfile, jobs, setJobs, page, go, selectedJobId, hasResume, user }}>
