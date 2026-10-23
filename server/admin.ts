@@ -1,0 +1,59 @@
+import { ApiError } from "./handlers.js";
+import { communityConfigured } from "./community.js";
+import { verifyGoogleIdToken } from "./googleAuth.js";
+import { computeMetrics } from "./adminMetrics.js";
+
+// Admin dashboard API. Every call re-verifies a fresh Google ID token and compares the verified email with ADMIN_EMAIL.
+// Anyone else gets the same 404 as an unknown URL. The Apps Script secret never leaves the server.
+export const adminEmail = () => (process.env.ADMIN_EMAIL || "adv.akash2356@gmail.com").trim().toLowerCase();
+const NOT_FOUND = () => new ApiError(404, "Not found", "NOT_FOUND");
+
+async function requireAdmin(auth: unknown) {
+  const m = /^Bearer (.+)$/.exec(String(auth || ""));
+  if (!m) throw NOT_FOUND();
+  let p; try { p = await verifyGoogleIdToken(m[1]); } catch { throw NOT_FOUND(); }
+  if (p.email.toLowerCase() !== adminEmail()) throw NOT_FOUND();
+  return p;
+}
+async function script(payload: object) {
+  if (!communityConfigured()) throw new ApiError(503, "The Sheet is not connected (FEEDBACK_SCRIPT_URL / FEEDBACK_SECRET missing).", "NOT_CONFIGURED");
+  const r = await fetch(process.env.FEEDBACK_SCRIPT_URL!, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, secret: process.env.FEEDBACK_SECRET }), redirect: "follow", signal: AbortSignal.timeout(25000) });
+  const d: any = await r.json().catch(() => ({}));
+  if (!d.ok) throw new ApiError(502, `The Sheet said: ${d.error || "no answer"}. Redeploy the Apps Script with the latest Code.gs.`, "SCRIPT");
+  return d;
+}
+
+export const DEFAULT_PRICING = {
+  masterOn: false,
+  payment: { provider: "razorpay", connected: false, note: "Not integrated. Needs a Razorpay account, keys in Vercel env, a checkout + webhook. Nothing is charged while this is off." },
+  plans: [
+    { id: "free", name: "Free", priceInrMonthly: 0, limits: "Everything that is free today" },
+    { id: "pro", name: "Pro", priceInrMonthly: 299, limits: "Draft plan, not live" },
+  ],
+  features: { jobSearch: false, aiTailoring: false, coverLetters: false, outreach: false, resumeDesigns: false, interviewPrep: false, salaryInsights: false },
+};
+function sanitizePricing(c: any) {
+  const out = structuredClone(DEFAULT_PRICING);
+  out.masterOn = c?.masterOn === true;
+  if (Array.isArray(c?.plans)) out.plans = c.plans.slice(0, 6).map((p: any) => ({ id: String(p.id || "").replace(/[^a-z0-9-]/gi, "").slice(0, 20) || "plan", name: String(p.name || "").slice(0, 40), priceInrMonthly: Math.max(0, Math.min(100000, Number(p.priceInrMonthly) || 0)), limits: String(p.limits || "").slice(0, 200) }));
+  for (const k of Object.keys(out.features) as (keyof typeof out.features)[]) out.features[k] = c?.features?.[k] === true;
+  return out;
+}
+
+export async function adminCheck(b: any) {
+  // Only says whether to show the verify button; real access is checked on every data call.
+  if (String(b?.email || "").trim().toLowerCase() !== adminEmail()) throw NOT_FOUND();
+  return { ok: true };
+}
+export async function adminData(auth: unknown) {
+  const p = await requireAdmin(auth);
+  const d = await script({ type: "admin-read" });
+  let pricing = DEFAULT_PRICING; try { if (d.config) pricing = sanitizePricing(JSON.parse(d.config)); } catch { /* keep default */ }
+  return { admin: p.email, metrics: computeMetrics(d.users || [], d.events || [], d.feedback || []), pricing, goatcounter: "https://akashsyncagent.goatcounter.com" };
+}
+export async function adminSaveConfig(auth: unknown, body: any) {
+  await requireAdmin(auth);
+  const pricing = sanitizePricing(body?.pricing);
+  await script({ type: "config-save", config: pricing });
+  return { ok: true, pricing };
+}

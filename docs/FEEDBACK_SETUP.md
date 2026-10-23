@@ -33,3 +33,10 @@ Until steps 1 to 5 are done, the site shows both forms but says the inbox is "no
 4. Go live: change `AUTO_REPLY_MODE` to `live`. Feedback whose message contains "[TEST" still goes only to you.
 5. What it says: a warm thank-you naming one point from their message, "we will look into it", and a request for some time. A filter rejects any text that promises a fix, feature, date or timeline ("soon", "within 2 days", "will be fixed", ...) and falls back to the template. Rows without an email are marked "no email: skipped". At most 20 replies per run; MailApp's free quota is about 100 a day.
 6. Local check of the script logic (no real email, no Sheet): `node scripts/apps-script/test/users.mjs` and `GEMINI_API_KEY=... node scripts/apps-script/test/reply.mjs`.
+
+## Admin dashboard (/admin)
+- Not linked anywhere, `noindex`, separate lazy chunk (the public site never downloads it).
+- Open https://akash-sharma-job-acquisition-os.vercel.app/admin while signed in to the app with the admin Google account, then press "Continue with Google". Every admin API call re-verifies that Google ID token on the server and compares the email with `ADMIN_EMAIL` (Vercel env, default adv.akash2356@gmail.com). Anyone else gets the normal 404. The token lasts about 1 hour; reload to verify again.
+- Data comes from the Users, Events and Feedback tabs through the Apps Script (`admin-read`, secret-protected, called only by the server). Paste the latest Code.gs, run **setup** (adds the **Events** tab), and deploy a new version.
+- Funnel events (profile filled, job viewed, documents generated, apply click) are logged only for signed-in users, once per step per day per device, starting from this release. Channel = `?ref=` / `utm_source` of the first visit.
+- Pricing config: saved as Script Property `PRICING_CONFIG`. Master switch is OFF by default and the public site does not read it. No payment integration: going live needs a Razorpay account, keys in Vercel env, a checkout and a webhook (not built).

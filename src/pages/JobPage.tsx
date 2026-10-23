@@ -6,11 +6,14 @@ import { today } from '../lib/utils';
 import { JOB_STATUSES, type Job, type JobStatus } from '../types';
 import { JobDetail } from './Jobs';
 import { Briefcase } from 'lucide-react';
+import { useEffect } from 'react';
+import { funnel } from '../lib/googleAuth';
 
 /** One-stop page for a single job: details, the original posting, Apply on site, and this job's documents. */
 export default function JobPage() {
   const { jobs, selectedJobId, setJobs, go } = useApp();
   const job = jobs.find((j) => j.id === selectedJobId);
+  useEffect(() => { if (job) funnel('job_viewed'); }, [job?.id]);
   if (!job) return <><PageHeader title="Job" /><EmptyState icon={<Briefcase size={32} />} title="Pick a job" body="Open a job from your list to see its details, apply link and documents." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} /></>;
   const patch = (p: Partial<Job>) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, ...p } : j)));
   const fit = job.score?.score ?? job.found?.fit?.score;
@@ -32,7 +35,7 @@ export default function JobPage() {
           <div className="label mb-2 text-primary">Step 6 · Apply yourself</div>
           <div className="flex flex-wrap items-center gap-2">
             {job.url
-              ? <a href={job.url} target="_blank" rel="noreferrer" data-testid="apply-on-site" className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90"><ExternalLink size={16} /> Apply on employer site</a>
+              ? <a href={job.url} target="_blank" rel="noreferrer" data-testid="apply-on-site" onClick={() => funnel('apply_click')} className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90"><ExternalLink size={16} /> Apply on employer site</a>
               : <span className="text-sm text-muted-foreground">No link saved for this job. Add one under "More for this job" below.</span>}
             {job.url && <a href={job.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1 px-2 text-sm underline">Open original posting</a>}
             {job.status === 'Saved'

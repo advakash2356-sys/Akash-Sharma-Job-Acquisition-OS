@@ -15,6 +15,10 @@ const COMMENT_HEAD = ['Timestamp (IST)', 'Comment ID', 'Name', 'Email (private)'
 
 const USERS_HEAD = ['Email', 'Name', 'Mobile (self-entered, unverified)', 'First seen (IST)', 'Last seen (IST)', 'Visits', 'Device IDs', 'Device hints', 'Multiple accounts on this device', 'Consent given (IST)', 'Last user agent'];
 
+const EVENTS_HEAD = ['Time (IST)', 'Date (IST)', 'Email', 'Event', 'Source', 'Device ID'];
+const FUNNEL_EVENTS = ['signup', 'signin', 'visit', 'profile_done', 'job_viewed', 'docs_generated', 'apply_click'];
+const SOURCE_OK = /^[a-z0-9_-]{0,40}$/;
+
 function secret_() { return PropertiesService.getScriptProperties().getProperty('SHARED_SECRET') || ''; }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function now_() { return Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm'); }
@@ -36,6 +40,7 @@ function setup() {
   first.setFrozenRows(1);
   const c = tab_('Comments', COMMENT_HEAD);
   tab_('Users', USERS_HEAD);
+  tab_('Events', EVENTS_HEAD);
   c.getRange('G2:G').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['yes', 'no'], true).build());
   if (!secret_()) PropertiesService.getScriptProperties().setProperty('SHARED_SECRET', Utilities.getUuid() + Utilities.getUuid());
   Logger.log('SHARED_SECRET (put this in Vercel as FEEDBACK_SECRET): ' + secret_());
@@ -70,6 +75,9 @@ function doPost(e) {
     }
     if (b.type === 'user') return json_(upsertUser_(b, true));
     if (b.type === 'visit') return json_(upsertUser_(b, false));
+    if (b.type === 'event') return json_(event_(b));
+    if (b.type === 'admin-read') return json_(adminRead_());
+    if (b.type === 'config-save') return json_(configSave_(b.config));
     return json_({ ok: false, error: 'unknown type' });
   } catch (err) {
     return json_({ ok: false, error: String(err).slice(0, 200) });
@@ -109,12 +117,14 @@ function upsertUser_(b, signin) {
   const t = now_();
   if (i < 0) {
     if (!signin) return { ok: false, error: 'unknown user' };
+    logEvent_(email, 'signup', b.source, dev);
     sh.appendRow([email, clean_(b.name, 80), clean_(b.mobile, 20), t, t, 1, dev, clean_(b.fp, 32), '', t, clean_(b.ua, 200)]);
     rows.push(sh.getRange(sh.getLastRow(), 1, 1, USERS_HEAD.length).getValues()[0]); i = rows.length - 1;
   } else {
     const r = rows[i];
     if (!signin && String(r[6]).split(',').map(function (x) { return x.trim(); }).indexOf(dev) < 0) return { ok: false, error: 'unknown device' };
     r[4] = t; r[5] = (Number(r[5]) || 0) + 1;
+    logEvent_(email, signin ? 'signin' : 'visit', b.source, dev);
     if (signin) { r[1] = clean_(b.name, 80) || r[1]; if (clean_(b.mobile, 20)) r[2] = clean_(b.mobile, 20); r[6] = addTo_(r[6], dev, 10); r[7] = addTo_(r[7], clean_(b.fp, 32), 10); r[9] = t; r[10] = clean_(b.ua, 200); }
     sh.getRange(i + 2, 1, 1, USERS_HEAD.length).setValues([r]);
   }
@@ -194,4 +204,38 @@ function autoReply() {
       catch (e) { sh.getRange(i + 2, 9, 1, 2).setValues([['failed: ' + String(e).slice(0, 80), now_()]]); }
     }
   } finally { lock.releaseLock(); }
+}
+
+/* ---------- Funnel events (signed-in users only) and admin read ---------- */
+function logEvent_(email, ev, source, dev) {
+  const src = String(source || '').toLowerCase();
+  tab_('Events', EVENTS_HEAD).appendRow([now_(), now_().slice(0, 10), email, ev, SOURCE_OK.test(src) ? src : '', clean_(dev, 64)]);
+}
+/** Only for a row whose email AND device id came from a verified sign-in. */
+function event_(b) {
+  const email = clean_(b.email, 120).toLowerCase(), dev = clean_(b.deviceId, 64), ev = String(b.event || '');
+  if (FUNNEL_EVENTS.slice(3).indexOf(ev) < 0) return { ok: false, error: 'bad event' };
+  const sh = tab_('Users', USERS_HEAD); const n = sh.getLastRow() - 1;
+  const rows = n > 0 ? sh.getRange(2, 1, n, USERS_HEAD.length).getValues() : [];
+  const r = rows.find(function (x) { return String(x[0]).toLowerCase() === email; });
+  if (!r || String(r[6]).split(',').map(function (x) { return x.trim(); }).indexOf(dev) < 0) return { ok: false, error: 'unknown user' };
+  logEvent_(email, ev, b.source, dev);
+  return { ok: true };
+}
+function rows_(name, head, max) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const n = sh.getLastRow() - 1, from = Math.max(2, sh.getLastRow() - max + 1);
+  return sh.getRange(from, 1, Math.min(n, max), head.length).getDisplayValues();
+}
+/** Everything the admin dashboard needs. Only the website's server can call this (secret), and it only does so after checking the admin's Google ID token. */
+function adminRead_() {
+  return { ok: true, users: rows_('Users', USERS_HEAD, 20000), feedback: rows_('Feedback', FEEDBACK_HEAD, 2000), events: rows_('Events', EVENTS_HEAD, 50000),
+    config: PropertiesService.getScriptProperties().getProperty('PRICING_CONFIG') || '' };
+}
+function configSave_(cfg) {
+  const s = JSON.stringify(cfg || {});
+  if (s.length > 8000) return { ok: false, error: 'config too large' };
+  PropertiesService.getScriptProperties().setProperty('PRICING_CONFIG', s);
+  return { ok: true };
 }

@@ -1,3 +1,5 @@
+import { adminCheck, adminData, adminSaveConfig } from "./server/admin.js";
+import { funnelEvent } from "./server/events.js";
 import { googleClientId, signIn, visit } from "./server/users.js";
 import { aiRateLimit, checkBody, checkOrigin, clientIp } from "./server/guard.js";
 import express from "express";
@@ -24,6 +26,21 @@ async function startServer() {
     } catch (e: any) {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
     }
+  });
+  app.post("/api/auth/event", async (req, res) => {
+    try { checkOrigin(req.headers); res.json(await funnelEvent(req.body, clientIp(req.headers, req.socket?.remoteAddress))); }
+    catch (e: any) { res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code }); }
+  });
+  app.all("/api/admin/:action", async (req, res) => {
+    res.setHeader("X-Robots-Tag", "noindex, nofollow"); res.setHeader("Cache-Control", "no-store");
+    try {
+      checkOrigin(req.headers);
+      const a = req.params.action;
+      if (a === "check" && req.method === "POST") return res.json(await adminCheck(req.body));
+      if (a === "data" && req.method === "GET") return res.json(await adminData(req.headers.authorization));
+      if (a === "config" && req.method === "POST") return res.json(await adminSaveConfig(req.headers.authorization, req.body));
+      throw new ApiError(404, "Not found", "NOT_FOUND");
+    } catch (e: any) { res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code }); }
   });
   app.post("/api/auth/visit", async (req, res) => {
     try { checkOrigin(req.headers); res.json(await visit(req.body, clientIp(req.headers, req.socket?.remoteAddress))); }

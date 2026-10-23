@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X, MessageSquare, Info } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
-import { getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
+import { funnel, getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
 import SignInGate from './components/SignInGate';
 import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
 import { setKeyNamespace } from './lib/userApiKey';
@@ -104,7 +104,8 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   };
   useEffect(() => { if (!inApp) setMeta('landing', '/'); else if (isPublic(page)) setMeta(page, `/${page}`); else setMeta('app', '/'); }, [inApp, page]);
   const hasResume = profile.resumeText.trim().length >= 50;
-  useEffect(() => { if (hasResume) track('resume_added'); }, [hasResume]);
+  useEffect(() => { if (hasResume) { track('resume_added'); funnel('profile_done'); } }, [hasResume]);
+  useEffect(() => { if (jobs.some((j) => j.coverLetter || j.tailoredResume || j.outreach)) funnel('docs_generated'); }, [jobs]);
   useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);
   useEffect(() => { if (jobs.some((j) => j.found)) track('first_job_found'); }, [jobs]);
 

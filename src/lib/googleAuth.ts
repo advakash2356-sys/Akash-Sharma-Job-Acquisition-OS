@@ -68,7 +68,7 @@ export async function renderGoogleButton(el: HTMLElement, onError: (m: string) =
       client_id: CLIENT_ID,
       callback: async (resp: { credential?: string }) => {
         try {
-          const r = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential, ...extra(), deviceId: deviceId(), fp: lightFingerprint() }) });
+          const r = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential, ...extra(), deviceId: deviceId(), fp: lightFingerprint(), source: firstSource() }) });
           const d = await r.json().catch(() => ({}));
           if (!r.ok) return onError(d.error || 'Sign-in could not be verified.');
           localStorage.setItem(SESSION_KEY, JSON.stringify({ uid: d.sub, name: d.name, email: d.email, photo: d.picture }));
@@ -95,6 +95,32 @@ export function pingVisit(u: AuthUser | null) {
     const today = new Date().toDateString();
     if (localStorage.getItem('jaos_visit_v1') === today) return;
     localStorage.setItem('jaos_visit_v1', today);
-    fetch('/api/auth/visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: u.email, deviceId: deviceId() }) }).catch(() => {});
+    fetch('/api/auth/visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: u.email, deviceId: deviceId(), source: firstSource() }) }).catch(() => {});
   } catch { /* ignore */ }
+}
+
+/** Channel of this browser's first visit (?ref= / utm_source), kept locally so sign-ups can be attributed. */
+export function firstSource(): string { try { return localStorage.getItem('jaos_src_v1') || ''; } catch { return ''; } }
+export function rememberSource(src: string) { try { if (src && !localStorage.getItem('jaos_src_v1')) localStorage.setItem('jaos_src_v1', src); } catch { /* ignore */ } }
+
+export type FunnelEvent = 'profile_done' | 'job_viewed' | 'docs_generated' | 'apply_click';
+/** Signed-in users only: one funnel step per day per device, to the private Events tab. Silent, best effort. */
+export function funnel(event: FunnelEvent) {
+  const u = getSession(); if (!u?.email) return;
+  try {
+    const k = `jaos_fn_${event}`, today = new Date().toDateString();
+    if (localStorage.getItem(k) === today) return; localStorage.setItem(k, today);
+    fetch('/api/auth/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: u.email, deviceId: deviceId(), event, source: firstSource() }), keepalive: true }).catch(() => {});
+  } catch { /* ignore */ }
+}
+
+/** Renders a Google button that hands back the raw ID token (used by /admin, which re-sends it on every call). */
+export async function renderTokenButton(el: HTMLElement, onToken: (t: string) => void, onError: (m: string) => void) {
+  CLIENT_ID = await loadClientId();
+  if (!isClientId(CLIENT_ID)) return onError('Not available.');
+  try {
+    const google = await loadGsi();
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: (r: { credential?: string }) => r.credential ? onToken(r.credential) : onError('No credential.') });
+    google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with' });
+  } catch { onError('Could not load Google sign-in.'); }
 }
