@@ -163,6 +163,13 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
         <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8 sm:px-8 lg:py-12">
           {!isPublic(page) && page !== 'notfound' && <FlowStepper />}
           <div key={page} className="stagger"><ErrorBoundary key={page}><Suspense fallback={<p className="label text-muted-foreground">Loading…</p>}>{import.meta.env.DEV && location.hash === '#/app/notfound?crash' ? <Crash /> : <Page />}</Suspense></ErrorBoundary></div>
+          <footer className="mt-12 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-4 text-xs text-muted-foreground" data-testid="app-credit">
+            <a href="/about" onClick={(e) => { e.preventDefault(); go('about'); }} className="inline-flex min-h-11 items-center font-medium text-foreground hover:text-primary">{CREDIT}</a>
+            <span>{COPYRIGHT}</span>
+            <a href="/terms" onClick={(e) => { e.preventDefault(); go('terms'); }} className="inline-flex min-h-11 items-center hover:text-primary">Terms</a>
+            <a href="/privacy" onClick={(e) => { e.preventDefault(); go('privacy'); }} className="inline-flex min-h-11 items-center hover:text-primary">Privacy</a>
+            <a href="/feedback" onClick={(e) => { e.preventDefault(); go('feedback'); }} className="inline-flex min-h-11 items-center hover:text-primary">Feedback</a>
+          </footer>
         </main>
       </div>
     </Ctx.Provider>

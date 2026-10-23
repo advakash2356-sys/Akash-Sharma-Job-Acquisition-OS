@@ -74,13 +74,30 @@ const TITLE_RE = /\b(manager|counsel|lead|analyst|engineer|officer|associate|exe
 /** Guess job titles from resume lines, without AI. Looks for short lines that read like a title. */
 export function guessTitles(resume: string): string[] {
   const out: string[] = [];
-  for (const raw of resume.split(/\n|(?<=[a-z])\.\s+/).slice(0, 120)) {
+  const flat = !/\n/.test(resume.slice(0, 300));
+  for (const raw of flat ? [] : resume.split(/\n|(?<=[a-z])\.\s+/).slice(0, 120)) {
     const line = raw.replace(/^[\s•*\-–]+/, '').trim();
     if (line.length < 4 || line.length > 70 || !TITLE_RE.test(line) || /certif|licen[cs]|degree|diploma|bachelor|master of|universit|college|school|\b(LLB|LLM|MBA|B\.?A|B\.?Tech)\b/i.test(line)) continue;
-    const t = line.split(/\s*(?:\bat\b|@|\||,|\(|\s-\s|–|—)\s*/i)[0].trim();
+    const t = line.split(/\s*(?:\bat\b|@|\||,|\(|\s-\s|–|—)\s*/i)[0].replace(/^(?:[A-Z]{4,}\s+)+/, '').trim();
     if (t.length >= 4 && t.length <= 50 && TITLE_RE.test(t) && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
     if (out.length >= 3) break;
   }
+  if (out.length) return out;
+  // PDFs often come out as one long line. Fall back to title-like phrases near the top, e.g.
+  // "Legal Operations & CLM Specialist" right after the name: a title word plus up to 4 words before it.
+  const words = resume.slice(0, 1500).replace(/[|•·,;:()]/g, ' , ').split(/\s+/).filter(Boolean);
+  words.forEach((w, k) => {
+    if (out.length >= 3 || !(TITLE_RE.test(w) || /^(rider|driver|helper|cook|guard|technician|teacher|nurse|clerk|operator|agent|cashier|electrician|plumber|tailor|receptionist)s?$/i.test(w))) return;
+    const pre: string[] = [];
+    for (let b = k - 1; b >= 2 && pre.length < 4; b--) { // words 0-1 are usually the name
+      const x = words[b];
+      if (x === ',' || /^[A-Z]{4,}$/.test(x) || /[.@\d]/.test(x) || (!/^(&|and|of)$/i.test(x) && !/^[A-Z]/.test(x) && !/^(delivery|sales|customer|field|senior|junior|data|legal|office)$/i.test(x))) break;
+      pre.unshift(x);
+    }
+    while (pre.length && /^(&|and|of)$/i.test(pre[0])) pre.shift();
+    const t = [...pre, w].join(' ');
+    if (t.length >= 4 && t.length <= 50 && !/universit|college|school|certif/i.test(t) && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
+  });
   return out;
 }
 export function guessLocation(resume: string): string {

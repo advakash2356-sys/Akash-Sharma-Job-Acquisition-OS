@@ -1,5 +1,7 @@
 import { aiRateLimit, checkBody, checkOrigin, clientIp } from "./server/guard.js";
 import express from "express";
+import feedbackHandler from "./api/feedback.js";
+import commentsHandler from "./api/comments.js";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { verifyGoogleIdToken } from "./server/googleAuth.js";
@@ -21,6 +23,8 @@ async function startServer() {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
     }
   });
+  app.all("/api/feedback", (req, res) => feedbackHandler(req, res));
+  app.all("/api/comments", (req, res) => commentsHandler(req, res));
   app.post("/api/jobs/search", async (req, res) => {
     try {
       checkOrigin(req.headers); checkBody(req.body);

@@ -1,3 +1,4 @@
+import EarlyAccessNote from '../components/EarlyAccessNote';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, FileText, Gauge, Lock, Mail, Route, ScanSearch, Sun, Moon, TrendingUp, Download } from 'lucide-react';
 import gsap from 'gsap';
@@ -111,6 +112,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
             <a href="#path" className="px-3 py-3 text-white/80 underline-offset-4 hover:underline">See how it works</a>
             <span className="label ml-2 hidden text-white/60 sm:block">Free · data saved in your browser · no sign-up</span>
           </div>
+          <p className="hero-fade mt-4 max-w-2xl text-sm text-white/75" data-testid="early-access-hero">Free during early access. Paid plans may be introduced later; we'll give advance notice and no one is charged without opting in.</p>
           {PROOF && <p className="hero-fade label mt-4 text-white/70" data-testid="social-proof">{PROOF.users.toLocaleString()} job seekers have started a search (as of {PROOF.asOf})</p>}
         </div>
       </section>
@@ -185,11 +187,13 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           <button onClick={enter} className="reveal mt-10 inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-8 py-4 text-lg font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight /></button>
         </div>
       </section>
+      <div className="px-5 pt-8 sm:px-10"><EarlyAccessNote /></div>
       <footer className="grid gap-4 px-5 py-8 text-sm text-muted-foreground sm:px-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="display text-xl text-foreground">Job Acquisition OS</span>
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
             <a href="/feedback" className="label inline-flex min-h-11 items-center hover:text-primary">Share feedback</a>
+            <a href="/feedback#comments" className="label inline-flex min-h-11 items-center hover:text-primary">Comments</a>
             <ShareButton className="label inline-flex min-h-11 items-center cursor-pointer hover:text-primary" />
             <a href="/about" className="label inline-flex min-h-11 items-center hover:text-primary">About</a>
             <a href="/terms" className="label inline-flex min-h-11 items-center hover:text-primary">Terms</a>

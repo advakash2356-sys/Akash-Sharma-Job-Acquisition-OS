@@ -1,3 +1,4 @@
+import EarlyAccessNote from '../components/EarlyAccessNote';
 import { Card, PageHeader } from '../components/ui';
 import { COPYRIGHT } from '../lib/brand';
 
@@ -6,8 +7,12 @@ const S = ({ t, children }: { t: string; children: React.ReactNode }) => <Card><
 export default function Terms() {
   return (
     <>
-      <PageHeader eyebrow="Plain language" title="Terms of use" subtitle="Short and honest. Last updated 19 October 2026." />
+      <PageHeader eyebrow="Plain language" title="Terms of use" subtitle="Short and honest. Last updated 23 October 2026." />
+      <EarlyAccessNote className="mb-5" />
       <div className="grid gap-5">
+        <S t="Price">
+          <p>Job Acquisition OS is free during early access. Paid plans may be introduced later; we'll give advance notice and no one is charged without opting in. Your own Gemini key is billed (if at all) by Google under your own Google account, not by us.</p>
+        </S>
         <S t="What this is">
           <p>Job Acquisition OS is a free tool to organise your job search. It is provided as is, without any warranty. It does not apply for jobs or send emails for you: you review and send everything yourself.</p>
         </S>
