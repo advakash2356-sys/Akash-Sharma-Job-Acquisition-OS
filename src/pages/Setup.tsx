@@ -129,7 +129,19 @@ export default function Setup() {
       }
       if (mode === 'ai') {
         set('parse', 'running');
-        const p: any = await callAi('parse-resume', { resume: profile.resumeText }, { signal: c.signal, timeoutMs: LIMIT.parse });
+        let p: any;
+        try { p = await callAi('parse-resume', { resume: profile.resumeText }, { signal: c.signal, timeoutMs: LIMIT.parse }); }
+        catch (e: any) {
+          const g = titles.length ? titles : guessTitles(profile.resumeText);
+          if (e.code === 'CANCELLED' || !g.length) throw e;
+          // Gemini busy or failing: keep going with titles read from the resume itself, keyword scoring only.
+          set('parse', 'skipped'); stage = 'research';
+          titles = g; if (!loc) loc = guessLocation(profile.resumeText);
+          setProfile((cur) => ({ ...cur, targetRoles: fill(cur.targetRoles, titles.join(', ')), location: fill(cur.location, loc) }));
+          await searchAndAdd({ titles, countries: deriveCountries(loc), remote: true }, loc, false, c.signal);
+          setNote((n) => `Gemini could not read the resume (${String(e.message).slice(0, 160)}), so titles were taken from the resume text. ${n}`);
+          return;
+        }
         const aiTitles: string[] = (p.targetTitles || []).filter(Boolean);
         setProfile((cur) => ({
           ...cur,

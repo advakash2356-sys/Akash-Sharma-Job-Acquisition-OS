@@ -362,3 +362,21 @@ Tested on a local production build (`node build/server.cjs`), with a mock of the
 | Lighthouse (local build, mobile): Performance 71, Accessibility 100, Best Practices 100, SEO 100, LCP 5.5 s (no CDN or compression locally) | Info |
 
 Not run: the AI items (scoring, tailored docs, "Approve & generate all" pressed twice, the invented-facts check, the driver persona with AI). The box Gemini key is no longer set after the box reset.
+
+## 23 Oct 2026, ~5:15 PM IST: production run of the previously untested items (Gemini key via in-browser BYOK, test mode on)
+| Item | Result |
+|---|---|
+| AI resume parse + AI fit scoring (Legal Ops persona) | PASS: 40 jobs, 23/23 newly added AI-scored |
+| Job page: apply link is the real employer/ATS URL | PASS (jobs.lever.co) |
+| Approve & generate all, clicked 3x rapidly | PASS: exactly 3 AI calls (resume, cover letter, outreach), no duplicates |
+| Tailored docs | PASS: all 3 created |
+| Invented-facts check | PASS: fact-check panel shows on review; no invented employers/degrees found |
+| .eml (test mode) | PASS: `X-Unsent: 1`, subject starts `[TEST - please ignore]`; nothing sent |
+| I applied, then reload | PASS: status Applied persists |
+| Offline mid-generate | PASS: "You went offline, so the request was stopped…"; refresh keeps jobs, button usable |
+| Driver persona end to end | PASS run 1 (7 jobs, all delivery-driver titles). Run 2: Gemini parse 503 left 0 jobs → FIXED: parse failure now falls back to resume-derived titles + keyword scoring (verified: 7 postings) |
+| Odd searches (empty, script tag, 500 chars, bad countries, emoji, {}) | PASS: 400/200, never 5xx |
+| Delete my data, then reload | PASS: no app keys left |
+| Live link crawl | PASS: 14 links, 0 broken |
+| Lighthouse mobile (live) | / 97/100/100/100 LCP 2.4 s; /feedback 91, /terms 90, /privacy 92 (A11y/BP/SEO 100). The earlier 71 was the local unminified server |
+| OG/Twitter tags | PASS: all present; og.jpg 200 image/jpeg 1200x630 |
