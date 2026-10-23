@@ -27,6 +27,16 @@ export default function Outreach() {
   return (
     <>
       <PageHeader title="Outreach studio" subtitle={`For ${job.title} · ${job.company}. A short email, a LinkedIn note and a follow-up, written from your resume.`} />
+      <Card data-testid="outreach-explainer" className="mb-5">
+        <h2 className="mb-2 text-xl font-medium">What this does</h2>
+        <p className="mb-3 text-sm text-muted-foreground">Outreach studio drafts messages you send yourself: a referral request to someone at the company, a note to the recruiter or hiring manager, and a polite follow-up after you apply. It writes only from your resume and this job post. It does not send anything, connect to LinkedIn or email, or find contacts for you.</p>
+        <ol className="grid gap-1 text-sm sm:grid-cols-4 list-decimal pl-5">
+          <li><b>Pick the job</b> and who you are writing to (name and title, if you know them).</li>
+          <li><b>Generate</b> the email, LinkedIn note and follow-up.</li>
+          <li><b>Review and edit</b>: the fact check removes claims not backed by your resume.</li>
+          <li><b>Send it yourself</b>: open a Gmail draft, download an .eml, or copy the LinkedIn note. Set a follow-up reminder in the Tracker.</li>
+        </ol>
+      </Card>
       <TestModeToggle />
       <Card className="mb-5 grid gap-4 sm:grid-cols-3">
         <div><Label htmlFor="oj">Job</Label><Select id="oj" value={job.id} onChange={(e) => go(page, e.target.value)}>{jobs.map((j) => <option key={j.id} value={j.id}>{j.title} · {j.company}</option>)}</Select></div>

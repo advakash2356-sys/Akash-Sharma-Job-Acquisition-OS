@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { getSession, renderTokenButton } from '../lib/googleAuth';
+import { getIdToken, getSession, renderTokenButton } from '../lib/googleAuth';
 import '../index.css';
 
 type M = any;
@@ -77,7 +77,7 @@ export default function AdminApp() {
     const s = getSession();
     if (!s?.email) { setState('404'); return; }
     fetch('/api/admin/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: s.email }) })
-      .then((r) => setState(r.ok ? 'verify' : '404')).catch(() => setState('404'));
+      .then(async (r) => { if (!r.ok) return setState('404'); const t = await getIdToken().catch(() => ''); if (t) { token.current = t; load(); } else setState('verify'); }).catch(() => setState('404'));
   }, []);
   const load = async () => {
     setState('loading');

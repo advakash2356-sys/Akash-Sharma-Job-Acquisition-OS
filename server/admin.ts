@@ -45,6 +45,8 @@ export async function adminCheck(b: any) {
   if (String(b?.email || "").trim().toLowerCase() !== adminEmail()) throw NOT_FOUND();
   return { ok: true };
 }
+/** Lets the app show the Admin link: 200 only for a verified admin ID token, the usual 404 for anyone else. */
+export async function adminWhoami(auth: unknown) { await requireAdmin(auth); return { admin: true }; }
 export async function adminData(auth: unknown) {
   const p = await requireAdmin(auth);
   const d = await script({ type: "admin-read" });

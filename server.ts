@@ -1,5 +1,5 @@
 import { requireUser } from "./server/requireUser.js";
-import { adminCheck, adminData, adminSaveConfig } from "./server/admin.js";
+import { adminCheck, adminData, adminSaveConfig, adminWhoami } from "./server/admin.js";
 import { funnelEvent } from "./server/events.js";
 import { googleClientId, signIn, visit } from "./server/users.js";
 import { aiRateLimit, checkBody, checkOrigin, clientIp } from "./server/guard.js";
@@ -38,6 +38,7 @@ async function startServer() {
       checkOrigin(req.headers);
       const a = req.params.action;
       if (a === "check" && req.method === "POST") return res.json(await adminCheck(req.body));
+      if (a === "whoami" && req.method === "GET") return res.json(await adminWhoami(req.headers.authorization));
       if (a === "data" && req.method === "GET") return res.json(await adminData(req.headers.authorization));
       if (a === "config" && req.method === "POST") return res.json(await adminSaveConfig(req.headers.authorization, req.body));
       throw new ApiError(404, "Not found", "NOT_FOUND");

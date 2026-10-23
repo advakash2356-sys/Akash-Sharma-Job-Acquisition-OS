@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { KanbanSquare, GraduationCap, LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X, MessageSquare, Info } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
-import { funnel, getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
+import { funnel, getIdToken, getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
 import SignInGate, { SignInUnavailable } from './components/SignInGate';
 import ReauthPrompt from './components/ReauthPrompt';
 import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
@@ -82,6 +82,8 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const [gate, setGate] = useState<boolean | null>(null);
   useEffect(() => { loadClientId().then((id) => setGate(isClientId(id))); }, []);
   useEffect(() => { pingVisit(user); }, [user]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => { if (!user) return; getIdToken().then((t) => t && fetch('/api/admin/whoami', { headers: { Authorization: `Bearer ${t}` } }).then((r) => setIsAdmin(r.ok))).catch(() => {}); }, [user?.uid]);
   useEffect(() => {
     const f = () => { setInApp(location.hash.startsWith('#/app')); const jm = location.hash.match(/^#\/app\/job\/([^/?#]+)/); if (jm) setSelectedJobId(decodeURIComponent(jm[1])); const hp = hashPage(); if (hp) { setPage(hp); window.scrollTo(0, 0); } };
     window.addEventListener('hashchange', f);
@@ -145,6 +147,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
       <button onClick={() => setDark(!dark)} className=" flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-foreground/80 hover:bg-muted cursor-pointer">
         {dark ? <Sun size={17} /> : <Moon size={17} />} {dark ? 'Light theme' : 'Dark theme'}
       </button>
+      {isAdmin && <a href="/admin" data-testid="admin-link" className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-primary hover:bg-muted"><ShieldCheck size={17} /> Admin</a>}
       <DeleteDataButton variant="link" />
       <div className="px-2.5 text-xs text-muted-foreground"><button onClick={() => go('about')} className="cursor-pointer hover:text-primary">{CREDIT}</button> · <button onClick={() => go('terms')} className="cursor-pointer hover:text-primary">Terms</button><div className="mt-0.5">{COPYRIGHT}</div></div>
     </nav>

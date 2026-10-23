@@ -59,12 +59,12 @@ function loadGsi(): Promise<any> {
 }
 
 /** Renders Google's official button into `el`. Calls onError with a short message on failure. */
-export async function renderGoogleButton(el: HTMLElement, onError: (m: string) => void, extra: () => { consent: boolean; mobile: string } = () => ({ consent: true, mobile: '' })) {
+export async function renderGoogleButton(el: HTMLElement, onError: (m: string) => void, extra: () => { consent: boolean; mobile: string } = () => ({ consent: true, mobile: '' }), o: { prompt?: boolean } = {}) {
   CLIENT_ID = await loadClientId();
   if (!isClientId(CLIENT_ID)) return onError('Google sign-in is not set up on this site yet.');
   try {
     const google = await loadGsi();
-    google.accounts.id.initialize({
+    google.accounts.id.initialize({ use_fedcm_for_prompt: true,
       client_id: CLIENT_ID,
       callback: async (resp: { credential?: string }) => {
         try {
@@ -78,7 +78,8 @@ export async function renderGoogleButton(el: HTMLElement, onError: (m: string) =
         } catch { onError('Network error while verifying sign-in.'); }
       },
     });
-    google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with' });
+    google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with' });
+    if (o.prompt) try { google.accounts.id.prompt(); } catch { /* the button is still there */ }
   } catch { onError('Could not load Google sign-in. Check your connection or ad blocker.'); }
 }
 
