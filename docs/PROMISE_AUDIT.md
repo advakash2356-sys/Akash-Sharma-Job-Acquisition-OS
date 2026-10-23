@@ -407,3 +407,19 @@ Every posting gets a work mode (remote / hybrid / on-site; remote + office days 
 - Auto-reply (7267408): tested in a mocked Apps Script with the real Gemini API; TEST mode mails the owner only.
 - Admin (2d931b2): non-admin, no-session and bad-token paths return 404 live; dashboard rendered locally with a mocked Google token and data; public pages do not load the admin chunk.
 - Legal copy (3535a58): 39 strings changed, see docs/LEGAL_COPY_AUDIT.md.
+
+## 24 Oct 2026 (F–H): landing claims vs shipped app (verified on prod with mocked sign-in)
+| Claim | Status | Evidence |
+|---|---|---|
+| Find real jobs | Delivered | FreeHire proxy; source/link/date on every card; eligibility badges |
+| Score against your resume | Delivered | fit-jobs (AI) or labelled keyword score |
+| Tailor resume + cover letter | Delivered | tailor; AI labels on all exports |
+| Apply | Partial (by design) | User applies on the employer site; app moves job to Applied after confirm |
+| Track each stage to the offer | Delivered | Tracker, 8 stages, stage dates, counts |
+| Follow up | Delivered | Next action + due date, overdue reminders, .ics |
+| Interviews auto-added | Delivered (needs confirm) | Calendar read-only / pasted email / .ics, user confirms |
+| Per-round prep + mock interview | Delivered | stage-prep (resume facts only, red flags), mock-interview scoring |
+| Offer | Partial | Offer/Accepted stages tracked; salary-round prep; no offer comparison tool |
+| Outreach | Delivered (drafts only) | Explainer: drafts you send yourself |
+| Weekly report PDF | Delivered | Insights export |
+| Job facts (salary, type, experience, shift) | Delivered | JobFacts; "Not disclosed" when missing |

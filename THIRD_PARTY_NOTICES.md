@@ -336,3 +336,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 | Package | Licence | Use |
 |---|---|---|
 | [Recharts](https://github.com/recharts/recharts) 2.x (Recharts Group) | MIT | Charts on the owner-only /admin page (lazy-loaded; not downloaded by the public site). Its dependencies are MIT, ISC (d3 modules) and BSD-3-Clause; full texts ship in node_modules and the bundled licence comments. |
+
+## Server libraries
+| Package | Licence | Use |
+|---|---|---|
+| [google-auth-library](https://github.com/googleapis/google-auth-library-nodejs) (Google LLC) | Apache-2.0 | Verifies Google ID tokens on the server (audience, issuer, expiry). Licence text: https://www.apache.org/licenses/LICENSE-2.0 |
+| [@google/genai](https://github.com/googleapis/js-genai) (Google LLC) | Apache-2.0 | Gemini API client |
