@@ -341,3 +341,24 @@ Verified end to end on production at 5:14 PM IST, with a real Gemini key and a r
 | Licences | Yes | THIRD_PARTY_NOTICES.md (JSON Resume schema, RenderCV, jsonresume-theme-even, all MIT, with licence texts); README and About credit them. OpenResume (AGPL) and Awesome-CV (LPPL) rejected on licence grounds |
 
 Not done or limits: Google free-tier quotas still apply to each user's own key (if every model is out of quota, the app shows Google's message). The test used a sample resume, not Akash's own.
+
+## Feedback, comments, early-access note and tester findings, 23 Oct 2026 (commit 14651cd, NOT yet pushed)
+
+Tested on a local production build (`node build/server.cjs`), with a mock of the Apps Script endpoint. Production could not be tested: the box lost its GitHub credentials, so the commit is not pushed and nothing new is deployed. 24/24 checks passed:
+
+| Check | Result |
+|---|---|
+| Early-access note on home (hero and footer), /feedback, /terms | Pass |
+| Feedback form without login: name, email, rating, page and message reach the Sheet endpoint | Pass |
+| New comment held for approval; an approved comment shows its reply as "Akash Sync Agent team" | Pass |
+| Spam guards: foreign Origin → 403, under 2.5 s → TOO_FAST, honeypot → SPAM | Pass (curl) |
+| "Made by Akash Sync Agent" visible at 390px on /terms, /privacy, /feedback, /#/app and the in-app 404 | Pass (5/5) |
+| Skip AI with a one-line Legal Ops resume: titles derived ("Legal Operations & CLM Specialist", …), /api/jobs/search called | Pass |
+| Odd searches (empty, nonsense, `<script>`, non-Latin), refresh mid-search, offline mid-flow | Pass (6/6) |
+| Job page: "Apply on employer site" uses the posting URL; "I applied" sets the status to Applied | Pass |
+| .eml in test mode: X-Unsent and a "[TEST - please ignore]" subject | Pass |
+| Delete my data: storage empty after reload | Pass |
+| Link crawl (9 external links from home), OG tags, console errors | Pass |
+| Lighthouse (local build, mobile): Performance 71, Accessibility 100, Best Practices 100, SEO 100, LCP 5.5 s (no CDN or compression locally) | Info |
+
+Not run: the AI items (scoring, tailored docs, "Approve & generate all" pressed twice, the invented-facts check, the driver persona with AI). The box Gemini key is no longer set after the box reset.
