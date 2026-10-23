@@ -7,6 +7,7 @@ import { AiError_, RunButton, useAiAction } from '../components/AiPanel';
 import type { InterviewPrep } from '../types';
 import { useApp } from '../lib/state';
 import { uid } from '../lib/utils';
+import InterviewImport from '../components/InterviewImport';
 
 function Prep() {
   const { jobs, setJobs, go, hasResume } = useApp();
@@ -66,6 +67,7 @@ export default function Interviews() {
   return (
     <>
       <PageHeader title="Interviews" subtitle="Rounds you have scheduled across all jobs." action={jobs.length > 0 && <Button onClick={() => setAdding(true)}><Plus size={16} /> Add interview</Button>} />
+      {jobs.length > 0 && <InterviewImport />}
       {jobs.length === 0 ? (
         <EmptyState icon={<CalendarDays size={32} />} title="Add a job first" body="Interviews belong to a job. Track a role, then log each round here." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} />
       ) : all.length === 0 ? (
@@ -77,6 +79,7 @@ export default function Interviews() {
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{i.round} · {i.job.company}</div>
                 <div className="text-sm text-muted-foreground">{i.job.title} · {i.date ? new Date(i.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'No date set'}</div>
+                {i.link && <a className="text-sm underline" href={i.link} target="_blank" rel="noreferrer noopener">Join link</a>}
                 {i.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{i.notes}</p>}
               </div>
               {i.date && <Button size="sm" variant="outline" onClick={() => download(ics({ uid: i.id, title: `Interview: ${i.round}, ${i.job.company}`, start: i.date, minutes: 60, description: `${i.job.title} at ${i.job.company}${i.notes ? `\n${i.notes}` : ''}`, url: i.job.url || undefined }), `interview-${slug(i.job.company)}-${i.date.slice(0, 10)}.ics`, 'text/calendar')}><CalendarPlus size={14} /> .ics</Button>}

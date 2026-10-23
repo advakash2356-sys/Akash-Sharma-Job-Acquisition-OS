@@ -50,3 +50,11 @@ The in-app Terms page (`#/app/terms`) is short and plain: the app is provided as
 
 ## SEO and channel links
 Clean URLs `/about`, `/terms`, `/feedback`, `/privacy`; per-page title/description/canonical; JSON-LD (Organization + WebApplication, no ratings); sitemap and robots. Per-channel launch links (`?ref=instagram` etc.) are counted by source in GoatCounter. Owner steps for Google Search Console and Bing: `docs/SEO_SETUP.md`.
+
+## Google Calendar scope (interview auto-add)
+The Interviews page can optionally read the user's calendar (client-side GIS token client, incremental consent, nothing stored on the server).
+- Google Cloud Console → Google Auth Platform → **Data access** → Add or remove scopes → add `https://www.googleapis.com/auth/calendar.events.readonly` (shown as "View events on all your calendars"). Save.
+- APIs & Services → Library → enable **Google Calendar API** for the project.
+- This is a **sensitive** scope. Until Google verifies the app, users who click "Connect Google Calendar" see the "Google hasn't verified this app" warning (they can still continue via Advanced), and while the app is in Testing only listed test users can grant it. Paste-email and .ics upload work with no verification.
+- To remove the warning: Branding (app name, logo, home page, privacy policy https://akash-sharma-job-acquisition-os.vercel.app/#/privacy, terms, authorised domain verified in Search Console) → Audience: Publish app → Verification centre: submit, with a justification ("read-only, to find interview invitations and add them to the user's job tracker after the user confirms; processed in the browser, not stored") and a YouTube demo video showing the consent screen and the feature. Sensitive scopes need no paid security assessment (that is only for restricted scopes such as Gmail). Review usually takes a few days to a few weeks.
+- No Gmail scope is used; invite emails are pasted by the user.

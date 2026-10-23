@@ -66,6 +66,9 @@ export interface Interview {
   round: string;
   date: string; // yyyy-mm-ddThh:mm
   notes: string;
+  link?: string;
+  source?: 'manual' | 'calendar' | 'email' | 'ics';
+  extId?: string;
 }
 
 export interface Job {

@@ -46,3 +46,11 @@ Until steps 1 to 5 are done, the site shows both forms but says the inbox is "no
 - Sign in to the app normally with adv.akash2356@gmail.com: an **Admin** link appears in the sidebar (the server confirms the email from your Google ID token). It opens /admin.
 - Tabs: Overview (charts), Pitch (India ₹ / US $, TAM/SAM/SOM and unit-economics inputs you enter), Users (search, CSV, mark reviewed, DPDP delete), Feedback (status, reply, CSV), Comments (publish / hide / flag abusive), Settings (site banner, auto-reply test/live, pricing), Audit log.
 - Every change re-verifies your token on the server and is written to the Admin log tab with your email.
+
+## Google Calendar scope (interview auto-add)
+The Interviews page can optionally read the user's calendar (client-side GIS token client, incremental consent, nothing stored on the server).
+- Google Cloud Console → Google Auth Platform → **Data access** → Add or remove scopes → add `https://www.googleapis.com/auth/calendar.events.readonly` (shown as "View events on all your calendars"). Save.
+- APIs & Services → Library → enable **Google Calendar API** for the project.
+- This is a **sensitive** scope. Until Google verifies the app, users who click "Connect Google Calendar" see the "Google hasn't verified this app" warning (they can still continue via Advanced), and while the app is in Testing only listed test users can grant it. Paste-email and .ics upload work with no verification.
+- To remove the warning: Branding (app name, logo, home page, privacy policy https://akash-sharma-job-acquisition-os.vercel.app/#/privacy, terms, authorised domain verified in Search Console) → Audience: Publish app → Verification centre: submit, with a justification ("read-only, to find interview invitations and add them to the user's job tracker after the user confirms; processed in the browser, not stored") and a YouTube demo video showing the consent screen and the feature. Sensitive scopes need no paid security assessment (that is only for restricted scopes such as Gmail). Review usually takes a few days to a few weeks.
+- No Gmail scope is used; invite emails are pasted by the user.
