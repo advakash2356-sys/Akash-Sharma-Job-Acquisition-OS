@@ -400,3 +400,10 @@ Known limits: NCR counts are low because FreeHire has few NCR postings for these
 
 ## 24 Oct 2026, ~3:00 AM IST: remote eligibility logic (replaces the India-only filter)
 Every posting gets a work mode (remote / hybrid / on-site; remote + office days = hybrid) and an eligibility read (worldwide, regions, country lists, time zones, "authorised to work in X", no sponsorship, contractor/EOR). The candidate's profile ("Where you can work" on My resume: country, authorisations, relocation, modes, shift; inferred from the resume, editable) decides: on-site/hybrid only where they live or will relocate; remote only if the posting accepts their country; unclear eligibility is shown and marked, never hidden. Each job carries a badge and a reason; hidden postings are counted by reason on Guided setup. Extra free remote sources: Himalayas API (structured location/time-zone restrictions) and Remote OK (6 h cache), both linked back and named. Unit tests: `npx tsx --test tests/eligibility.test.ts` (8/8, real fixtures from Himalayas and FreeHire).
+
+## 24 Oct 2026, ~3:00 AM IST: eligibility live, sign-in, auto-reply, admin, legal copy
+- Eligibility live (fd61138): Akash 26 shown (17 local, 2 remote-ok, 7 unclear), 58 hidden; Delhi driver 7 shown (6 local, 1 unclear), 38 hidden; France 30 shown (7 remote-ok, 7 local, 8 relocate, 8 unclear), 41 hidden. Remote OK returned nothing for these titles from Vercel.
+- Sign-in gate (ec1f11d): verified locally with a dummy client id (gate + consent + Google button); live has no GOOGLE_CLIENT_ID yet, so guest mode stays.
+- Auto-reply (7267408): tested in a mocked Apps Script with the real Gemini API; TEST mode mails the owner only.
+- Admin (2d931b2): non-admin, no-session and bad-token paths return 404 live; dashboard rendered locally with a mocked Google token and data; public pages do not load the admin chunk.
+- Legal copy (3535a58): 39 strings changed, see docs/LEGAL_COPY_AUDIT.md.
