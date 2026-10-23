@@ -342,7 +342,7 @@ Verified end to end on production at 5:14 PM IST, with a real Gemini key and a r
 
 Not done or limits: Google free-tier quotas still apply to each user's own key (if every model is out of quota, the app shows Google's message). The test used a sample resume, not Akash's own.
 
-## Feedback, comments, early-access note and tester findings, 23 Oct 2026 (local commits, NOT yet pushed — push blocked: no GitHub credentials on box)
+## Feedback, comments, early-access note and tester findings, 23 Oct 2026 (commit d8d95c9, pushed and verified live 23 Oct; Sheet backend awaiting Akash setup)
 
 Tested on a local production build (`node build/server.cjs`), with a mock of the Apps Script endpoint. Production could not be tested: the box lost its GitHub credentials, so the commit is not pushed and nothing new is deployed. 24/24 checks passed:
 
