@@ -1,4 +1,5 @@
 import { today } from '../lib/utils';
+import { normaliseJob } from '../lib/docShape';
 import { download, jobsCsv } from '../lib/merged';
 import React, { useRef, useState } from 'react';
 import { Upload, Download, FileJson, Trash2, UserRound } from 'lucide-react';
@@ -28,7 +29,7 @@ export default function ResumePage() {
       const d = JSON.parse(await f.text());
       if (!d || typeof d.profile !== 'object') throw new Error('bad');
       setProfile({ ...emptyProfile, ...d.profile });
-      if (Array.isArray(d.jobs)) setJobs(d.jobs);
+      if (Array.isArray(d.jobs)) setJobs(d.jobs.filter((x: unknown) => x && typeof x === 'object').map(normaliseJob));
       setMsg('Backup imported.');
     } catch { setMsg('That file is not a valid Job Acquisition OS backup.'); }
   };

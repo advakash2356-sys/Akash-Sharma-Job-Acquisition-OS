@@ -3,8 +3,8 @@ import { factCheck } from '../lib/merged';
 
 /** Browser-only check of AI output against the resume. No AI involved. */
 export default function FactCheckPanel({ text, resume, jobText }: { text: string; resume: string; jobText?: string }) {
-  if (!text) return null;
-  const r = factCheck(text, resume, jobText);
+  if (!text || typeof text !== 'string') return null;
+  const r = factCheck(text, String(resume ?? ''), String(jobText ?? ''));
   const n = r.numbers.length + r.terms.length + r.cliches.length;
   return (
     <div className="mt-3 rounded-lg border border-border bg-muted/50 p-3 text-sm" data-testid="fact-check">

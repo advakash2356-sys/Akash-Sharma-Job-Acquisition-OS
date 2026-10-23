@@ -6,6 +6,7 @@ import { getSession, watchAuth, type AuthUser } from './lib/googleAuth';
 import { JOBS_KEY, PROFILE_KEY, scoped } from './lib/storage';
 import { setKeyNamespace } from './lib/userApiKey';
 import { useLocalState } from './lib/useLocalState';
+import { needsMigration, normaliseJob } from './lib/docShape';
 import { cn } from './lib/utils';
 const Overview = lazy(() => import('./pages/Overview'));
 const Jobs = lazy(() => import('./pages/Jobs'));
@@ -65,6 +66,8 @@ export default function App() {
 function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   const [profile, setProfile] = useLocalState<Profile>(scoped(PROFILE_KEY, uid), emptyProfile);
   const [jobs, setJobs] = useLocalState<Job[]>(scoped(JOBS_KEY, uid), []);
+  // One-time migration of documents saved by older builds or imports in other shapes (e.g. a structured resume where text was expected).
+  useEffect(() => { if (Array.isArray(jobs) && jobs.some(needsMigration)) setJobs((js) => js.map(normaliseJob)); }, [jobs]);
   const [page, setPage] = useState<PageId>(() => hashPage() || ((profile.resumeText || '').trim().length < 50 ? 'setup' : 'overview'));
   const [selectedJobId, setSelectedJobId] = useLocalState<string>(scoped('jaos_current_job', uid), (location.hash.match(/^#\/app\/job\/([^/?#]+)/) || [])[1] ? decodeURIComponent(location.hash.match(/^#\/app\/job\/([^/?#]+)/)![1]) : '');
   const [menu, setMenu] = useState(false);

@@ -9,6 +9,23 @@ import { usePack, DOC_LABEL, forJob, type DocKind } from '../lib/pack';
 import { letterDocx, letterPdf, resumeDocx, resumePdf, type ResumeDoc } from '../lib/resumeDoc';
 import { exportDocx, exportEml, exportPdf, fileBase, gmailComposeUrl } from '../lib/exporters';
 import type { Job } from '../types';
+import { asText, normaliseJob } from '../lib/docShape';
+
+/** Per-document boundary: if a preview or fact check fails, show the raw text instead of crashing the page. */
+class PanelBoundary extends React.Component<{ raw: string; children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) { console.error('Document preview error:', error); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div role="alert" className="rounded-lg border border-border bg-muted/50 p-3 text-sm" data-testid="panel-fallback">
+        <p className="font-medium">This preview could not be shown ({this.state.error.message}). Here is the saved text; regenerate to get the formatted version.</p>
+        <pre className="mt-2 whitespace-pre-wrap font-sans">{this.props.raw || '(empty)'}</pre>
+      </div>
+    );
+  }
+}
 
 const when = (iso?: string) => (iso ? new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 
@@ -32,7 +49,8 @@ export function ResumePreview({ r }: { r: ResumeDoc }) {
 }
 
 /** One job's application pack: tailored resume, cover letter, outreach. Each is labelled with the job it is for and stored on that job. */
-export default function DocsPanel({ job }: { job: Job }) {
+export default function DocsPanel({ job: job0 }: { job: Job }) {
+  const job = normaliseJob(job0);
   const { profile, go, hasResume, setJobs } = useApp();
   const { ready } = useAiReady();
   const pack = usePack(job);
@@ -40,8 +58,8 @@ export default function DocsPanel({ job }: { job: Job }) {
   const label = forJob(job);
   const base = (k: string) => fileBase(profile, job, k);
   const markDl = () => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, docsAt: { ...j.docsAt, downloaded: new Date().toISOString() } } : j)));
-  const resumeSrc = `${profile.resumeText} ${profile.name} ${profile.email} ${profile.phone} ${profile.location} ${profile.noticePeriod || ''} ${profile.availableFrom || ''}`;
-  const jobText = `${job.title} ${job.company} ${job.description}`;
+  const resumeSrc = `${asText(profile.resumeText)} ${profile.name} ${profile.email} ${profile.phone} ${profile.location} ${profile.noticePeriod || ''} ${profile.availableFrom || ''}`;
+  const jobText = `${asText(job.title)} ${asText(job.company)} ${asText(job.description)}`;
   const has: Record<DocKind, boolean> = { resume: !!job.tailoredResume, cover: !!job.coverLetter, outreach: !!job.outreach };
   const allDone = has.resume && has.cover && has.outreach;
   const canRun = hasResume && ready;
@@ -71,7 +89,7 @@ export default function DocsPanel({ job }: { job: Job }) {
           <p className="mt-1 text-xs">If any of these is true, add it to your resume and regenerate, or edit the copied text yourself.</p>
         </details>
       )}
-      {has[k] && open === k && <div className="mt-3"><FactCheckPanel text={k === 'resume' ? text.split('\n').filter((l) => !/^[A-Z][A-Z &]+$/.test(l.trim())).join('\n') : text} resume={resumeSrc} jobText={jobText} /><div className="mt-3">{body}</div></div>}
+      {has[k] && open === k && <div className="mt-3"><PanelBoundary raw={asText(text)}><FactCheckPanel text={k === 'resume' ? asText(text).split('\n').filter((l) => !/^[A-Z][A-Z &]+$/.test(l.trim())).join('\n') : asText(text)} resume={resumeSrc} jobText={jobText} /><div className="mt-3">{body}</div></PanelBoundary></div>}
     </div>
   );
 

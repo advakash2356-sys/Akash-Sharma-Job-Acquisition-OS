@@ -47,7 +47,7 @@ export function usePack(job: Job | undefined) {
       } else {
         // Auto-remove claims the fact check cannot find in the resume or job post; keep a list so the user sees what was cut.
         const src = `${job.company} ${job.title}`;
-        const cut = (t: string) => stripUnsupported(String(t || ''), `${profile.resumeText} ${profile.name}`, `${job.description} ${src}`);
+        const cut = (t: string) => stripUnsupported(String(t || ''), `${String(profile.resumeText || '')} ${profile.name}`, `${job.description} ${src}`);
         if (kind === 'cover') { const c = cut(r); patch = { coverLetter: c.text, removedClaims: { ...job.removedClaims, cover: c.removed } }; }
         else {
           const o: any = { ...r }; const rm: string[] = [];
