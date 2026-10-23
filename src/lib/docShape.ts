@@ -1,5 +1,6 @@
 import { normalise, resumeText, type ResumeDoc } from './resumeDoc';
 import type { Job } from '../types';
+import { sanitizeSpec } from './resumeStyle';
 
 /** Any saved document value (string, structured resume, array, object, number, null) as plain text. Never throws. */
 export function asText(x: unknown, depth = 0): string {
@@ -38,6 +39,7 @@ export function normaliseJob(j: Job): Job {
   if (raw.coverLetter != null) out.coverLetter = asText(raw.coverLetter) || undefined;
   if (outreach != null) out.outreach = outreach;
   if (rc) out.removedClaims = rc; else delete out.removedClaims;
+  if (raw.resumeStyle != null) out.resumeStyle = sanitizeSpec(raw.resumeStyle, String(raw.title || ''), ['grounded', 'ai', 'default'].includes(raw.resumeStyle?.source) ? raw.resumeStyle.source : 'default', raw.resumeStyle?.asOf);
   return out as Job;
 }
 

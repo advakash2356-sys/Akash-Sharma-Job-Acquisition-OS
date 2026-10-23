@@ -6,7 +6,8 @@ import FactCheckPanel from './FactCheck';
 import { useApp } from '../lib/state';
 import { useAiReady } from '../lib/aiReady';
 import { usePack, DOC_LABEL, forJob, type DocKind } from '../lib/pack';
-import { letterDocx, letterPdf, resumeDocx, resumePdf, type ResumeDoc } from '../lib/resumeDoc';
+import { blocks, letterDocx, letterPdf, resumeDocx, resumePdf, tokens, type ResumeDoc } from '../lib/resumeDoc';
+import { ACCENTS, TEMPLATES, TEMPLATE_INFO, defaultSpec, specLabel, type Accent, type StyleSpec } from '../lib/resumeStyle';
 import { exportDocx, exportEml, exportPdf, fileBase, gmailComposeUrl } from '../lib/exporters';
 import type { Job } from '../types';
 import { asText, normaliseJob } from '../lib/docShape';
@@ -29,21 +30,51 @@ class PanelBoundary extends React.Component<{ raw: string; children: React.React
 
 const when = (iso?: string) => (iso ? new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 
-/** ATS preview of the structured resume: same single-column order as the PDF/DOCX. */
-export function ResumePreview({ r }: { r: ResumeDoc }) {
-  const H = ({ children }: { children: React.ReactNode }) => <h4 className="mt-4 border-b border-border pb-1 text-xs font-semibold uppercase tracking-wider">{children}</h4>;
+/** ATS preview of the structured resume: same tokens (pt sizes, fonts, accent, order) as the PDF/DOCX. */
+export function ResumePreview({ r, spec }: { r: ResumeDoc; spec?: StyleSpec }) {
+  const sp = spec || defaultSpec();
+  const T = tokens(sp);
+  const pt = (n: number) => `${n}pt`;
+  const al = T.center ? 'center' : 'left';
   return (
-    <div className="rounded-xl border border-border bg-white p-5 font-sans text-[13px] leading-relaxed text-black" data-testid="resume-preview">
-      <div className="text-xl font-bold">{r.basics.name}</div>
-      {r.basics.label && <div>{r.basics.label}</div>}
-      <div className="text-xs text-neutral-700">{[r.basics.location, r.basics.email, r.basics.phone, r.basics.url].filter(Boolean).join(' | ')}</div>
-      {r.basics.summary && <><H>Summary</H><p>{r.basics.summary}</p></>}
-      {r.work.length > 0 && <><H>Experience</H>{r.work.map((w, i) => <div key={i} className="mt-2"><div className="flex justify-between gap-3 font-semibold"><span>{[w.position, w.name].filter(Boolean).join(' | ')}</span><span className="shrink-0 font-normal">{[w.startDate, w.endDate].filter(Boolean).join(' – ')}</span></div>{w.location && <div className="text-xs italic">{w.location}</div>}<ul className="list-disc pl-5">{w.highlights.map((h, k) => <li key={k}>{h}</li>)}</ul></div>)}</>}
-      {r.skills.length > 0 && <><H>Skills</H>{r.skills.map((s, i) => <p key={i}>{s.name && s.keywords.length ? <><b>{s.name}:</b> {s.keywords.join(', ')}</> : s.name || s.keywords.join(', ')}</p>)}</>}
-      {r.projects.length > 0 && <><H>Projects</H>{r.projects.map((p, i) => <div key={i} className="mt-1"><b>{p.name}</b>{p.description && <p>{p.description}</p>}<ul className="list-disc pl-5">{p.highlights.map((h, k) => <li key={k}>{h}</li>)}</ul></div>)}</>}
-      {r.education.length > 0 && <><H>Education</H>{r.education.map((e, i) => <div key={i} className="flex justify-between gap-3"><span><b>{[[e.studyType, e.area].filter(Boolean).join(', '), e.institution].filter(Boolean).join(' | ')}</b>{e.score && ` · ${e.score}`}</span><span className="shrink-0">{[e.startDate, e.endDate].filter(Boolean).join(' – ')}</span></div>)}</>}
-      {r.certificates.length > 0 && <><H>Certifications</H>{r.certificates.map((c, i) => <p key={i}>{[c.name, c.issuer, c.date].filter(Boolean).join(' | ')}</p>)}</>}
-      {r.languages.length > 0 && <><H>Languages</H><p>{r.languages.map((l) => (l.fluency ? `${l.language} (${l.fluency})` : l.language)).join(', ')}</p></>}
+    <div className="overflow-x-auto rounded-xl border border-border bg-white shadow-sm" data-testid="resume-preview" data-template={sp.template}>
+      <div style={{ fontFamily: T.css, color: '#222', padding: `${T.margin * 0.75}pt`, lineHeight: T.lead, minWidth: 300 }}>
+        <div style={{ fontSize: pt(T.nameSize), fontWeight: 700, color: T.nameColor, textAlign: al, lineHeight: 1.15 }}>{r.basics.name}</div>
+        {r.basics.label && <div style={{ fontSize: pt(T.title), fontStyle: T.labelItalic ? 'italic' : 'normal', color: '#333', textAlign: al }}>{r.basics.label}</div>}
+        <div style={{ fontSize: pt(T.small), color: '#555', textAlign: al }}>{[r.basics.location, r.basics.email, r.basics.phone, r.basics.url].filter(Boolean).join(' | ')}</div>
+        {blocks(r, sp.order).map((b) => (
+          <section key={b.key} style={{ marginTop: pt(T.secGap) }}>
+            <h4 style={{ fontSize: pt(T.headSize), fontWeight: 700, color: T.headColor, letterSpacing: pt(T.headSpace), textTransform: 'uppercase', borderBottom: `${T.ruleW}pt solid ${T.rule}`, paddingBottom: '2pt', marginBottom: pt(T.gap + 2) }}>{b.heading}</h4>
+            {b.items.map((i, n) => (
+              <div key={n} style={{ marginBottom: pt(T.gap) }}>
+                {(i.title || i.right) && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><b style={{ fontSize: pt(T.title), color: '#111' }}>{i.title}</b>{i.right && <span style={{ fontSize: pt(T.small), color: '#555', whiteSpace: 'nowrap' }}>{i.right}</span>}</div>}
+                {i.sub && <div style={{ fontSize: pt(T.small), fontStyle: 'italic', color: '#555' }}>{i.sub}</div>}
+                {i.text && <p style={{ fontSize: pt(T.body) }}>{i.text}</p>}
+                {!!i.bullets?.length && <ul style={{ fontSize: pt(T.body), paddingLeft: '13pt', listStyle: 'none' }}>{i.bullets.map((x, k) => <li key={k} style={{ position: 'relative' }}><span aria-hidden style={{ position: 'absolute', left: '-11pt', color: T.accent }}>•</span>{x}</li>)}</ul>}
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Template and accent picker plus an honest note on where the layout came from. */
+function StylePicker({ job, onPick }: { job: Job; onPick: (s: StyleSpec) => void }) {
+  const sp = job.resumeStyle || defaultSpec(job.title);
+  return (
+    <div className="grid gap-2 rounded-lg border border-border p-3 text-sm" data-testid="style-picker">
+      <p className="text-xs text-muted-foreground" data-testid="style-note">{specLabel(sp)}</p>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Resume template">
+        {TEMPLATES.map((t) => <button key={t} role="radio" aria-checked={sp.template === t} title={TEMPLATE_INFO[t].desc} onClick={() => onPick({ ...sp, template: t, userPicked: true })}
+          className={`min-h-9 cursor-pointer rounded-full border px-3 ${sp.template === t ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'}`}>{TEMPLATE_INFO[t].label}</button>)}
+        <span className="mx-1 self-center text-xs text-muted-foreground">Accent</span>
+        {(Object.keys(ACCENTS) as Accent[]).map((a) => <button key={a} aria-label={`Accent ${a}`} aria-pressed={sp.accent === a} onClick={() => onPick({ ...sp, accent: a, userPicked: true })}
+          className={`h-9 w-9 cursor-pointer rounded-full border-2 ${sp.accent === a ? 'border-foreground' : 'border-transparent'}`} style={{ background: ACCENTS[a] }} />)}
+      </div>
+      <p className="text-xs text-muted-foreground">{TEMPLATE_INFO[sp.template].desc} {TEMPLATE_INFO[sp.template].credit}. Single column, real text, standard headings: ATS-safe.</p>
+      {sp.tips.length > 0 && <ul className="list-disc pl-5 text-xs text-muted-foreground">{sp.tips.map((t, i) => <li key={i}>{t}</li>)}</ul>}
     </div>
   );
 }
@@ -108,10 +139,10 @@ export default function DocsPanel({ job: job0 }: { job: Job }) {
       </div>
       {row('resume', <FileText size={18} className="text-primary" />,
         <>
-          <Button size="sm" variant="outline" onClick={() => { job.tailoredResumeDoc ? resumePdf(job.tailoredResumeDoc, base('resume')) : exportPdf(job.tailoredResume!, `Tailored resume: ${label}`, base('resume')); markDl(); }}><Download size={14} /> PDF</Button>
-          <Button size="sm" variant="outline" onClick={async () => { job.tailoredResumeDoc ? await resumeDocx(job.tailoredResumeDoc, base('resume')) : await exportDocx(job.tailoredResume!, `Tailored resume: ${label}`, base('resume')); markDl(); }}><Download size={14} /> DOCX</Button>
+          <Button size="sm" variant="outline" onClick={() => { job.tailoredResumeDoc ? resumePdf(job.tailoredResumeDoc, base('resume'), job.resumeStyle || defaultSpec(job.title)) : exportPdf(job.tailoredResume!, `Tailored resume: ${label}`, base('resume')); markDl(); }}><Download size={14} /> PDF</Button>
+          <Button size="sm" variant="outline" onClick={async () => { job.tailoredResumeDoc ? await resumeDocx(job.tailoredResumeDoc, base('resume'), job.resumeStyle || defaultSpec(job.title)) : await exportDocx(job.tailoredResume!, `Tailored resume: ${label}`, base('resume')); markDl(); }}><Download size={14} /> DOCX</Button>
         </>,
-        job.tailoredResumeDoc ? <ResumePreview r={job.tailoredResumeDoc} /> : <pre className="whitespace-pre-wrap font-sans text-sm">{job.tailoredResume}</pre>, job.tailoredResume || '')}
+        job.tailoredResumeDoc ? <div className="grid gap-3"><StylePicker job={job} onPick={(st) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, resumeStyle: st } : j)))} /><ResumePreview r={job.tailoredResumeDoc} spec={job.resumeStyle || defaultSpec(job.title)} /></div> : <pre className="whitespace-pre-wrap font-sans text-sm">{job.tailoredResume}</pre>, job.tailoredResume || '')}
       {row('cover', <FileText size={18} className="text-primary" />,
         <>
           <Button size="sm" variant="outline" onClick={() => { letterPdf(job.coverLetter!, `Re: ${reSubject}`, base('cover-letter')); markDl(); }}><Download size={14} /> PDF</Button>

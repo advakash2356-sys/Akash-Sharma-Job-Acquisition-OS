@@ -4,6 +4,21 @@ import { normalise, resumeText } from './resumeDoc';
 import { useApp } from './state';
 import type { Job } from '../types';
 import { stripUnsupported } from './merged';
+import { defaultSpec, sanitizeSpec, todayIST, type StyleSpec } from './resumeStyle';
+
+/** Today's style spec for this role and country: from the browser cache, else Gemini (search-grounded when the key allows), else the app default. */
+export async function styleFor(title: string, location: string): Promise<StyleSpec> {
+  const country = /india|delhi|mumbai|bengaluru|bangalore|hyderabad|chennai|pune|kolkata|noida|gurugram|gurgaon/i.test(location || 'India') ? 'India' : (location || 'India').split(',').pop()!.trim().slice(0, 40);
+  const role = title.replace(/\s+/g, ' ').slice(0, 120);
+  const key = `jaos_style_v1:${todayIST()}:${role.toLowerCase()}:${country.toLowerCase()}`;
+  try { const c = localStorage.getItem(key); if (c) return sanitizeSpec(JSON.parse(c), role, JSON.parse(c).source); } catch { /* ignore */ }
+  try {
+    const r: any = await callAi('resume-style', { title: role, country }, { timeoutMs: 45000 });
+    const s = sanitizeSpec(r, role, r?.source === 'grounded' ? 'grounded' : 'ai');
+    try { Object.keys(localStorage).filter((k) => k.startsWith('jaos_style_v1:') && !k.startsWith(`jaos_style_v1:${todayIST()}`)).forEach((k) => localStorage.removeItem(k)); localStorage.setItem(key, JSON.stringify(s)); } catch { /* ignore */ }
+    return s;
+  } catch { return defaultSpec(role); }
+}
 
 export type DocKind = 'resume' | 'cover' | 'outreach';
 export const DOC_LABEL: Record<DocKind, string> = { resume: 'Tailored resume', cover: 'Cover letter', outreach: 'Outreach messages' };
@@ -43,7 +58,8 @@ export function usePack(job: Job | undefined) {
       if (kind === 'resume') {
         const doc = typeof r === 'string' ? null : normalise(r);
         if (typeof r !== 'string' && !doc) throw new AiError('The AI returned a resume in an unexpected shape. Try again.', 'EMPTY');
-        patch = doc ? { tailoredResumeDoc: doc, tailoredResume: resumeText(doc) } : { tailoredResume: r };
+        const style = job.resumeStyle?.source && job.resumeStyle.asOf === todayIST() ? job.resumeStyle : await styleFor(job.title, job.found?.location || profile.location || '');
+        patch = doc ? { tailoredResumeDoc: doc, tailoredResume: resumeText(doc), resumeStyle: job.resumeStyle?.userPicked ? { ...style, template: job.resumeStyle.template, accent: job.resumeStyle.accent, userPicked: true } : style } : { tailoredResume: r };
       } else {
         // Auto-remove claims the fact check cannot find in the resume or job post; keep a list so the user sees what was cut.
         const src = `${job.company} ${job.title}`;

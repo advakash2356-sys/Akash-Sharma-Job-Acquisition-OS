@@ -84,6 +84,8 @@ export interface Job {
   tailoredResumeDoc?: import('./lib/resumeDoc').ResumeDoc;
   /** When each document for this job was generated and downloaded (ISO). Labels and the guided flow read this. */
   docsAt?: { resume?: string; cover?: string; outreach?: string; downloaded?: string };
+  /** Constrained layout spec (template, accent, order, density) applied by the resume renderer. */
+  resumeStyle?: import('./lib/resumeStyle').StyleSpec;
   coverLetter?: string;
   /** Sentences auto-removed from AI drafts because the fact check could not find them in the resume or job post. */
   removedClaims?: { cover?: string[]; outreach?: string[] };

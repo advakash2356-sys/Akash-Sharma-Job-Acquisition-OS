@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { ACCENTS, SECTIONS, TEMPLATES, sanitizeSpec, todayIST } from "../src/lib/resumeStyle.js";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
@@ -156,6 +157,33 @@ const RESUME_SCHEMA = {
   required: ["basics", "work", "education", "skills", "projects", "certificates", "languages"],
 };
 
+const styleCache = new Map<string, any>();
+/** Date-aware style spec: asks Gemini (with Google Search grounding when the key allows it) for current resume conventions,
+ *  but accepts ONLY a constrained spec (template, accent, section order, density, short tips). Never HTML/CSS. Cached per day. */
+async function resumeStyle(client: GoogleGenAI, body: Body) {
+  const role = String(body.title || "").replace(/\s+/g, " ").slice(0, 120);
+  const country = String(body.country || "India").replace(/[^A-Za-z .]/g, "").slice(0, 40) || "India";
+  const today = todayIST();
+  const ck = `${today}|${role.toLowerCase()}|${country.toLowerCase()}`;
+  if (styleCache.has(ck)) return styleCache.get(ck);
+  const prompt = `Today is ${today}. Using current (as of today) resume and ATS best practice for a "${role}" job in ${country}, choose a resume layout.
+Answer ONLY with one JSON object, no prose: {"template": one of ${JSON.stringify(TEMPLATES)}, "accent": one of ${JSON.stringify(Object.keys(ACCENTS))}, "order": array using only ${JSON.stringify(SECTIONS)} (most important first), "density": "comfortable" or "compact", "tips": up to 4 short plain-text formatting tips (no facts about the candidate)}.
+Templates: classic = sans-serif with accent headings; editorial = serif, centred header, formal fields (legal, finance, policy); compact = dense one page for short or hands-on resumes. All are single-column and ATS-safe.`;
+  const parse = (t: string) => { const m = String(t || "").match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; };
+  let out;
+  try {
+    const res = await generate(client, { contents: prompt, config: { tools: [{ googleSearch: {} }], maxOutputTokens: 2048 } }, FAST);
+    const grounded = !!(res as any).candidates?.[0]?.groundingMetadata?.groundingChunks?.length || !!(res as any).candidates?.[0]?.groundingMetadata?.webSearchQueries?.length;
+    out = sanitizeSpec(parse(res.text || ""), role, grounded ? "grounded" : "ai", today);
+  } catch {
+    try { const res = await generate(client, { contents: prompt, config: { responseMimeType: "application/json", maxOutputTokens: 2048 } }, FAST); out = sanitizeSpec(parse(res.text || ""), role, "ai", today); }
+    catch (e: any) { throw explain(e); }
+  }
+  if (styleCache.size > 300) styleCache.clear();
+  styleCache.set(ck, out);
+  return out;
+}
+
 export async function handleAction(action: string, body: Body, apiKey?: string) {
   const key = apiKey || process.env.GEMINI_API_KEY;
   if (!key) throw new ApiError(401, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
@@ -169,6 +197,7 @@ export async function handleAction(action: string, body: Body, apiKey?: string) 
     try { const c = new GoogleGenAI({ apiKey: key }); return { result: action === "parse-resume" ? await parseResume(c, body) : await fitJobs(c, body) }; }
     catch (e: any) { throw explain(e); }
   }
+  if (action === "resume-style") return { result: await resumeStyle(new GoogleGenAI({ apiKey: key }), body) };
   const j = need(body);
   const client = new GoogleGenAI({ apiKey: key });
   const ctx = `${j.instructions ? `USER INSTRUCTIONS (follow unless they ask for fabrication): ${j.instructions}\n\n` : ''}CANDIDATE RESUME:\n${j.resume}\n\nPREFERENCES: ${j.prefs}\n\nJOB: ${j.title} at ${j.company}\n${j.description}`;

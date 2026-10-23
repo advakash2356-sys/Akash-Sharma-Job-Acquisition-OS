@@ -5,7 +5,7 @@ Job Acquisition OS (MIT, © 2026 Akash Sync Agent) reuses or adapts the followin
 | Project | What is reused | Author | Licence | Link |
 |---|---|---|---|---|
 | JSON Resume schema | The resume data shape (basics, work, education, skills, projects, certificates, languages and their field names) used for the tailored resume (`src/lib/resumeDoc.ts`, `server/handlers.ts`) | JSON Resume | MIT | https://github.com/jsonresume/resume-schema |
-| RenderCV | ATS layout rules adapted, not code: one column, standard section headings, dates on the right, real selectable text, no tables or images | Sina Atalay and contributors | MIT | https://github.com/rendercv/rendercv |
+| RenderCV | ATS layout rules and the look of its "classic", "sb2nov" and "engineeringresumes" themes adapted (not code) into the Classic, Editorial and Compact templates (`src/lib/resumeDoc.ts`, `src/lib/resumeStyle.ts`): one column, standard section headings, dates on the right, real selectable text, no tables or images | Sina Atalay and contributors | MIT | https://github.com/rendercv/rendercv |
 | jsonresume-theme-even | Section order and heading/rule styling adapted for the PDF/DOCX/preview renderer, not code | Rafael Bardini | MIT | https://github.com/rbardini/jsonresume-theme-even |
 | form-to-google-sheets | Apps Script pattern adapted for `scripts/apps-script/Code.gs`: doPost with LockService, appendRow to a Sheet, MailApp email on each new entry (modified: JSON body, shared secret, comments tab, moderation, replies) | Jamie Wilson | Apache-2.0 | https://github.com/jamiewilson/form-to-google-sheets |
 | FreeHire | Public job search API (called, not copied) | strelov1 | MIT | https://github.com/strelov1/freehire |
