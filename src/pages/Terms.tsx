@@ -13,6 +13,9 @@ export default function Terms() {
         <S t="Price">
           <p>Job Acquisition OS is free during early access. Paid plans may be introduced later; we'll give advance notice and no one is charged without opting in. Your own Gemini key is billed (if at all) by Google under your own Google account, not by us.</p>
         </S>
+        <S t="Age">
+          <p data-testid="age-18">18+ only. You must be 18 or older to use Job Acquisition OS.</p>
+        </S>
         <S t="What this is">
           <p>Job Acquisition OS is a free tool to organise your job search. It is provided as is, without any warranty. It does not apply for jobs or send emails for you: you review and send everything yourself.</p>
         </S>

@@ -101,7 +101,9 @@ export function pingVisit(u: AuthUser | null) {
 
 /** Channel of this browser's first visit (?ref= / utm_source), kept locally so sign-ups can be attributed. */
 export function firstSource(): string { try { return localStorage.getItem('jaos_src_v1') || ''; } catch { return ''; } }
-export function rememberSource(src: string) { try { if (src && !localStorage.getItem('jaos_src_v1')) localStorage.setItem('jaos_src_v1', src); } catch { /* ignore */ } }
+let pendingSrc = '';
+/** Written only after the visitor agrees to usage counting; until then it is held in memory for this page load. */
+export function rememberSource(src: string, consented: boolean) { if (src) pendingSrc = src; try { if (consented && pendingSrc && !localStorage.getItem('jaos_src_v1')) localStorage.setItem('jaos_src_v1', pendingSrc); } catch { /* ignore */ } }
 
 export type FunnelEvent = 'profile_done' | 'job_viewed' | 'docs_generated' | 'apply_click';
 /** Signed-in users only: one funnel step per day per device, to the private Events tab. Silent, best effort. */

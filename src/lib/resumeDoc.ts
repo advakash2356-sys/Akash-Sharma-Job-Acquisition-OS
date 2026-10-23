@@ -5,6 +5,7 @@
 // jsonresume-theme-even layout (https://github.com/rbardini/jsonresume-theme-even, MIT, © Rafael Bardini).
 // The code below is written for this app; see THIRD_PARTY_NOTICES.md.
 import { jsPDF } from 'jspdf';
+import { aiFooter } from './brand';
 import { AlignmentType, BorderStyle, Document, Footer, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import { track } from './analytics';
 import { ACCENTS, SECTIONS, defaultSpec, type Section, type StyleSpec } from './resumeStyle';
@@ -21,6 +22,14 @@ export interface ResumeDoc {
 
 const arr = <T,>(x: unknown): T[] => (Array.isArray(x) ? (x as T[]) : []);
 const t = (x: unknown) => (typeof x === 'string' ? x.trim() : '');
+/** Small grey footer on every page: AI label (+ credit). */
+function stampFooter(doc: jsPDF) {
+  const n = doc.getNumberOfPages(), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(130); const t = aiFooter().replace('—', '-'); doc.text(t, (W - doc.getTextWidth(t)) / 2, H - 18); }
+  doc.setTextColor(0);
+}
+const footerDocx = () => new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: aiFooter(), size: 14, color: '888888' })] })] });
+
 export function normalise(x: any): ResumeDoc | null {
   if (!x || typeof x !== 'object' || !x.basics) return null;
   const b = x.basics || {};
@@ -133,6 +142,7 @@ export function resumePdf(r: ResumeDoc, base: string, spec: StyleSpec = defaultS
       y += T.gap;
     }
   }
+  stampFooter(doc);
   doc.setProperties({ title: `${r.basics.name} resume`, author: r.basics.name });
   doc.save(`${base}.pdf`); track('export');
 }
@@ -157,7 +167,7 @@ export async function resumeDocx(r: ResumeDoc, base: string, spec: StyleSpec = d
     }
   }
   const mg = tw(T.margin);
-  const doc = new Document({ creator: r.basics.name || 'Candidate', title: `${r.basics.name} resume`, styles: { default: { document: { run: { font: T.docxFont } } } }, sections: [{ properties: { page: { margin: { top: mg, bottom: mg, left: mg, right: mg } } }, children: P }] });
+  const doc = new Document({ creator: r.basics.name || 'Candidate', title: `${r.basics.name} resume`, styles: { default: { document: { run: { font: T.docxFont } } } }, sections: [{ properties: { page: { margin: { top: mg, bottom: mg, left: mg, right: mg } } }, footers: { default: footerDocx() }, children: P }] });
   save(await Packer.toBlob(doc), `${base}.docx`); track('export');
 }
 
@@ -169,10 +179,11 @@ export function letterPdf(text: string, forLine: string, base: string) {
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(90); doc.text(forLine, m, y); y += 26; doc.setTextColor(0);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
   for (const line of doc.splitTextToSize(text.replace(/\*\*(.*?)\*\*/g, '$1'), W - m * 2) as string[]) { if (y > H - m) { doc.addPage(); y = m; } doc.text(line, m, y); y += 16; }
+  stampFooter(doc);
   doc.save(`${base}.pdf`); track('export');
 }
 export async function letterDocx(text: string, forLine: string, base: string) {
-  const doc = new Document({ styles: { default: { document: { run: { font: 'Calibri' } } } }, sections: [{ footers: { default: new Footer({ children: [] }) }, children: [
+  const doc = new Document({ styles: { default: { document: { run: { font: 'Calibri' } } } }, sections: [{ footers: { default: footerDocx() }, children: [
     new Paragraph({ alignment: AlignmentType.LEFT, spacing: { after: 240 }, children: [new TextRun({ text: forLine, bold: true, size: 19, color: '555555' })] }),
     ...text.replace(/\*\*(.*?)\*\*/g, '$1').split('\n').map((l) => new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: l, size: 22 })] })),
   ] }] });

@@ -1,4 +1,4 @@
-import { ANALYTICS_HOST, ANALYTICS_ON } from '../lib/analytics';
+import { ANALYTICS_HOST, ANALYTICS_ON, gpcOn } from '../lib/analytics';
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button, Card, PageHeader } from '../components/ui';
@@ -57,7 +57,8 @@ export default function Privacy() {
         </Item>
         <Item t="Usage counts and cookies">
           {ANALYTICS_ON
-            ? <p>This deployment counts a few anonymous steps with GoatCounter ({ANALYTICS_HOST}), a cookieless, open-source counter: landing view, start setup, resume added, key added, first job found, export, feedback sent and share. Each count is just the step name. It also counts one page view per visit: the page address (for example /about) and, if you came through one of our shared links, the channel named in that link (for example ref=instagram). It does not send resume text, keys, names, jobs or contact data. Your browser fetches a tiny counter image from {ANALYTICS_HOST}, so GoatCounter sees your IP address and browser type for that request; it does not store them (it keeps a random ID in memory for 8 hours to avoid double counts). No cookies are set. Counting is off if your browser sends Do Not Track or Global Privacy Control, and you can switch it off in Settings.</p>
+            ? <><p>This deployment counts a few anonymous steps with GoatCounter ({ANALYTICS_HOST}), a cookieless, open-source counter: landing view, start setup, resume added, key added, first job found, export, feedback sent and share. Each count is just the step name. It also counts one page view per visit: the page address (for example /about) and, if you came through one of our shared links, the channel named in that link (for example ref=instagram). It does not send resume text, keys, names, jobs or contact data. Your browser fetches a tiny counter image from {ANALYTICS_HOST}, so GoatCounter sees your IP address and browser type for that request; it does not store them (it keeps a random ID in memory for 8 hours to avoid double counts). No cookies are set. Counting is off by default: nothing is counted, and no referral source is saved, until you choose "Allow" on the banner or tick the box in Settings. It stays off if your browser sends Do Not Track or Global Privacy Control.</p>
+            {gpcOn() && <p data-testid="gpc-note" className="rounded-lg bg-primary/10 px-3 py-2 text-primary">Global Privacy Control honoured: your browser sends GPC, so usage counting is off.</p>}</>
             : <p>This deployment does not count usage: no analytics code is switched on. If the owner turns on counting later, this paragraph changes to list exactly what is counted.</p>}
           <p>There are no advertising scripts, and fonts are bundled with the site rather than loaded from a third party. We do not sell your data.</p>
           <p>Cookies and local storage: this site sets no cookies of its own; Google's sign-in script may set Google cookies. It saves your data in this browser's local storage, which is needed for the app to work; clear it any time with "Delete everything" below.</p>

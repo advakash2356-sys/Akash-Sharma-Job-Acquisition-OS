@@ -1,9 +1,9 @@
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, Footer, HeadingLevel } from 'docx';
 import type { Job, Profile } from '../types';
-import { CREDIT, SITE_URL, exportCreditOn } from './brand';
+import { AI_LABEL, CREDIT, SITE_URL, exportCreditOn } from './brand';
 import { track } from './analytics';
-const creditLine = () => (exportCreditOn() ? `  ·  ${CREDIT} (${SITE_URL.replace('https://', '')})` : '');
+const creditLine = () => `  ·  ${AI_LABEL.replace('—', '-')}` + (exportCreditOn() ? `  ·  ${CREDIT} (${SITE_URL.replace('https://', '')})` : '');
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'document';
 const stamp = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };

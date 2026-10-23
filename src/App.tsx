@@ -29,12 +29,14 @@ import { track } from './lib/analytics';
 import { getUserApiKey, KEY_EVENT } from './lib/userApiKey';
 const About = lazy(() => import('./pages/About'));
 const Terms = lazy(() => import('./pages/Terms'));
+const Security = lazy(() => import('./pages/Security'));
+const Accessibility = lazy(() => import('./pages/Accessibility'));
 const Feedback = lazy(() => import('./pages/Feedback'));
 const JobPage = lazy(() => import('./pages/JobPage'));
 import FlowStepper from './components/FlowStepper';
 // Dev-only: lets the launch audit prove the error boundary catches a crash.
 const Crash = (): React.ReactElement => { throw new Error('Test crash (dev only)'); };
-const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback', 'job'];
+const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback', 'job', 'security', 'accessibility'];
 /** '#/app/<page>' deep links. Unknown page -> 404. '#/app' alone -> null (default page). */
 const isPublic = (p: string) => (PUBLIC_PAGES as readonly string[]).includes(p);
 /** Keep <title>, description, canonical and og:url in step with the visible page. */
@@ -109,7 +111,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);
   useEffect(() => { if (jobs.some((j) => j.found)) track('first_job_found'); }, [jobs]);
 
-  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, feedback: Feedback, job: JobPage, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
+  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: Interviews, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, security: Security, accessibility: Accessibility, feedback: Feedback, job: JobPage, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
@@ -180,6 +182,8 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
             <a href="/terms" onClick={(e) => { e.preventDefault(); go('terms'); }} className="inline-flex min-h-11 items-center hover:text-primary">Terms</a>
             <a href="/privacy" onClick={(e) => { e.preventDefault(); go('privacy'); }} className="inline-flex min-h-11 items-center hover:text-primary">Privacy</a>
             <a href="/feedback" onClick={(e) => { e.preventDefault(); go('feedback'); }} className="inline-flex min-h-11 items-center hover:text-primary">Feedback</a>
+            <a href="/accessibility" onClick={(e) => { e.preventDefault(); go('accessibility'); }} className="inline-flex min-h-11 items-center hover:text-primary">Accessibility</a>
+            <a href="/security" onClick={(e) => { e.preventDefault(); go('security'); }} className="inline-flex min-h-11 items-center hover:text-primary">Security</a>
           </footer>
         </main>
       </div>

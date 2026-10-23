@@ -1,0 +1,6 @@
+# Security contact for Job Acquisition OS (RFC 9116)
+Contact: mailto:adv.akash2356@gmail.com
+Expires: 2027-10-22T00:00:00.000Z
+Preferred-Languages: en, hi
+Canonical: https://akash-sharma-job-acquisition-os.vercel.app/.well-known/security.txt
+Policy: https://akash-sharma-job-acquisition-os.vercel.app/security

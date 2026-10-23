@@ -9,8 +9,15 @@ export const ANALYTICS_HOST = CODE ? `${CODE}.goatcounter.com` : '';
 export const EVENTS = ['landing_view', 'start_setup', 'resume_added', 'key_added', 'first_job_found', 'export', 'feedback_sent', 'share'] as const;
 export type EventName = (typeof EVENTS)[number];
 const OPT = 'jaos_no_stats';
-export const statsOptedOut = () => { try { return localStorage.getItem(OPT) === '1' || navigator.doNotTrack === '1' || (navigator as any).globalPrivacyControl === true; } catch { return true; } };
-export const setStatsOptOut = (off: boolean) => { try { off ? localStorage.setItem(OPT, '1') : localStorage.removeItem(OPT); } catch { /* ignore */ } };
+const OK = 'jaos_stats_ok'; // counting is OFF until the visitor says yes
+export const gpcOn = () => { try { return (navigator as any).globalPrivacyControl === true || navigator.doNotTrack === '1'; } catch { return false; } };
+export const statsChoiceMade = () => { try { return localStorage.getItem(OK) === '1' || localStorage.getItem(OPT) === '1'; } catch { return true; } };
+export const statsOptedOut = () => { try { return gpcOn() || localStorage.getItem(OK) !== '1'; } catch { return true; } };
+export const CONSENT_EVENT = 'jaos-stats-consent';
+export const setStatsOptOut = (off: boolean) => {
+  try { if (off) { localStorage.setItem(OPT, '1'); localStorage.removeItem(OK); localStorage.removeItem('jaos_src_v1'); } else { localStorage.setItem(OK, '1'); localStorage.removeItem(OPT); } } catch { /* ignore */ }
+  window.dispatchEvent(new Event(CONSENT_EVENT));
+};
 const ONCE: EventName[] = ['resume_added', 'key_added', 'first_job_found'];
 
 /** Count one anonymous event. Funnel steps that should happen once per browser are only sent once. */

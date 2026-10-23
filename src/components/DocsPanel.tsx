@@ -129,6 +129,7 @@ export default function DocsPanel({ job: job0 }: { job: Job }) {
       <div>
         <div className="label mb-1 text-primary">Steps 4 and 5 · Your application pack</div>
         <h2 className="text-3xl">Documents for {label}</h2>
+        <p data-testid="ai-label" className="mt-1 inline-block rounded-full bg-gold/15 px-3 py-1 text-xs font-medium">AI-generated (Google Gemini) — review before use</p>
         <p className="mt-1 text-sm text-muted-foreground">Written only from the facts in your resume, for this job. Review each one, then download it. Nothing is sent or submitted for you.</p>
       </div>
       {!hasResume && <p className="rounded-lg bg-muted p-3 text-sm">Add your resume first. <button className="underline cursor-pointer" onClick={() => go('setup')}>Upload resume</button></p>}

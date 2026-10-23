@@ -22,7 +22,7 @@ export default function SignInGate({ openPrivacy, back }: { openPrivacy: () => v
         <p className="mb-4 text-xs text-muted-foreground">Only if you want us to be able to reach you. We do not check it by OTP.</p>
         <label className="mb-4 flex items-start gap-2 text-sm">
           <input data-testid="gate-consent" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4" />
-          <span>I agree that Akash Sync Agent may store my name, email, the mobile number above (if given), when I first and last used the app, how many times, and a random device id with a light device hint, in a private Google Sheet, to run and protect this service. I can ask for deletion at any time. <button type="button" onClick={openPrivacy} className="underline text-primary cursor-pointer">Read the privacy notice</button>.</span>
+          <span>I am 18 or older, and I agree that Akash Sync Agent may store my name, email, the mobile number above (if given), when I first and last used the app, how many times, and a random device id with a light device hint, in a private Google Sheet, to run and protect this service. I can ask for deletion at any time. <button type="button" onClick={openPrivacy} className="underline text-primary cursor-pointer">Read the privacy notice</button>.</span>
         </label>
         <div ref={btn} className="min-h-[44px]">{!consent && <p className="text-sm text-muted-foreground">Tick the box to show the Google button.</p>}</div>
         {err && <p role="alert" className="mt-3 text-sm text-danger">{err}</p>}
