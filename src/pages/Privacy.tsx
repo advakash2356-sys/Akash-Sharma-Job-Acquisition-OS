@@ -37,7 +37,7 @@ export default function Privacy() {
           </ul>
         </Item>
         <Item t="Your consent and rights (DPDP Act, 2023)">
-          <p data-testid="dpdp-consent">You give consent by choosing "Continue with Google" on the sign-in screen, right below a notice that lists what is stored and confirms you are 18 or older. Akash Sync Agent is the data fiduciary for the data above.</p>
+          <p data-testid="dpdp-consent">You give consent on the sign-in screen by ticking the box under a notice that lists what is stored (confirming you are 18 or older and agree to the Terms and this notice), then choosing "Continue with Google". Akash Sync Agent is the data fiduciary for the data above.</p>
           <p><b>Retention:</b> sign-in and usage rows are kept while the service runs, or until you ask us to delete them. Feedback is kept until it is dealt with, or until you ask for deletion.</p>
           <p><b>Your rights:</b> you can withdraw consent, ask to see, correct or delete your data, or raise a grievance, by emailing <a className="underline text-primary" href="mailto:adv.akash2356@gmail.com">adv.akash2356@gmail.com</a>. We aim to act within 30 days. Withdrawing consent means you can no longer sign in. You may also approach the Data Protection Board of India.</p>
           <p>If you leave your email with feedback, you may get one thank-you email about 10 minutes later.</p>
