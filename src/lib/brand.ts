@@ -24,7 +24,7 @@ export const CAMPAIGN = 'launch-oct26';
 export const channelLink = (c: string) => `${SITE_URL}/?ref=${c}&utm_campaign=${CAMPAIGN}`;
 /** Title and description per page (set at runtime; crawlers that run JS see them). */
 export const PAGE_META: Record<string, [string, string]> = {
-  landing: ['Job Acquisition OS: free job search, by Akash Sync Agent', 'Find real job postings, score them against your resume, and tailor resumes, cover letters and outreach with AI. Free during early access. Your resume and API key stay in your browser.'],
+  landing: ['Job Acquisition OS: free job search, by Akash Sync Agent', 'Find real job postings, score them against your resume, and tailor resumes, cover letters and outreach with AI. Free during early access.'],
   about: ['About Job Acquisition OS · Made by Akash Sync Agent', 'Who made Job Acquisition OS, the licence in plain words, and the open-source parts it is built with.'],
   security: ['Security and breach procedure · Job Acquisition OS', 'How to report a security problem in Job Acquisition OS, and what happens if personal data is exposed.'],
   accessibility: ['Accessibility statement · Job Acquisition OS', 'Accessibility target (WCAG 2.2 AA), known issues and how to report a barrier.'],

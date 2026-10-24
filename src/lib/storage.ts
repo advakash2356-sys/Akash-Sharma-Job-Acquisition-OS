@@ -18,4 +18,7 @@ export function importGuestData(uid: string): boolean {
 /** Remove every key this app has written in this browser, for every account namespace. */
 export function wipeEverything() {
   Object.keys(localStorage).filter((x) => x.startsWith('jaos_') || x.startsWith('user_gemini_api_key_v1')).forEach((x) => localStorage.removeItem(x));
+  try { Object.keys(sessionStorage).filter((x) => x.startsWith('jaos_')).forEach((x) => sessionStorage.removeItem(x)); } catch { /* ignore */ }
+  // Google sign-in's own first-party cookie (g_state) and any other cookie on this site.
+  try { document.cookie.split(';').map((c) => c.split('=')[0].trim()).filter(Boolean).forEach((n) => { document.cookie = `${n}=; Max-Age=0; path=/`; }); } catch { /* ignore */ }
 }
