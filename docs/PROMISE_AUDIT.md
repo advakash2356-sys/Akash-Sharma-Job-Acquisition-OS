@@ -3,7 +3,7 @@
 ## 24 Oct 2026 final pass (IST), production, main 3849171. Made by Akash Sync Agent.
 Sign-in is required now (guest mode removed), so signed-in rows used a MOCK Google session; AI/job rows ran the same build locally with a test-only token stub and a real Gemini key (see docs/FINAL_LAUNCH_CHECK.md). Older sections below are dated history (some mention guest mode / "no sign-up", which no longer apply).
 
-**Totals: 24 promises. Yes 22, Partial 2, No 0. Reworded 2.**
+**Totals: 24 promises. Yes 22 (3 fixed this pass), Partial 2, No 0.**
 
 | # | Page | Promise | Test | Result | Evidence | Fix |
 |---|---|---|---|---|---|---|
