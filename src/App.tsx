@@ -159,7 +159,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   // Sign-in is required for every app feature. Public pages (privacy, terms, security, accessibility, about, feedback) stay open.
   if (!user && !isPublic(page)) {
     if (gate === null) return <div className="min-h-screen bg-background" />;
-    return gate ? <SignInGate openPrivacy={() => go('privacy')} back={leave} /> : <SignInUnavailable back={leave} />;
+    return gate ? <SignInGate openPrivacy={() => go('privacy')} openTerms={() => go('terms')} back={leave} /> : <SignInUnavailable back={leave} />;
   }
 
   return (

@@ -23,7 +23,7 @@ export async function signIn(b: any, ua: string) {
   const deviceId = DEVICE.test(str(b?.deviceId, 64)) ? str(b.deviceId, 64) : "";
   const mobile = str(b?.mobile, 20);
   if (mobile && !MOBILE.test(mobile)) throw new ApiError(400, "That mobile number does not look right. Leave it empty or fix it.", "BAD_MOBILE");
-  const logged = await sheet({ type: "user", email: p.email, name: p.name, mobile, deviceId, fp: str(b?.fp, 32), ua: str(ua, 200), source: str(b?.source, 40).toLowerCase().replace(/[^a-z0-9_-]/g, "") });
+  const logged = await sheet({ type: "user", email: p.email, name: p.name, mobile, deviceId, fp: str(b?.fp, 32), ua: str(ua, 200), source: str(b?.source, 40).toLowerCase().replace(/[^a-z0-9_-]/g, ""), consent: "yes", consentVersion: str(b?.consentVersion, 20), consentAt: new Date().toISOString(), consentAtClient: str(b?.consentAt, 40) });
   return { ...p, logged };
 }
 
