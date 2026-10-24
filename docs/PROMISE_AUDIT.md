@@ -1,5 +1,38 @@
 # Promise audit: Job Acquisition OS
 
+## 24 Oct 2026 final pass (IST), production, main 3849171. Made by Akash Sync Agent.
+Sign-in is required now (guest mode removed), so signed-in rows used a MOCK Google session; AI/job rows ran the same build locally with a test-only token stub and a real Gemini key (see docs/FINAL_LAUNCH_CHECK.md). Older sections below are dated history (some mention guest mode / "no sign-up", which no longer apply).
+
+**Totals: 24 promises. Yes 22, Partial 2, No 0. Reworded 2.**
+
+| # | Page | Promise | Test | Result | Evidence | Fix |
+|---|---|---|---|---|---|---|
+| 1 | Landing | "Free during early access … sign in with Google" | Read live landing; Start your path | Yes | Gate shows consent + Google button on 384 and 1280 | - |
+| 2 | Landing | Paid plans only with notice and opt-in | Read copy; pricing switch off | Yes | Copy present; no payment flow exists | - |
+| 3 | Gate | Tick box, Continue disabled until ticked, then Google | Puppeteer prod, mobile + desktop | Yes | btnDisabled true → Google iframe visible, not covered | - |
+| 4 | Gate | Real Google sign-in works | Cannot automate | Partial | Mocked; prod API returns 401 to fake token | Akash to test |
+| 5 | Landing | Upload PDF/DOCX/TXT; saved in browser | Earlier real uploads (19 Oct) + pdfjs 6.4 unit parse | Yes | 16/16 tests incl. PDF text; export survives refresh (H4) | - |
+| 6 | Landing | Real postings from FreeHire, Himalayas, Remote OK with original link | Local+mock /api/jobs/search; code check server/jobsSearch.ts | Yes | Real jobs with https url returned | About now names all sources |
+| 7 | Landing | Filtered by where you can work | tests/eligibility.test.ts | Yes | unit tests pass | - |
+| 8 | Landing | Government notices with official link and future last date | Earlier audit | Yes | History row (20 Oct) | - |
+| 9 | Job drawer | Location, work mode, shift, salary or "Not disclosed/Not stated" | Prod UI with seeded job | Yes | Drawer lists Location/Work mode/Shift/Salary "Not disclosed" | - |
+| 10 | Job drawer | Postings can go stale, verify | Prod UI | Yes | "Postings can go stale: check it is still open" | - |
+| 11 | Score | 0-100 fit with strengths/gaps (AI) | Local+mock real Gemini | Yes | /api/ai/score-job, Strengths rendered (H1) | - |
+| 12 | Score | Keyword fallback labelled when no AI | Earlier audit | Yes | History row 17/19 | - |
+| 13 | Recruiter read | Simulated 6-second read | Local+mock | Yes | one request per double click (H21) | - |
+| 14 | Pack | Resume/cover/outreach from resume only, review before use | Prod UI | Yes | "AI-generated (Google Gemini) — review before use" | - |
+| 15 | Pack | PDF/DOCX export with date in filename | Earlier audit | Yes | History row 25 | - |
+| 16 | Outreach | Open in Gmail / .eml; you press send | Prod UI + code | Yes | "Nothing is sent or submitted for you" | - |
+| 17 | Apply | App never applies for you | Prod UI | Yes | "The app does not apply for you" | - |
+| 18 | Interviews | Calendar read-only import, paste email or .ics | tests/interviewImport.test.ts | Partial | Unit tests pass; real Calendar OAuth untested (unverified-app warning until Google review) | Akash |
+| 19 | Prep | Per-round prep + mock interview | Earlier audit | Yes | History rows | - |
+| 20 | Tracker | Stages, reminders (.ics), weekly PDF | Prod UI + earlier | Yes | Tracker nav present; mark applied uses local date (H29) | - |
+| 21 | Privacy | Data in local storage, AI text via own function to Gemini | Network capture (H1) | Yes | resume text only to /api/ai/*, no direct 3rd-party AI calls | - |
+| 22 | Privacy | Consent given by tick box then Continue | Read page vs gate | Yes (fixed) | Was "by choosing Continue with Google" | Reworded |
+| 23 | Privacy | Delete my data removes everything in this browser | H3 after reload | Yes (fixed) | Was leaving g_state cookie + session token | wipeEverything fixed |
+| 24 | About | Accurate summary + sources | Read page | Yes (fixed) | Was "browser-only", FreeHire only | Reworded |
+
+
 **Last updated: 20 Oct 2026 (IST), on LIVE production https://akash-sharma-job-acquisition-os.vercel.app (main 32531cb).** Made by Akash Sync Agent.
 
 Current state: blue-collar persona E2E 16/16; live launch check 19/19. Earlier sections below are kept as dated history. The product name is Job Acquisition OS ("Momentum" is the visual design concept), so older rows that say "Momentum" refer to the same app.
