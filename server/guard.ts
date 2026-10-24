@@ -6,7 +6,11 @@ const MAX_BODY = 200_000; // characters of JSON; a long resume plus a job descri
 const AI_WINDOW_MS = 60_000, AI_MAX = 30; // AI calls per client per minute (best effort: in-memory per instance)
 const aiHits = new Map<string, number[]>();
 
-export const clientIp = (h: any, fallback?: string) => String(h?.["x-forwarded-for"] || fallback || "anon").split(",")[0].trim();
+// Trust Vercel-set headers; the first X-Forwarded-For value is client-spoofable.
+export const clientIp = (h: any, fallback?: string) => {
+  const xff = String(h?.["x-forwarded-for"] || "").split(",").map((v) => v.trim()).filter(Boolean);
+  return String(h?.["x-vercel-forwarded-for"] || h?.["x-real-ip"] || xff[xff.length - 1] || fallback || "anon").split(",")[0].trim();
+};
 
 /** Browsers send Origin on POST: only this site (and its previews / local dev) may call the API from a web page. */
 export function checkOrigin(h: any) {

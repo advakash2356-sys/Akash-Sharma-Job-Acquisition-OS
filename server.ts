@@ -55,7 +55,7 @@ async function startServer() {
   app.post("/api/jobs/search", async (req, res) => {
     try {
       checkOrigin(req.headers); await requireUser(req.headers); checkBody(req.body);
-      rateLimit(String(req.headers["x-forwarded-for"] || req.ip || "anon").split(",")[0].trim());
+      rateLimit(clientIp(req.headers, req.ip));
       res.json({ result: await searchJobs(req.body || {}) });
     } catch (e: any) {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
