@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
+import { getSession, watchAuth } from '../lib/googleAuth';
 import { ANALYTICS_ON, CONSENT_EVENT, gpcOn, setStatsOptOut, statsChoiceMade } from '../lib/analytics';
 
 /** Asks before any usage counting. Nothing is counted and no referral source is saved until "Allow". Hidden when GPC/DNT is on (treated as "no"). */
 export default function ConsentBanner() {
   const [show, setShow] = useState(() => ANALYTICS_ON && !gpcOn() && !statsChoiceMade());
+  const [signedIn, setSignedIn] = useState(() => !!getSession());
+  useEffect(() => watchAuth((u) => setSignedIn(!!u)), []);
+  // Shown only after sign-in, so it never sits over the sign-in/consent step; reserves space so it never covers page buttons.
+  useEffect(() => { const on = show && signedIn; document.body.style.paddingBottom = on ? '96px' : ''; return () => { document.body.style.paddingBottom = ''; }; }, [show, signedIn]);
   useEffect(() => { const f = () => setShow(false); window.addEventListener(CONSENT_EVENT, f); return () => window.removeEventListener(CONSENT_EVENT, f); }, []);
-  if (!show) return null;
+  if (!show || !signedIn) return null;
   return (
-    <div role="region" aria-label="Usage counting choice" data-testid="consent-banner" className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-2xl flex-wrap items-center gap-3 rounded-2xl border border-border bg-card-solid p-4 text-sm shadow-2xl">
-      <p className="min-w-[240px] flex-1">May we count anonymous usage (page views and a few step names, through GoatCounter, no cookies, no content)? It stays off unless you allow it. <a href="/privacy" className="text-primary underline">Details</a></p>
-      <button data-testid="consent-no" onClick={() => setStatsOptOut(true)} className="min-h-11 rounded-full border border-border px-4 cursor-pointer">No thanks</button>
-      <button data-testid="consent-yes" onClick={() => setStatsOptOut(false)} className="min-h-11 rounded-full bg-primary px-4 text-primary-foreground cursor-pointer">Allow</button>
+    <div role="region" aria-label="Usage counting choice" data-testid="consent-banner" className="fixed inset-x-2 bottom-2 z-50 mx-auto flex max-w-2xl items-center gap-2 rounded-2xl border border-border bg-card-solid px-3 py-2 text-xs shadow-2xl sm:gap-3 sm:p-4 sm:text-sm">
+      <p className="min-w-0 flex-1">Count anonymous usage (GoatCounter, no cookies, no content)? Off unless you allow. <a href="/privacy" className="text-primary underline">Details</a></p>
+      <button data-testid="consent-no" onClick={() => setStatsOptOut(true)} className="min-h-11 shrink-0 rounded-full border border-border px-3 cursor-pointer">No</button>
+      <button data-testid="consent-yes" onClick={() => setStatsOptOut(false)} className="min-h-11 shrink-0 rounded-full bg-primary px-3 text-primary-foreground cursor-pointer">Allow</button>
     </div>
   );
 }

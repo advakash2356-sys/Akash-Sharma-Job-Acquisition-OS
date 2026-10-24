@@ -13,7 +13,7 @@ const NOTIFY = 'adv.akash2356@gmail.com';
 const FEEDBACK_HEAD = ['Timestamp (IST)', 'Name', 'Email', 'Rating (1-5)', 'Message', 'Page', 'User agent', 'Status', 'Auto-reply status', 'Auto-reply at (IST)', 'Auto-reply text', 'Received (epoch ms)'];
 const COMMENT_HEAD = ['Timestamp (IST)', 'Comment ID', 'Name', 'Email (private)', 'Message', 'Page', 'Approved (yes/no)', 'Team reply', 'Reply date'];
 
-const USERS_HEAD = ['Email', 'Name', 'Mobile (self-entered, unverified)', 'First seen (IST)', 'Last seen (IST)', 'Visits', 'Device IDs', 'Device hints', 'Multiple accounts on this device', 'Consent given (IST)', 'Last user agent'];
+const USERS_HEAD = ['Email', 'Name', 'Mobile (self-entered, unverified)', 'First seen (IST)', 'Last seen (IST)', 'Visits', 'Device IDs', 'Device hints', 'Multiple accounts on this device', 'Consent given (IST)', 'Last user agent', 'Consent notice version', 'Consent ticked (browser, UTC)'];
 
 const EVENTS_HEAD = ['Time (IST)', 'Date (IST)', 'Email', 'Event', 'Source', 'Device ID', 'Detail'];
 const ADMINLOG_HEAD = ['Time (IST)', 'Admin', 'Action', 'Target', 'Details'];
@@ -40,7 +40,7 @@ function setup() {
   else first.getRange(1, 1, 1, FEEDBACK_HEAD.length).setValues([FEEDBACK_HEAD]); // adds the new auto-reply columns to an existing sheet
   first.setFrozenRows(1);
   const c = tab_('Comments', COMMENT_HEAD);
-  tab_('Users', USERS_HEAD);
+  tab_('Users', USERS_HEAD).getRange(1, 1, 1, USERS_HEAD.length).setValues([USERS_HEAD]); // adds new columns at the end only
   tab_('Events', EVENTS_HEAD);
   tab_('Admin log', ADMINLOG_HEAD);
   const ev = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Events'); ev.getRange(1, 1, 1, EVENTS_HEAD.length).setValues([EVENTS_HEAD]);
@@ -123,14 +123,14 @@ function upsertUser_(b, signin) {
   if (i < 0) {
     if (!signin) return { ok: false, error: 'unknown user' };
     logEvent_(email, 'signup', b.source, dev);
-    sh.appendRow([email, clean_(b.name, 80), clean_(b.mobile, 20), t, t, 1, dev, clean_(b.fp, 32), '', t, clean_(b.ua, 200)]);
+    sh.appendRow([email, clean_(b.name, 80), clean_(b.mobile, 20), t, t, 1, dev, clean_(b.fp, 32), '', t, clean_(b.ua, 200), clean_(b.consentVersion, 20), clean_(b.consentAtClient, 40)]);
     rows.push(sh.getRange(sh.getLastRow(), 1, 1, USERS_HEAD.length).getValues()[0]); i = rows.length - 1;
   } else {
     const r = rows[i];
     if (!signin && String(r[6]).split(',').map(function (x) { return x.trim(); }).indexOf(dev) < 0) return { ok: false, error: 'unknown device' };
     r[4] = t; r[5] = (Number(r[5]) || 0) + 1;
     logEvent_(email, signin ? 'signin' : 'visit', b.source, dev);
-    if (signin) { r[1] = clean_(b.name, 80) || r[1]; if (clean_(b.mobile, 20)) r[2] = clean_(b.mobile, 20); r[6] = addTo_(r[6], dev, 10); r[7] = addTo_(r[7], clean_(b.fp, 32), 10); r[9] = t; r[10] = clean_(b.ua, 200); }
+    if (signin) { r[1] = clean_(b.name, 80) || r[1]; if (clean_(b.mobile, 20)) r[2] = clean_(b.mobile, 20); r[6] = addTo_(r[6], dev, 10); r[7] = addTo_(r[7], clean_(b.fp, 32), 10); r[9] = t; r[10] = clean_(b.ua, 200); r[11] = clean_(b.consentVersion, 20) || r[11]; r[12] = clean_(b.consentAtClient, 40) || r[12]; }
     sh.getRange(i + 2, 1, 1, USERS_HEAD.length).setValues([r]);
   }
   if (signin && dev) {
