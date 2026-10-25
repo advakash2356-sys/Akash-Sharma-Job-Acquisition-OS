@@ -15,7 +15,7 @@ export default function Privacy() {
       <PageHeader eyebrow="Plain language" title="Privacy & security" subtitle="What this app collects, why, where it is kept, and how to ask for changes. We describe the code as accurately as we can; we cannot guarantee that any online service is free of errors or breaches." />
       <div className="grid gap-5">
         <Item t="Where your data lives">
-          <p>Your resume, profile, jobs, notes, interviews, settings and API key are saved in this browser's local storage, on this device. They are not sent to the Google Sheet below. They do pass through this app's server, and on to Google Gemini, only when you use an AI feature (see below).</p>
+          <p>Your resume, profile, jobs, notes, interviews, settings and API key are saved in this browser's local storage, on this device. They are not sent to the Google Sheet below. They do pass through this app's server, and on to Google Gemini, only when you use an AI feature (see below). Profile match reads the LinkedIn text or CSV files you give it only in this browser; it does not save them, send them anywhere or connect to LinkedIn.</p>
           <p>If you sign in with Google, your data is saved in the same local storage under your Google account id, so each person on a shared browser gets a separate workspace. Your resume and jobs do not sync across devices, and the separation is not protection against someone with access to this browser.</p>
         </Item>
         <Item t="What we collect, and why">

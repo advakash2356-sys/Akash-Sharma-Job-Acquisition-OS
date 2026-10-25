@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { KanbanSquare, GraduationCap, LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X, MessageSquare, Info } from 'lucide-react';
+import { KanbanSquare, GraduationCap, LayoutDashboard, Briefcase, CalendarDays, FileText, Wand2, Send, Settings as Cog, LineChart, BarChart3, ShieldCheck, Menu, Sun, Moon, X, MessageSquare, Info, Fingerprint } from 'lucide-react';
 import { emptyProfile, type Job, type Profile } from './types';
 import { Ctx, type PageId } from './lib/state';
 import { funnel, getIdToken, getSession, isClientId, loadClientId, pingVisit, watchAuth, type AuthUser } from './lib/googleAuth';
@@ -29,6 +29,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 import { CREDIT, COPYRIGHT, PAGE_META, PUBLIC_PAGES, SITE_URL } from './lib/brand';
 import { track } from './lib/analytics';
 import { getUserApiKey, KEY_EVENT } from './lib/userApiKey';
+const ProfileMatch = lazy(() => import('./pages/ProfileMatch'));
 const About = lazy(() => import('./pages/About'));
 const Terms = lazy(() => import('./pages/Terms'));
 const PrepPage = lazy(() => import('./pages/Prep'));
@@ -40,7 +41,7 @@ const JobPage = lazy(() => import('./pages/JobPage'));
 import FlowStepper from './components/FlowStepper';
 // Dev-only: lets the launch audit prove the error boundary catches a crash.
 const Crash = (): React.ReactElement => { throw new Error('Test crash (dev only)'); };
-const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback', 'job', 'security', 'accessibility', 'prep', 'tracker'];
+const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback', 'job', 'security', 'accessibility', 'prep', 'tracker', 'profilematch'];
 /** '#/app/<page>' deep links. Unknown page -> 404. '#/app' alone -> null (default page). */
 const isPublic = (p: string) => (PUBLIC_PAGES as readonly string[]).includes(p);
 /** Keep <title>, description, canonical and og:url in step with the visible page. */
@@ -56,7 +57,7 @@ const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
   { group: 'Overview', items: [{ id: 'setup', label: 'Guided setup', icon: Wand2 }, { id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
   { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs (pick one)', icon: Briefcase }, { id: 'tracker', label: 'Application tracker', icon: KanbanSquare }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'prep', label: 'Interview prep', icon: GraduationCap }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
-  { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Application packs', icon: Wand2 }] },
+  { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Application packs', icon: Wand2 }, { id: 'profilematch', label: 'Profile match', icon: Fingerprint }] },
   { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
   { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }, { id: 'privacy', label: 'Privacy & security', icon: ShieldCheck }, { id: 'feedback', label: 'Share feedback', icon: MessageSquare }, { id: 'about', label: 'About', icon: Info }] },
 ];
@@ -117,7 +118,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);
   useEffect(() => { if (jobs.some((j) => j.found)) track('first_job_found'); }, [jobs]);
 
-  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: PrepPage, tracker: Tracker, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, security: Security, accessibility: Accessibility, feedback: Feedback, job: JobPage, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
+  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: PrepPage, tracker: Tracker, profilematch: ProfileMatch, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, security: Security, accessibility: Accessibility, feedback: Feedback, job: JobPage, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">

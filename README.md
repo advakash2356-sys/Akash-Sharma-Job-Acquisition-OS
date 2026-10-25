@@ -17,6 +17,7 @@ A free job-search workspace that takes you from finding a role to accepting an o
 | **Track** | Application tracker with 8 stages (Saved → Applied → Screening → Interviewing → Offer → Accepted, plus Rejected and Withdrawn), stage dates, a next action with a due date, and .ics reminders. |
 | **Interviews** | Add rounds by hand or automatically: an optional **Google Calendar** scan (read-only), a **pasted invite email**, or an **.ics file**. AI finds the company, round, time (converted to your time zone) and meeting link, then matches the invite to a tracked job. Nothing is added until you confirm. |
 | **Prepare** | Per-round prep (recruiter, HR, technical, hiring manager, panel, salary): likely questions, STAR drafts built only from your resume facts, red flags with honest fixes, and questions to ask. Includes an AI **mock interview** that scores each answer. |
+| **Profile match** | Paste your LinkedIn Experience section or upload your LinkedIn data export (Positions.csv, Skills.csv, Email Addresses.csv) to find jobs, dates, email and skills that differ from your resume. Browser-only, no AI, no LinkedIn access or scraping. Merged from the Autonomous Job Outreach and LinkedIn footprint mapper repos. |
 | **Outreach** | Drafts you send yourself (Gmail compose link or .eml). The app never sends outreach for you. Test mode prefixes `[TEST - please ignore]`. |
 | **Report** | Weekly progress PDF, insights, milestones, CSV export and a JSON backup. |
 

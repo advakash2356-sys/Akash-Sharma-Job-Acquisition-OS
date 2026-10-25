@@ -342,3 +342,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 |---|---|---|
 | [google-auth-library](https://github.com/googleapis/google-auth-library-nodejs) (Google LLC) | Apache-2.0 | Verifies Google ID tokens on the server (audience, issuer, expiry). Licence text: https://www.apache.org/licenses/LICENSE-2.0 |
 | [@google/genai](https://github.com/googleapis/js-genai) (Google LLC) | Apache-2.0 | Gemini API client |
+
+## Merged first-party code
+| Source | Licence | Use |
+|---|---|---|
+| [Automatically-map-your-LinkedIn-footprint-](https://github.com/advakash2356-sys/Automatically-map-your-LinkedIn-footprint-) and [Autonomous-Job-Outreach-Agent-Platform](https://github.com/advakash2356-sys/Autonomous-Job-Outreach-Agent-Platform), Copyright (c) 2026 Akash Sharma | MIT | Profile match idea (resume vs profile consistency and contact checks), rebuilt to run on user-provided data only. |
