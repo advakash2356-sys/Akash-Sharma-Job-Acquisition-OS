@@ -15,6 +15,7 @@ Job Acquisition OS (MIT, © 2026 Akash Sync Agent) reuses or adapts the followin
 | work-in-timezone | Idea of parsing "+05:30" offsets to hours and treating time-zone eligibility as an overlap of offset ranges (`offsetToHours` in `src/lib/eligibility.ts`, rewritten) | Michal Kvasničák | MIT | https://github.com/michalkvasnicak/work-in-timezone |
 | Himalayas Jobs API | Remote job data (locationRestrictions, timezoneRestrictions). Shown with a visible source name and link to the Himalayas job page; not passed on to other job boards (himalayas.app/terms#api) | Himalayas | API terms (data, not code) | https://himalayas.app/api |
 | Remote OK API | Remote job data, cached 6 hours. Every job links to its Remote OK page and names Remote OK as the source, as its API terms require | Remote OK | API terms (data, not code) | https://remoteok.com/api |
+| awesome-llm-apps | Ideas adapted, not code: the resume_job_matcher scoring (skills, experience and keyword-gap breakdown) and the ai-dashboard-canvas-agent dashboard style (KPI cards, soft-grid charts, card tooltips, `src/admin/AdminApp.tsx`) | Shubham Saboo and contributors | Apache-2.0 | https://github.com/Shubhamsaboo/awesome-llm-apps |
 
 Projects that were reviewed and **not** used: giscus (MIT; every commenter must log in with GitHub, and team replies would show a GitHub username, not "Akash Sync Agent team"), remark42 (MIT; needs its own always-on server), dwyl/learn-to-send-email-via-google-script-html-no-server (GPL-2.0, excluded by licence), Reactive Resume (MIT, a full app; nothing copied), OpenResume (AGPL-3.0, excluded by licence), Awesome-CV (LPPL, LaTeX, excluded).
 
@@ -347,3 +348,20 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 | Source | Licence | Use |
 |---|---|---|
 | [Automatically-map-your-LinkedIn-footprint-](https://github.com/advakash2356-sys/Automatically-map-your-LinkedIn-footprint-) and [Autonomous-Job-Outreach-Agent-Platform](https://github.com/advakash2356-sys/Autonomous-Job-Outreach-Agent-Platform), Copyright (c) 2026 Akash Sharma | MIT | Profile match idea (resume vs profile consistency and contact checks), rebuilt to run on user-provided data only. |
+
+
+## awesome-llm-apps: licence
+```
+Copyright Shubham Saboo and contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+Changes: ideas only were adapted and rewritten in TypeScript for Job Acquisition OS.
+```

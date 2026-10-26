@@ -7,9 +7,9 @@ type M = any;
 const NoData = () => <span className="text-muted-foreground">no data yet</span>;
 const val = (v: unknown, suffix = '') => (v === null || v === undefined ? <NoData /> : <>{String(v)}{suffix}</>);
 const Box = ({ t, children, id }: { t: string; children: React.ReactNode; id?: string }) => (
-  <section data-testid={id} className="rounded-2xl border border-border bg-card-solid p-5"><h2 className="mb-3 text-xl font-semibold">{t}</h2>{children}</section>
+  <section data-testid={id} className="rounded-2xl border border-border/70 bg-card-solid p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] transition-shadow hover:shadow-[0_1px_2px_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.18)]"><h2 className="mb-4 flex items-center gap-2 text-base font-semibold tracking-tight"><span aria-hidden className="h-4 w-1 rounded-full bg-primary" />{t}</h2>{children}</section>
 );
-const Stat = ({ k, v }: { k: string; v: React.ReactNode }) => <div className="rounded-xl bg-muted/50 p-3"><div className="text-xs text-muted-foreground">{k}</div><div className="text-2xl font-semibold">{v}</div></div>;
+const Stat = ({ k, v }: { k: string; v: React.ReactNode }) => <div className="relative overflow-hidden rounded-xl border border-border/60 bg-background/60 p-3.5"><span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/70 via-gold/50 to-transparent" /><div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{k}</div><div className="mt-1 font-mono text-2xl font-semibold tabular-nums">{v}</div></div>;
 
 function NotFound() {
   return (
@@ -49,10 +49,12 @@ function Pricing({ initial, save }: { initial: M; save: (p: M) => Promise<string
 
 
 // Charts: Recharts (MIT). Loaded only in this lazy admin chunk.
-const COLORS = ['#c2410c', '#f59e0b', '#0f766e', '#6366f1', '#db2777', '#64748b', '#16a34a', '#0891b2'];
+const COLORS = ['#b13204', '#d08a2e', '#2f7d6d', '#5b6fb5', '#a8557a', '#7a8291', '#5f9e4f', '#3a8fb0'];
+// Shared chart styling: soft grid, no axis lines, card-like tooltip (style adapted from awesome-llm-apps ai-dashboard-canvas-agent, Apache-2.0).
+const TT = { contentStyle: { background: 'var(--card-solid)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12, boxShadow: '0 8px 24px -12px rgba(0,0,0,.25)' }, cursor: { fill: 'var(--accent)' } } as const;
 function Donut({ data }: { data: { name: string; value: number }[] | null }) {
   if (!data) return <NoData />;
-  return <ResponsiveContainer width="100%" height={220}><PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>{data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /><Legend wrapperStyle={{ fontSize: 12 }} /></PieChart></ResponsiveContainer>;
+  return <ResponsiveContainer width="100%" height={220}><PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius={58} outerRadius={84} paddingAngle={3} cornerRadius={6} stroke="none">{data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip {...TT} /><Legend wrapperStyle={{ fontSize: 12 }} /></PieChart></ResponsiveContainer>;
 }
 const csv = (rows: (string | number)[][]) => rows.map((r) => r.map((c) => { const s = String(c ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(',')).join('\n');
 function downloadCsv(name: string, rows: (string | number)[][]) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv(rows)], { type: 'text/csv' })); a.download = name; a.click(); }
@@ -162,8 +164,8 @@ export default function AdminApp() {
 
   const t = m.totals, a = m.active, g = m.growth, b = m.breakdowns || {};
   return (
-    <main data-testid="admin-dashboard" className="mx-auto grid max-w-6xl gap-5 bg-background p-5">
-      <header className="flex flex-wrap items-baseline justify-between gap-2"><h1 className="display text-4xl">Admin</h1><span className="text-sm text-muted-foreground">Signed in as {data.admin} · data as of {m.asOf} (IST) · real Sheet data only · <a className="underline" href="/#/app/overview">Back to the app</a></span></header>
+    <main data-testid="admin-dashboard" className="mx-auto grid max-w-6xl gap-6 bg-background p-5 sm:p-8">
+      <header className="flex flex-wrap items-baseline justify-between gap-2"><div><p className="label text-muted-foreground">Akash Sync Agent · control room</p><h1 className="display text-4xl">Admin</h1></div><span className="text-sm text-muted-foreground">Signed in as {data.admin} · data as of {m.asOf} (IST) · real Sheet data only · <a className="underline" href="/#/app/overview">Back to the app</a></span></header>
       <nav role="tablist" className="flex flex-wrap gap-2">{TABS.map((x) => <button key={x} role="tab" aria-selected={tab === x} data-testid={`tab-${x}`} onClick={() => setTab(x)} className={`rounded-full border px-4 py-2 text-sm ${tab === x ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`}>{x}</button>)}</nav>
       {note && <p role="status" className="text-sm text-primary">{note}</p>}
 
@@ -175,17 +177,17 @@ export default function AdminApp() {
             <Stat k="Total visits" v={val(t.visits)} /><Stat k="Devices with several accounts" v={val(t.flaggedDevices)} /><Stat k="Feedback" v={val(t.feedback)} /><Stat k="Avg rating" v={val(t.avgRating, '/5')} />
           </div>
         </Box>
-        <Box t="Daily active, weekly active and sign-ups (last 30 days)" id="admin-trend">{m.trend ? <ResponsiveContainer width="100%" height={260}><LineChart data={m.trend}><CartesianGrid strokeDasharray="3 3" opacity={0.3} /><XAxis dataKey="day" tickFormatter={(d) => d.slice(5)} fontSize={11} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Legend /><Line type="monotone" dataKey="active" name="DAU" stroke={COLORS[0]} dot={false} /><Line type="monotone" dataKey="wau" name="WAU" stroke={COLORS[2]} dot={false} /><Line type="monotone" dataKey="signups" name="Sign-ups" stroke={COLORS[1]} dot={false} /></LineChart></ResponsiveContainer> : <NoData />}</Box>
+        <Box t="Daily active, weekly active and sign-ups (last 30 days)" id="admin-trend">{m.trend ? <ResponsiveContainer width="100%" height={260}><LineChart data={m.trend}><CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" /><XAxis axisLine={false} tickLine={false} dataKey="day" tickFormatter={(d) => d.slice(5)} fontSize={11} /><YAxis axisLine={false} tickLine={false} allowDecimals={false} fontSize={11} /><Tooltip {...TT} /><Legend /><Line strokeWidth={2.25} activeDot={{ r: 4 }} type="monotone" dataKey="active" name="DAU" stroke={COLORS[0]} dot={false} /><Line strokeWidth={2.25} activeDot={{ r: 4 }} type="monotone" dataKey="wau" name="WAU" stroke={COLORS[2]} dot={false} /><Line strokeWidth={2.25} activeDot={{ r: 4 }} type="monotone" dataKey="signups" name="Sign-ups" stroke={COLORS[1]} dot={false} /></LineChart></ResponsiveContainer> : <NoData />}</Box>
         <div className="grid gap-5 md:grid-cols-2">
-          <Box t="Activation funnel (users)" id="admin-funnel">{m.funnel ? <ResponsiveContainer width="100%" height={300}><BarChart data={m.funnel} layout="vertical" margin={{ left: 40 }}><XAxis type="number" allowDecimals={false} fontSize={11} /><YAxis type="category" dataKey="step" width={130} fontSize={11} /><Tooltip /><Bar dataKey="users" fill={COLORS[0]} /></BarChart></ResponsiveContainer> : <NoData />}<p className="mt-2 text-xs text-muted-foreground">Signed-in users only, counted from the day each step started being logged.</p></Box>
-          <Box t="Retention by sign-up week (%)" id="admin-cohorts">{m.cohorts ? <ResponsiveContainer width="100%" height={300}><BarChart data={[...m.cohorts].reverse()}><XAxis dataKey="week" fontSize={11} /><YAxis unit="%" fontSize={11} /><Tooltip /><Legend /><Bar dataKey="w1" name="W1" fill={COLORS[2]} /><Bar dataKey="w4" name="W4" fill={COLORS[3]} /></BarChart></ResponsiveContainer> : <NoData />}<p className="mt-2 text-xs text-muted-foreground">W1 = came back 7–13 days after sign-up; W4 = 28–34 days. Empty bars mean the cohort is not old enough yet.</p></Box>
+          <Box t="Activation funnel (users)" id="admin-funnel">{m.funnel ? <ResponsiveContainer width="100%" height={300}><BarChart data={m.funnel} layout="vertical" margin={{ left: 40 }}><XAxis axisLine={false} tickLine={false} type="number" allowDecimals={false} fontSize={11} /><YAxis axisLine={false} tickLine={false} type="category" dataKey="step" width={130} fontSize={11} /><Tooltip {...TT} /><Bar radius={[6, 6, 6, 6]} maxBarSize={36} dataKey="users" fill={COLORS[0]} /></BarChart></ResponsiveContainer> : <NoData />}<p className="mt-2 text-xs text-muted-foreground">Signed-in users only, counted from the day each step started being logged.</p></Box>
+          <Box t="Retention by sign-up week (%)" id="admin-cohorts">{m.cohorts ? <ResponsiveContainer width="100%" height={300}><BarChart data={[...m.cohorts].reverse()}><XAxis axisLine={false} tickLine={false} dataKey="week" fontSize={11} /><YAxis axisLine={false} tickLine={false} unit="%" fontSize={11} /><Tooltip {...TT} /><Legend /><Bar radius={[6, 6, 6, 6]} maxBarSize={36} dataKey="w1" name="W1" fill={COLORS[2]} /><Bar radius={[6, 6, 6, 6]} maxBarSize={36} dataKey="w4" name="W4" fill={COLORS[3]} /></BarChart></ResponsiveContainer> : <NoData />}<p className="mt-2 text-xs text-muted-foreground">W1 = came back 7–13 days after sign-up; W4 = 28–34 days. Empty bars mean the cohort is not old enough yet.</p></Box>
           <Box t="Users by channel" id="pie-channel"><Donut data={b.channel} /><p className="text-xs text-muted-foreground">From ?ref= / utm_source on the first visit (only after consent). Page views: <a className="underline text-primary" href={data.goatcounter} target="_blank" rel="noreferrer">GoatCounter</a>.</p></Box>
           <Box t="Preferred work mode" id="pie-mode"><Donut data={b.workMode} /></Box>
           <Box t="Target role (first one)" id="pie-role"><Donut data={b.role?.slice(0, 8) || null} /></Box>
           <Box t="Country of residence" id="pie-country"><Donut data={b.country} /></Box>
           <Box t="Device" id="pie-device"><Donut data={b.device} /></Box>
           <Box t="Feedback sentiment (by star rating)" id="pie-sentiment"><Donut data={m.sentiment} /></Box>
-          <Box t="Feedback themes" id="admin-themes">{m.themes ? <ResponsiveContainer width="100%" height={240}><BarChart data={m.themes}><XAxis dataKey="theme" fontSize={10} interval={0} angle={-20} textAnchor="end" height={60} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Bar dataKey="count" fill={COLORS[4]} /></BarChart></ResponsiveContainer> : <NoData />}<p className="text-xs text-muted-foreground">Keyword groups; one message can count in several.</p></Box>
+          <Box t="Feedback themes" id="admin-themes">{m.themes ? <ResponsiveContainer width="100%" height={240}><BarChart data={m.themes}><XAxis axisLine={false} tickLine={false} dataKey="theme" fontSize={10} interval={0} angle={-20} textAnchor="end" height={60} /><YAxis axisLine={false} tickLine={false} allowDecimals={false} fontSize={11} /><Tooltip {...TT} /><Bar radius={[6, 6, 6, 6]} maxBarSize={36} dataKey="count" fill={COLORS[4]} /></BarChart></ResponsiveContainer> : <NoData />}<p className="text-xs text-muted-foreground">Keyword groups; one message can count in several.</p></Box>
           <Box t="Revenue (needs payments)" id="admin-revenue"><div className="grid grid-cols-3 gap-3"><Stat k="Free → paid" v={<NoData />} /><Stat k="MRR" v={<NoData />} /><Stat k="ARPU" v={<NoData />} /></div><p className="mt-2 text-sm text-muted-foreground">{m.revenue.note}</p></Box>
         </div>
       </>}
