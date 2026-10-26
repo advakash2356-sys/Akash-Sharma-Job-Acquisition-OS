@@ -2,12 +2,20 @@ import React, { useState } from 'react';
 import { Fingerprint, Upload } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Label, PageHeader, Textarea } from '../components/ui';
 import { useApp } from '../lib/state';
+import { callAi } from '../lib/api';
+import type { MatchScore } from '../lib/matchScore';
 import { compare, parsePastedProfile, parsePositionsCsv, parseSkills, type MatchReport, type Role } from '../lib/profileMatch';
 
 export default function ProfileMatch() {
   const { profile, hasResume, go } = useApp();
   const [text, setText] = useState(''); const [skills, setSkills] = useState(''); const [email, setEmail] = useState('');
   const [roles, setRoles] = useState<Role[] | null>(null); const [r, setR] = useState<MatchReport | null>(null); const [err, setErr] = useState('');
+  const [job, setJob] = useState(''); const [ms, setMs] = useState<MatchScore | null>(null); const [busy, setBusy] = useState(false); const [msErr, setMsErr] = useState('');
+  const score = async () => {
+    setBusy(true); setMsErr(''); setMs(null);
+    try { setMs(await callAi<MatchScore>('match-score', { resume: profile.resumeText, job, linkedin: text })); }
+    catch (e: any) { setMsErr(e?.message || 'Scoring failed.'); } finally { setBusy(false); }
+  };
   const load = async (e: React.ChangeEvent<HTMLInputElement>) => {
     for (const f of Array.from(e.target.files || [])) {
       const t = await f.text(); const n = f.name.toLowerCase();
@@ -32,7 +40,7 @@ export default function ProfileMatch() {
           <li><b>Most accurate:</b> on LinkedIn go to Settings → Data privacy → Get a copy of your data, pick "Positions", "Skills" and "Email addresses", and upload the CSV files you get by email.</li>
           <li>Press <b>Compare</b>. Fix whichever side is wrong; there is no need to list every job in both places, but dates and titles should agree.</li>
         </ol>
-        <p className="mt-3 text-sm text-muted-foreground">This runs only in your browser on text you give it. It does not log in to LinkedIn, read any profile for you, use AI or save what you paste.</p>
+        <p className="mt-3 text-sm text-muted-foreground">This runs only in your browser on text you give it. It does not log in to LinkedIn, read any profile for you, use AI or save what you paste. Only the optional match score below uses AI.</p>
       </Card>
       <Card className="grid gap-4">
         <div><Label htmlFor="pm-text">LinkedIn Experience text or Positions.csv</Label><Textarea id="pm-text" rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste your Experience section here" /></div>
@@ -58,6 +66,26 @@ export default function ProfileMatch() {
           <p className="text-muted-foreground">Matching is by company name and year, so check each item yourself; it can miss renamed companies.</p>
         </Card>
       )}
+      <Card className="mt-5 grid gap-4" data-testid="ms-card">
+        <div><h2 className="text-xl">Match score for a job</h2><p className="text-sm text-muted-foreground">Paste a job description. Gemini scores your resume (and the LinkedIn text above, if any) on skills, experience and keywords. This part uses AI with your Gemini key and sends the texts to Google.</p></div>
+        <div><Label htmlFor="ms-job">Job description</Label><Textarea id="ms-job" rows={6} value={job} onChange={(e) => setJob(e.target.value)} placeholder="Paste the full job post" /></div>
+        <div><Button onClick={score} disabled={busy || job.trim().length < 50}>{busy ? 'Scoring…' : 'Score match'}</Button></div>
+        {msErr && <p role="alert" className="text-sm text-danger">{msErr}</p>}
+        {ms && (
+          <div className="grid gap-3 text-sm" data-testid="ms-report">
+            <div className="flex items-center gap-3"><span className="font-mono text-3xl text-gold">{ms.overall}</span><span className="text-muted-foreground">overall · skills 40%, experience 35%, keywords 25%</span></div>
+            {([['Skills', ms.skills], ['Experience', ms.experience], ['Keywords', ms.keywords]] as const).map(([k, v]) => (
+              <div key={k}><div className="flex justify-between"><span>{k}</span><span className="font-mono">{v}</span></div><div className="h-2 rounded-full bg-muted" role="meter" aria-label={k} aria-valuenow={v} aria-valuemin={0} aria-valuemax={100}><div className="h-2 rounded-full bg-primary" style={{ width: `${v}%` }} /></div></div>
+            ))}
+            {ms.experienceNote && <p>{ms.experienceNote}</p>}
+            {ms.matchedSkills.length > 0 && <p><Badge tone="gold">Matched skills</Badge> {ms.matchedSkills.join(', ')}</p>}
+            {ms.missingSkills.length > 0 && <p><Badge tone="danger">Missing skills</Badge> {ms.missingSkills.join(', ')}</p>}
+            {ms.missingKeywords.length > 0 && <p><Badge>Keyword gaps</Badge> {ms.missingKeywords.join(', ')}. Add only the ones that are true for you.</p>}
+            {ms.fixes.length > 0 && <ul className="list-disc pl-5">{ms.fixes.map((f, i) => <li key={i}>{f}</li>)}</ul>}
+            <p className="text-muted-foreground">AI estimate. Check it yourself; never add a skill you do not have.</p>
+          </div>
+        )}
+      </Card>
     </>
   );
 }
