@@ -82,7 +82,7 @@ function StylePicker({ job, onPick }: { job: Job; onPick: (s: StyleSpec) => void
 /** One job's application pack: tailored resume, cover letter, outreach. Each is labelled with the job it is for and stored on that job. */
 export default function DocsPanel({ job: job0 }: { job: Job }) {
   const job = normaliseJob(job0);
-  const { profile, go, hasResume, setJobs } = useApp();
+  const { profile, go, hasResume, setJobs, setProfile } = useApp();
   const { ready } = useAiReady();
   const pack = usePack(job);
   const [open, setOpen] = useState<DocKind | null>(null);
@@ -144,6 +144,10 @@ export default function DocsPanel({ job: job0 }: { job: Job }) {
           <Button size="sm" variant="outline" onClick={async () => { job.tailoredResumeDoc ? await resumeDocx(job.tailoredResumeDoc, base('resume'), job.resumeStyle || defaultSpec(job.title)) : await exportDocx(job.tailoredResume!, `Tailored resume: ${label}`, base('resume')); markDl(); }}><Download size={14} /> DOCX</Button>
         </>,
         job.tailoredResumeDoc ? <div className="grid gap-3"><StylePicker job={job} onPick={(st) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, resumeStyle: st } : j)))} /><ResumePreview r={job.tailoredResumeDoc} spec={job.resumeStyle || defaultSpec(job.title)} /></div> : <pre className="whitespace-pre-wrap font-sans text-sm">{job.tailoredResume}</pre>, job.tailoredResume || '')}
+      <label className="block rounded-2xl border border-border p-4 text-sm" data-testid="own-line">
+        <span className="font-medium">One line in your own words</span> <span className="text-muted-foreground">(goes into the cover letter as written, so it sounds like you)</span>
+        <input className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2" maxLength={300} placeholder="e.g. I like turning messy contract backlogs into clean, tracked workflows." value={profile.coverOwnLine || ''} onChange={(e) => setProfile((p) => ({ ...p, coverOwnLine: e.target.value }))} />
+      </label>
       {row('cover', <FileText size={18} className="text-primary" />,
         <>
           <Button size="sm" variant="outline" onClick={() => { letterPdf(job.coverLetter!, `Re: ${reSubject}`, base('cover-letter')); markDl(); }}><Download size={14} /> PDF</Button>

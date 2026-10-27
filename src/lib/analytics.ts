@@ -1,3 +1,4 @@
+import { isCampaignTag } from './keywords';
 // Privacy-first funnel counts via GoatCounter (cookieless, no script loaded).
 // Uses VITE_GOATCOUNTER_CODE if set ("off" disables), else the owner's default code. Never counts in local dev.
 // Sends ONLY a fixed event name: never resume text, keys, names or job data.
@@ -35,8 +36,9 @@ const SOURCES: readonly string[] = [...CHANNELS, 'share'];
 /** Where this visit came from, only if the link carried a known ref / utm_source (e.g. ?ref=instagram). */
 export function visitSource(search = location.search): { source: string; campaign: string } | null {
   const q = new URLSearchParams(search);
-  const source = (q.get('ref') || q.get('utm_source') || '').toLowerCase().trim();
-  if (!SOURCES.includes(source)) return null;
+  const source = (q.get('src') || q.get('ref') || q.get('utm_source') || '').toLowerCase().trim();
+  // Known channels, or a campaign tag like ?src=reddit-3 / ?src=reel-7 (channel plus a number).
+  if (!SOURCES.includes(source) && !isCampaignTag(source)) return null;
   const c = (q.get('utm_campaign') || '').toLowerCase().trim();
   return { source, campaign: /^[a-z0-9_-]{1,40}$/.test(c) ? c : '' };
 }

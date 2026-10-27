@@ -199,6 +199,8 @@ export default function Setup() {
           {form
             ? <ManualProfile initial={profile.manual ? profile : { location: profile.location }} onSave={(m) => { edited.current = false; auto.current = false; setForm(false); setProfile((p) => ({ ...p, ...m })); }} />
             : <ResumeDrop hasText={hasResume} onText={(t) => { edited.current = false; auto.current = false; setProfile((p) => ({ ...p, resumeText: t, setupDone: undefined, manual: false })); }} />}
+          {!form && hasResume && <label className="mt-3 block text-sm" data-testid="parsed-resume"><span className="font-medium">This is what we read from your file. Fix anything that looks wrong:</span>
+            <textarea className="mt-2 h-48 w-full rounded-lg border border-border bg-background p-3 font-mono text-xs" value={profile.resumeText} onChange={(e) => { const t = e.target.value; setProfile((p) => ({ ...p, resumeText: t })); }} /></label>}
           <p className="mt-2 text-xs text-muted-foreground">Read in your browser. It leaves your device only when an AI step runs, and then only to Google's Gemini API.</p>
         </Card></li>
         <li><div className={step1 ? '' : 'pointer-events-none opacity-50'} inert={!step1} aria-disabled={!step1 || undefined}>

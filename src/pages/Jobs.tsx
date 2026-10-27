@@ -1,3 +1,4 @@
+import { daysOld } from '../lib/keywords';
 import React, { useEffect, useState } from 'react';
 import { Plus, Briefcase, Trash2, ExternalLink } from 'lucide-react';
 import { Badge, Button, Card, Dialog, EmptyState, Input, Label, PageHeader, Select, Textarea } from '../components/ui';
@@ -186,6 +187,7 @@ export default function Jobs() {
                 </button>
                 {(j.score || j.found?.fit) && <span className="font-mono text-lg text-gold" title={j.score ? 'AI score' : j.found?.fit?.kind === 'ai' ? 'AI fit' : 'Keyword match'}>{j.score ? j.score.score : j.found!.fit!.score}</span>}
                 {j.found?.decision && <Badge tone={j.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge" title={j.found.decision.reason}>{j.found.decision.badge}</span></Badge>}
+                {j.found && daysOld(j.found.postedAt) > 30 && <Badge tone="danger">Older than 30 days · may be closed</Badge>}
                 {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `${j.found.source === 'Himalayas' || j.found.source === 'Remote OK' ? '' : 'FreeHire · '}${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
                 {(j.tailoredResume || j.coverLetter || j.outreach) && <Badge tone="primary">{[j.tailoredResume && 'Resume', j.coverLetter && 'Letter', j.outreach && 'Outreach'].filter(Boolean).join(' · ')}</Badge>}

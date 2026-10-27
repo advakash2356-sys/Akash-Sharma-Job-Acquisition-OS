@@ -35,7 +35,7 @@ export function usePack(job: Job | undefined) {
   const body = (j: Job) => ({
     title: j.title, company: j.company, description: j.description,
     resume: profile.resumeText, name: profile.name, targetRoles: profile.targetRoles, minCtc: profile.minCtc,
-    instructions: [profile.aiInstructions, profile.noticePeriod || profile.availableFrom ? `Candidate availability (from the candidate, use only if relevant): notice period ${profile.noticePeriod || 'not stated'}; can start ${profile.availableFrom || 'not stated'}.` : ''].filter(Boolean).join('\n'),
+    instructions: [profile.aiInstructions, profile.coverOwnLine?.trim() ? `For the cover letter only: include this sentence written by the candidate, word for word, where it fits best: "${profile.coverOwnLine.trim().slice(0, 300)}"` : '', profile.noticePeriod || profile.availableFrom ? `Candidate availability (from the candidate, use only if relevant): notice period ${profile.noticePeriod || 'not stated'}; can start ${profile.availableFrom || 'not stated'}.` : ''].filter(Boolean).join('\n'),
   });
 
   async function one(kind: DocKind, extra: Record<string, unknown> = {}) {
