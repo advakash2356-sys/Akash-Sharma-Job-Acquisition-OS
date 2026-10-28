@@ -64,3 +64,7 @@ test('agent check: Rule 25 cap, excluded costs, cash, never "fraud"', () => {
   assert.equal(checkAgent('Qatar job, fees 1.2 lakh').maxFee, 120000);
   assert.ok(AGENT_SOURCES.some((s) => /emigrate\.gov\.in/.test(s.href)));
 });
+test('clean URLs: every public page path opens its page', () => {
+  const main = readFileSync('src/main.tsx', 'utf8'), vj = readFileSync('vercel.json', 'utf8');
+  for (const p of ['scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint']) { assert.ok(main.includes(p), `main.tsx ${p}`); assert.ok(vj.includes(p), `vercel.json ${p}`); }
+});
