@@ -42,6 +42,7 @@ export default function GovJobs() {
         <ul className="grid gap-3">{list.map(({ exam: e, age, upper, ok, why }) => <li key={e.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-exam">
           <div className="flex flex-wrap items-center gap-2"><b>{e.name}</b>{e.lesser && <Badge tone="gold">Lesser-known</Badge>}<Badge tone={ok ? 'primary' : 'danger'}>{ok ? 'Likely eligible' : 'Not eligible'}</Badge><span className="text-xs text-muted-foreground">{e.group} · {e.body}</span></div>
           <div className="mt-1 text-sm">Age {e.minAge} to {e.maxAge} (General) on {e.asOn}; your limit <b>{upper}</b>, your age then <b>{age}</b>. Qualification: {e.qual}.</div>
+          {ok && <div className={upper - age <= 1 ? 'text-sm font-medium text-red-700' : 'text-sm'} data-testid="gov-radar">Deadline radar (beta): {upper - age <= 0 ? 'this is your last eligible cycle by age' : `about ${upper - age} more year${upper - age === 1 ? '' : 's'} before you cross the age limit`}, counted on this notification's date.</div>}
           {e.note && <div className="text-sm text-muted-foreground">{e.note}</div>}
           {p.esm && e.esmNote && <div className="text-sm text-muted-foreground">{e.esmNote}</div>}
           {!ok && <ul className="mt-1 list-disc pl-5 text-sm text-red-700">{why.map((w) => <li key={w}>{w}</li>)}</ul>}
