@@ -25,28 +25,28 @@ export default function OfferShield() {
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="offer-disclaimer">{DISCLAIMER}</p>
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
         {([0, 1] as const).map((i) => (
-          <Card key={i} className="grid gap-3" data-testid={`offer-${i}`}>
+          <Card key={i} className="grid min-w-0 gap-3" data-testid={`offer-${i}`}>
             <h2 className="text-xl font-medium">Offer {i === 0 ? 'A' : 'B'}</h2>
             <label className="inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-lg border border-border px-4 text-sm hover:bg-muted"><Upload size={15} /> Upload offer (PDF, DOCX, scan, photo)<input type="file" hidden accept={OFFER_ACCEPT} onChange={(e) => load(i, e.target.files?.[0])} /></label>
             {s[i].busy && <p className="text-sm text-muted-foreground" role="status">{s[i].busy}</p>}
             <div><Label htmlFor={`ot${i}`}>Or paste the text</Label><Textarea id={`ot${i}`} rows={6} value={s[i].text} onChange={(e) => set(i, { text: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3"><div><Label htmlFor={`oc${i}`}>CTC per year (₹)</Label><Input id={`oc${i}`} inputMode="numeric" value={s[i].ctc} onChange={(e) => set(i, { ctc: e.target.value.replace(/\D/g, '') })} /></div>
-              <div><Label htmlFor={`ov${i}`}>Variable pay %</Label><Input id={`ov${i}`} inputMode="numeric" value={s[i].variable} onChange={(e) => set(i, { variable: e.target.value.replace(/[^\d.]/g, '') })} /></div></div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div className="min-w-0"><Label htmlFor={`oc${i}`}>CTC per year (₹)</Label><Input id={`oc${i}`} inputMode="numeric" value={s[i].ctc} onChange={(e) => set(i, { ctc: e.target.value.replace(/\D/g, '') })} /></div>
+              <div className="min-w-0"><Label htmlFor={`ov${i}`}>Variable pay %</Label><Input id={`ov${i}`} inputMode="numeric" value={s[i].variable} onChange={(e) => set(i, { variable: e.target.value.replace(/[^\d.]/g, '') })} /></div></div>
             <Button variant="ghost" className="w-fit" onClick={() => set(i, { text: i === 0 ? SAMPLE_A : SAMPLE_B, ctc: i === 0 ? '900000' : '850000', variable: i === 0 ? '10' : '0' })}>Try a sample (made up)</Button>
             {res[i].pay && <div className="rounded-lg bg-muted/60 p-3 text-sm" data-testid={`inhand-${i}`}><div className="label text-muted-foreground">Estimated monthly in-hand</div><div className="font-mono text-3xl">{inr(res[i].pay!.monthlyInHand)}</div>
               <p className="mt-1 text-xs text-muted-foreground">Estimate · tax {inr(res[i].pay!.tax)}/yr · PF {inr(res[i].pay!.employeePf)}/yr · {TAX_YEAR}</p></div>}
-            {res[i].clauses.length > 0 && <ul className="grid gap-2" data-testid={`clauses-${i}`}>{res[i].clauses.map((c, k) => <li key={k} className="rounded-lg border border-border p-3 text-sm"><div className="flex flex-wrap items-center gap-2"><Badge tone={tone(c.risk)}>{c.risk === 'red' ? 'Look closely' : c.risk === 'amber' ? 'Ask about it' : 'Note'}</Badge><b>{c.kind}</b>{c.detail && <span className="text-muted-foreground">· {c.detail}</span>}</div><p className="mt-1">{c.why}</p><p className="mt-1 text-xs text-muted-foreground">"{c.sentence}"</p></li>)}</ul>}
+            {res[i].clauses.length > 0 && <ul className="grid gap-2" data-testid={`clauses-${i}`}>{res[i].clauses.map((c, k) => <li key={k} className="min-w-0 rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]"><div className="flex flex-wrap items-center gap-2"><Badge tone={tone(c.risk)}>{c.risk === 'red' ? 'Look closely' : c.risk === 'amber' ? 'Ask about it' : 'Note'}</Badge><b>{c.kind}</b>{c.detail && <span className="text-muted-foreground">· {c.detail}</span>}</div><p className="mt-1">{c.why}</p><p className="mt-1 text-xs text-muted-foreground">"{c.sentence}"</p></li>)}</ul>}
             {s[i].text.trim() && !res[i].clauses.length && <p className="text-sm text-muted-foreground">No clauses matched these rules. That does not mean there are none; read it fully.</p>}
           </Card>))}
       </div>
       {both && <Card className="mb-5 grid gap-3" data-testid="offer-compare"><h2 className="text-xl font-medium"><FileSearch size={18} className="mr-2 inline" />Side by side</h2>
-        <table className="text-sm"><thead><tr className="text-left text-muted-foreground"><th className="py-1 font-normal"></th><th className="font-normal">Offer A</th><th className="font-normal">Offer B</th></tr></thead><tbody>
+        <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-muted-foreground"><th className="py-1 font-normal"></th><th className="font-normal">Offer A</th><th className="font-normal">Offer B</th></tr></thead><tbody>
           {([['CTC', (i: number) => inr(Number(s[i].ctc))], ['Monthly in-hand (estimate)', (i: number) => inr(res[i].pay!.monthlyInHand)], ['Variable (not guaranteed)', (i: number) => inr(res[i].pay!.variable)], ['Clauses to look closely at', (i: number) => String(res[i].clauses.filter((c) => c.risk === 'red').length)], ['Clauses to ask about', (i: number) => String(res[i].clauses.filter((c) => c.risk === 'amber').length)]] as [string, (i: number) => string][]).map(([k, f]) => <tr key={k} className="border-t border-border/60"><td className="py-1">{k}</td><td>{f(0)}</td><td>{f(1)}</td></tr>)}
-        </tbody></table></Card>}
+        </tbody></table></div></Card>}
       <Card className="grid gap-2 text-sm"><h2 className="text-xl font-medium">Estimate settings</h2>
-        <div className="grid max-w-md grid-cols-2 gap-3"><div><Label htmlFor="ob">Basic % of CTC</Label><Input id="ob" value={basic} onChange={(e) => setBasic(e.target.value.replace(/\D/g, ''))} /></div><div><Label htmlFor="op">Professional tax / yr</Label><Input id="op" value={pt} onChange={(e) => setPt(e.target.value.replace(/\D/g, ''))} /></div></div>
+        <div className="grid max-w-md grid-cols-1 gap-3 sm:grid-cols-2"><div className="min-w-0"><Label htmlFor="ob">Basic % of CTC</Label><Input id="ob" value={basic} onChange={(e) => setBasic(e.target.value.replace(/\D/g, ''))} /></div><div className="min-w-0"><Label htmlFor="op">Professional tax / yr</Label><Input id="op" value={pt} onChange={(e) => setPt(e.target.value.replace(/\D/g, ''))} /></div></div>
         {res[0].pay && <ul className="list-disc pl-5 text-muted-foreground">{res[0].pay.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>}
-        <p className="text-xs text-muted-foreground">Tax slabs from the Income Tax Department: https://www.incometax.gov.in/iec/foportal/help/individual/return-applicable-1. Your payslip can differ (allowances, reimbursements, state tax, employer policy).</p>
+        <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">Tax slabs from the Income Tax Department: https://www.incometax.gov.in/iec/foportal/help/individual/return-applicable-1. Your payslip can differ (allowances, reimbursements, state tax, employer policy).</p>
       </Card>
     </>
   );
