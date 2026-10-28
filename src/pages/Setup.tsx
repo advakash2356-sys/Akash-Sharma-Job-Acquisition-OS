@@ -215,7 +215,7 @@ export default function Setup() {
               <li key={s.id} className="flex items-center gap-2">
                 {st[s.id] === 'running' ? <Loader2 size={16} className="animate-spin text-primary" /> : st[s.id] === 'done' ? <CheckCircle2 size={16} className="text-primary" /> : st[s.id] === 'error' ? <AlertTriangle size={16} className="text-danger" /> : st[s.id] === 'skipped' ? <SkipForward size={16} className="text-muted-foreground" /> : <Circle size={16} className="text-muted-foreground" />}
                 <span className={st[s.id] === 'idle' || st[s.id] === 'skipped' ? 'text-muted-foreground' : ''}>{st[s.id] === 'done' ? s.done : s.label}{st[s.id] === 'skipped' ? ' (skipped)' : ''}</span>
-                {st[s.id] === 'running' && <span className="text-xs text-muted-foreground">{elapsed(s.id)}s of at most {Math.round(s.max / 1000)}s</span>}
+                {st[s.id] === 'running' && <span className="text-xs text-muted-foreground">{elapsed(s.id) > Math.round(s.max / 1000) ? 'Waiting for you to sign in again (or press Cancel)' : `${elapsed(s.id)}s of at most ${Math.round(s.max / 1000)}s`}</span>}
               </li>
             ))}
           </ul>

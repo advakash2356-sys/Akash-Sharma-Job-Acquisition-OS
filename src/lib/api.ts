@@ -40,7 +40,10 @@ export async function authedFetch(url: string, init: RequestInit, opts: CallOpts
   const t = await refreshIdToken();
   if (t) { res = await go(t); if (res.status !== 401) return res; }
   let t2 = '';
-  try { t2 = await requestReauth(); } catch { throw new AiError('Please sign in again to continue. Your work on this page is kept.', 'AUTH_REQUIRED'); }
+  if (opts.signal?.aborted) throw new AiError('Cancelled.', 'CANCELLED');
+  // Waiting for the user to sign in again must still honour Cancel, so the step does not spin past its time limit.
+  const cancelled = new Promise<never>((_, rej) => opts.signal?.addEventListener('abort', () => rej(new AiError('Cancelled.', 'CANCELLED')), { once: true }));
+  try { t2 = await Promise.race([requestReauth(), cancelled]); } catch (e) { if (e instanceof AiError) throw e; throw new AiError('Please sign in again to continue. Your work on this page is kept.', 'AUTH_REQUIRED'); }
   return go(t2);
 }
 
