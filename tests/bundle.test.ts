@@ -75,3 +75,11 @@ test('clean URLs: every public page path opens its page', () => {
   for (const p of ['scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint']) { assert.ok(main.includes(p), `main.tsx ${p}`); assert.ok(vj.includes(p), `vercel.json ${p}`); }
 });
 test('hash routes accept page ids with digits (h1b-sprint)', () => { const app = readFileSync('src/App.tsx', 'utf8'); const re = new RegExp(app.match(/location\.hash\.match\((\/.*?\/)\)/)![1].slice(1, -1)); assert.equal('#/app/h1b-sprint'.match(re)?.[1], 'h1b-sprint'); });
+test('agent check: domestic pay-to-join is red, cap only for overseas', () => {
+  const d = checkAgent('SAMPLE (made up): Data entry job in Pune. Pay Rs 500 registration fee to confirm your interview slot.');
+  assert.equal(d.overseas, false); assert.equal(d.signs[0].level, 'red'); assert.match(d.signs[0].title, /pay to get a job/);
+  assert.ok(!d.signs.some((s) => /within|cap/i.test(s.title + s.detail.replace(/fee cap does not apply/, ''))));
+  assert.equal(checkAgent('Pune office job, registration fee required.').signs[0]?.level, 'red');
+  assert.equal(checkAgent('Pune office job. Walk-in interview Monday 10 am.').signs.length, 0);
+  const o = checkAgent('Dubai job via agent. Service fee Rs 20,000 by bank transfer.'); assert.ok(o.overseas); assert.equal(o.signs.find((s) => s.title === 'Fee asked')?.level, 'amber');
+});
