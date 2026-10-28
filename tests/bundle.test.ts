@@ -72,7 +72,7 @@ test('agent check: Rule 25 cap, excluded costs, cash, never "fraud"', () => {
 });
 test('clean URLs: every public page path opens its page', () => {
   const main = readFileSync('src/main.tsx', 'utf8'), vj = readFileSync('vercel.json', 'utf8');
-  for (const p of ['scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint']) { assert.ok(main.includes(p), `main.tsx ${p}`); assert.ok(vj.includes(p), `vercel.json ${p}`); }
+  for (const p of ['scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint', 'gov-jobs']) { assert.ok(main.includes(p), `main.tsx ${p}`); assert.ok(vj.includes(p), `vercel.json ${p}`); }
 });
 test('hash routes accept page ids with digits (h1b-sprint)', () => { const app = readFileSync('src/App.tsx', 'utf8'); const re = new RegExp(app.match(/location\.hash\.match\((\/.*?\/)\)/)![1].slice(1, -1)); assert.equal('#/app/h1b-sprint'.match(re)?.[1], 'h1b-sprint'); });
 test('agent check: domestic pay-to-join is red, cap only for overseas', () => {
@@ -83,3 +83,10 @@ test('agent check: domestic pay-to-join is red, cap only for overseas', () => {
   assert.equal(checkAgent('Pune office job. Walk-in interview Monday 10 am.').signs.length, 0);
   const o = checkAgent('Dubai job via agent. Service fee Rs 20,000 by bank transfer.'); assert.ok(o.overseas); assert.equal(o.signs.find((s) => s.title === 'Fee asked')?.level, 'amber');
 });
+import { EXAMS as GOV, match as govMatch } from '../src/lib/govJobs';
+test('gov jobs: every exam has an official source and verified date', () => { for (const e of GOV) { assert.ok(/^https:\/\//.test(e.src) && e.verified, e.id); } assert.ok(GOV.some((e) => e.lesser)); });
+test('gov jobs: OBC relaxation and qualification', () => {
+  const base = { dob: '1997-01-01', edu: 'grad' as const, cat: 'GEN' as const, pwbd: false, esm: false, gender: 'male' as const, state: '' };
+  const cgl = (c: any) => govMatch({ ...base, cat: c }).find((m) => m.exam.id === 'ssc-cgl')!; assert.equal(cgl('GEN').upper, 32); assert.equal(cgl('OBC').upper, 35); assert.equal(cgl('SC').upper, 37);
+  assert.ok(!govMatch({ ...base, edu: '10' }).find((m) => m.exam.id === 'upsc-cse')!.ok);
+  assert.ok(!govMatch({ ...base, dob: '2002-01-01', gender: 'female' }).find((m) => m.exam.id === 'upsc-cds')!.ok); });
