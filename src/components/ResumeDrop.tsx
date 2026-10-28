@@ -9,11 +9,12 @@ export default function ResumeDrop({ hasText, onText }: { hasText: boolean; onTe
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [fileName, setFileName] = useState('');
 
   const handle = async (f?: File) => {
     if (!f) return;
     setErr(''); setBusy(true);
-    try { onText(await parseResumeFile(f), f.name); }
+    try { onText(await parseResumeFile(f), f.name); setFileName(f.name); }
     catch (e) { setErr(e instanceof ParseError ? e.message : 'Could not read this file. Try another format or paste the text.'); }
     finally { setBusy(false); }
   };
@@ -36,6 +37,7 @@ export default function ResumeDrop({ hasText, onText }: { hasText: boolean; onTe
         <p className="label text-muted-foreground">Read in your browser · the file is never uploaded</p>
         <input ref={input} type="file" accept={ACCEPT} hidden onChange={(e) => { handle(e.target.files?.[0]); e.target.value = ''; }} />
       </div>
+      {fileName && !busy && hasText && <p className="mt-2 text-sm" data-testid="uploaded-file">Loaded: <b>{fileName}</b></p>}
       {err && <p role="alert" className="mt-3 rounded-lg bg-muted p-3 text-sm text-danger">{err}</p>}
       <p data-testid="free-tier-warning" className="mt-3 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-sm">Before AI reads your resume: on Google's free Gemini tier, Google may use what you send to improve its products, and people at Google may review it. Use a paid (billing-enabled) key, or remove sensitive details (ID numbers, health, family, exact address) first. <a className="underline text-primary" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Google's terms</a></p>
     </div>

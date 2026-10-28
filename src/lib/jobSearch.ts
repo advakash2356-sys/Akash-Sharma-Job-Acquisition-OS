@@ -1,5 +1,7 @@
 import { AiError, authedFetch, fetchLimited, type CallOpts } from './api';
 import { keywordGap } from './insights';
+import { nearDuplicate } from './dedupe';
+export { nearDuplicate } from './dedupe';
 import type { Profile } from '../types';
 import { inferCandidate, type Candidate, type Decision, type WorkMode } from './eligibility';
 
@@ -82,15 +84,20 @@ export function locationAdjust(jobLocation: string, q: SearchQuery, d?: Decision
 
 /** Plain keyword overlap between the resume and the posting text. No AI. */
 export function keywordFit(resume: string, j: FoundJob) {
-  const text = `${j.title} ${j.skills.join(' ')} ${j.description}`;
+  const text = `${j.title} ${j.description}`; // same text as jobKeywordText, so list, job page and detail agree
   const g = keywordGap(resume, text);
   return { score: g.pct, summary: g.hit.length ? `Resume mentions ${g.hit.slice(0, 5).join(', ')}.` : 'Few keyword overlaps with your resume.' };
 }
 
-export function dedupeAgainst<T extends { url: string }>(incoming: T[], existing: { url: string }[]) {
+export function dedupeAgainst<T extends { url: string; title?: string; description?: string }>(incoming: T[], existing: { url: string; title?: string; description?: string }[]) {
   const have = new Set(existing.map((e) => e.url).filter(Boolean));
-  return incoming.filter((j) => !have.has(j.url));
+  const kept: { title?: string; description?: string }[] = [...existing];
+  return incoming.filter((j) => {
+    if (have.has(j.url) || kept.some((k) => nearDuplicate(k, j))) return false;
+    kept.push(j); return true;
+  });
 }
+
 export type { Profile };
 
 const TITLE_RE = /\b(manager|counsel|lead|analyst|engineer|officer|associate|executive|specialist|director|consultant|developer|designer|head|coordinator|administrator|advisor|architect|scientist|accountant)\b/i;

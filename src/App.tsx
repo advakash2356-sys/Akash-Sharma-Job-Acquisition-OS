@@ -113,7 +113,9 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   };
   useEffect(() => { if (!inApp) setMeta('landing', '/'); else if (isPublic(page)) setMeta(page, `/${page}`); else setMeta('app', '/'); }, [inApp, page]);
   const hasResume = profile.resumeText.trim().length >= 50;
-  useEffect(() => { if (hasResume) { track('resume_added'); const c = candidateOf(profile); funnel('profile_done', `role=${(profile.targetRoles || profile.headline || '').split(/[,;\n]/)[0].trim().slice(0, 60)};country=${c.residence};modes=${c.modes.join('+')}`); } }, [hasResume]);
+  useEffect(() => { if (hasResume) track('resume_added'); }, [hasResume]);
+  // Admin metrics read the role from this event, so send it once the role is known (after parsing/search), not at upload time.
+  useEffect(() => { if (hasResume && (profile.targetRoles || profile.setupDone)) { const c = candidateOf(profile); funnel('profile_done', `role=${(profile.targetRoles || profile.headline || '').split(/[,;\n]/)[0].trim().slice(0, 60)};country=${c.residence};modes=${c.modes.join('+')}`); } }, [hasResume, profile.targetRoles, profile.setupDone]);
   useEffect(() => { if (jobs.some((j) => j.coverLetter || j.tailoredResume || j.outreach)) funnel('docs_generated'); }, [jobs]);
   useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);
   useEffect(() => { if (jobs.some((j) => j.found)) track('first_job_found'); }, [jobs]);

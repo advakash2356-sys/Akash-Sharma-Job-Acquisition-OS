@@ -1,4 +1,5 @@
 import { ApiError } from "./handlers.js";
+import { nearDuplicate } from "../src/lib/dedupe.js";
 import { dmy, govtNotices } from "./govtFeed.js";
 import { classifyMode, countryCode, decide, extractEligibility, inferCandidate, COUNTRY_NAME, type Candidate, type Decision, type Eligibility, type WorkMode } from "../src/lib/eligibility.js";
 
@@ -282,7 +283,7 @@ export async function searchJobs(body: any): Promise<SearchOut> {
     for (const raw of r.value.data) {
       const j = r.value.pre ? (raw as FoundJob) : validate(raw); if (!j) continue;
       const s = `${j.title}|${j.company}|${j.location}`.toLowerCase();
-      if (seen.has(j.id) || seen.has(j.url) || sig.has(s)) continue;
+      if (seen.has(j.id) || seen.has(j.url) || sig.has(s) || jobs.some((k) => nearDuplicate(k, j))) continue;
       if (reqs[i].govt) {
         const g = govtInfo(String(raw.description || ""), education);
         if (!g) continue;

@@ -18,9 +18,9 @@ type St = 'idle' | 'running' | 'done' | 'error' | 'skipped';
 const LIMIT = { parse: 50000, research: 30000, fit: 45000 };
 const FIT_TOTAL_MS = 70000;
 const STAGES = [
-  { id: 'parse', label: 'Reading your resume and filling your profile', max: LIMIT.parse },
-  { id: 'research', label: 'Searching real postings on FreeHire', max: LIMIT.research },
-  { id: 'fill', label: 'Scoring fit and adding postings to Jobs', max: FIT_TOTAL_MS },
+  { id: 'parse', label: 'Reading your resume and filling your profile', done: 'Read your resume and filled your profile', max: LIMIT.parse },
+  { id: 'research', label: 'Searching real postings on FreeHire', done: 'Searched real postings on FreeHire', max: LIMIT.research },
+  { id: 'fill', label: 'Scoring fit and adding postings to Jobs', done: 'Scored fit and added postings to Jobs', max: FIT_TOTAL_MS },
 ] as const;
 
 const fill = (cur: string | undefined, next: string) => (cur && cur.trim() ? cur : next || '');
@@ -105,14 +105,14 @@ export default function Setup() {
     const jobs: Job[] = fresh.map((j: FoundJob, i: number) => {
       const base = fits.get(j.id) || { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const };
       const la = locationAdjust(j.location, q, j.decision);
-      const fit = { ...base, score: Math.max(0, Math.min(100, base.score + la.delta)), summary: `${base.summary} Location: ${j.location || 'not stated'} (${la.label}${la.delta ? `, ${la.delta}` : ''}).` };
+      const fit = { ...base, score: base.kind === 'ai' ? Math.max(0, Math.min(100, base.score + la.delta)) : base.score, rank: base.score + la.delta, summary: `${base.summary} Location: ${j.location || 'not stated'} (${la.label}${la.delta ? `, ${la.delta}` : ''}).` };
       return {
         id: `fh-${Date.now()}-${i}`, title: j.title, company: j.company, url: j.url,
         description: j.description || `${j.title} at ${j.company}. ${j.location}`,
         status: 'Saved' as const, createdAt: now, notes: '', interviews: [], source: 'Other',
         found: { provider: 'freehire' as const, id: j.id, source: j.source, postedAt: j.postedAt, location: j.location, fit, mode: j.mode, decision: j.decision, evidence: j.eligibility?.evidence, ...(j.official || j.govtFeed ? { govt: { lastDate: (j.official?.lastDate || j.govtFeed?.lastDate) as string, official: !!j.official, via: j.official ? 'official notification' : 'SarkariMap (aggregator)' } } : {}) },
       };
-    }).sort((a, b) => b.found!.fit!.score - a.found!.fit!.score);
+    }).sort((a, b) => ((b.found!.fit as any).rank ?? b.found!.fit!.score) - ((a.found!.fit as any).rank ?? a.found!.fit!.score));
     setJobs((js) => [...jobs, ...js]);
     setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
     set('fill', 'done');
@@ -214,7 +214,7 @@ export default function Setup() {
             {STAGES.map((s) => (
               <li key={s.id} className="flex items-center gap-2">
                 {st[s.id] === 'running' ? <Loader2 size={16} className="animate-spin text-primary" /> : st[s.id] === 'done' ? <CheckCircle2 size={16} className="text-primary" /> : st[s.id] === 'error' ? <AlertTriangle size={16} className="text-danger" /> : st[s.id] === 'skipped' ? <SkipForward size={16} className="text-muted-foreground" /> : <Circle size={16} className="text-muted-foreground" />}
-                <span className={st[s.id] === 'idle' || st[s.id] === 'skipped' ? 'text-muted-foreground' : ''}>{s.label}{st[s.id] === 'skipped' ? ' (skipped)' : ''}</span>
+                <span className={st[s.id] === 'idle' || st[s.id] === 'skipped' ? 'text-muted-foreground' : ''}>{st[s.id] === 'done' ? s.done : s.label}{st[s.id] === 'skipped' ? ' (skipped)' : ''}</span>
                 {st[s.id] === 'running' && <span className="text-xs text-muted-foreground">{elapsed(s.id)}s of at most {Math.round(s.max / 1000)}s</span>}
               </li>
             ))}

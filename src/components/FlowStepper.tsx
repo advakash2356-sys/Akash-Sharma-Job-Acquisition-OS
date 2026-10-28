@@ -27,6 +27,8 @@ export default function FlowStepper() {
     { label: 'Apply on the employer site', run: () => go('job', job!.id) },
     { label: 'Pick another job', run: () => go('jobs') },
   ][cur];
+  // The "Next step" call to action only fits the main flow pages; on side tools (Interview prep, Profile match, ...) it was confusing.
+  const onFlow = (['setup', 'overview', 'jobs', 'job'] as string[]).includes(page);
   return (
     <nav aria-label="Your progress" className="mb-6 rounded-2xl border border-border bg-card-solid p-3 shadow-sm sm:p-4 lg:sticky lg:top-3 lg:z-20" data-testid="flow-stepper">
       <ol className="flex gap-2 overflow-x-auto pb-1 text-xs sm:gap-3">
@@ -38,10 +40,10 @@ export default function FlowStepper() {
       </ol>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
         {job && <span className="min-w-0 truncate text-muted-foreground">Selected job: <b className="text-foreground">{job.title}</b> · {job.company}</span>}
-        {next && !(cur === 3 && page === 'job') && <button onClick={next.run} className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 cursor-pointer" data-testid="next-step">Next step: {next.label} <ArrowRight size={15} /></button>}
-        {next && cur === 3 && page === 'job' && <span className="ml-auto text-sm font-medium text-primary">Next step: press "Approve & generate all" below</span>}
+        {onFlow && next && !(cur === 3 && page === 'job') && <button onClick={next.run} className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 cursor-pointer" data-testid="next-step">Next step: {next.label} <ArrowRight size={15} /></button>}
+        {onFlow && next && cur === 3 && page === 'job' && <span className="ml-auto text-sm font-medium text-primary">Next step: press "Approve & generate all" below</span>}
       </div>
-      {next && (
+      {onFlow && next && (
         <button onClick={cur === 3 && page === 'job' ? () => document.getElementById('pack')?.scrollIntoView({ behavior: 'smooth' }) : next.run} className="fixed inset-x-3 bottom-3 z-30 flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-2xl lg:hidden cursor-pointer" data-testid="next-step-mobile">
           {cur < 6 ? `Step ${cur + 1} of 6 · ` : ''}{cur === 3 && page === 'job' ? 'Approve & generate all, below' : next.label} <ArrowRight size={15} />
         </button>

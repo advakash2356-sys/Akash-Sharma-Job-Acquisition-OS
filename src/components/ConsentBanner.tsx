@@ -14,8 +14,8 @@ export default function ConsentBanner() {
   return (
     <div role="region" aria-label="Usage counting choice" data-testid="consent-banner" className="fixed inset-x-2 bottom-2 z-50 mx-auto flex max-w-2xl items-center gap-2 rounded-2xl border border-border bg-card-solid px-3 py-2 text-xs shadow-2xl sm:gap-3 sm:p-4 sm:text-sm">
       <p className="min-w-0 flex-1">Count anonymous usage (GoatCounter, no cookies, no content)? Off unless you allow. <a href="/privacy" className="text-primary underline">Details</a></p>
-      <button data-testid="consent-no" onClick={() => setStatsOptOut(true)} className="min-h-11 shrink-0 rounded-full border border-border px-3 cursor-pointer">No</button>
-      <button data-testid="consent-yes" onClick={() => setStatsOptOut(false)} className="min-h-11 shrink-0 rounded-full bg-primary px-3 text-primary-foreground cursor-pointer">Allow</button>
+      <button data-testid="consent-no" onClick={() => { setShow(false); setStatsOptOut(true); }} className="min-h-11 shrink-0 rounded-full border border-border px-3 cursor-pointer">No</button>
+      <button data-testid="consent-yes" onClick={() => { setShow(false); setStatsOptOut(false); }} className="min-h-11 shrink-0 rounded-full bg-primary px-3 text-primary-foreground cursor-pointer">Allow</button>
     </div>
   );
 }
