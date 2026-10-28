@@ -437,3 +437,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Government Jobs tab (src/lib/govJobs.ts)
+No third-party code or data reused. Searched GitHub (Oct 2026): candidate datasets were unlicensed (karankofficial41-cell/india-govt-jobs-2026), GPL-3.0 (lalithaar/indian-exams-database) or CC BY 4.0 (specfit.in), none on our allowed list. Eligibility data is hand-copied from official notifications (government works, facts), each linked with a last-verified date.
