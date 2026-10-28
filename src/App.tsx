@@ -56,7 +56,7 @@ function setMeta(key: string, path: string) {
   set('meta[name="description"]', 'content', d); set('meta[property="og:title"]', 'content', t); set('meta[name="twitter:title"]', 'content', t); set('meta[name="twitter:description"]', 'content', d); set('meta[property="og:description"]', 'content', d);
   set('link[rel="canonical"]', 'href', SITE_URL + path); set('meta[property="og:url"]', 'content', SITE_URL + path);
 }
-const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/([a-z-]+)/); if (!m) return null; return (PAGE_IDS.includes(m[1]) ? m[1] : 'notfound') as PageId; };
+const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/([a-z0-9-]+)/); if (!m) return null; return (PAGE_IDS.includes(m[1]) ? m[1] : 'notfound') as PageId; };
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
   { group: 'Overview', items: [{ id: 'setup', label: 'Guided setup', icon: Wand2 }, { id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },

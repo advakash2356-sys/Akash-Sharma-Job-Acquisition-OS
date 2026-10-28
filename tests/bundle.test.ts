@@ -74,3 +74,4 @@ test('clean URLs: every public page path opens its page', () => {
   const main = readFileSync('src/main.tsx', 'utf8'), vj = readFileSync('vercel.json', 'utf8');
   for (const p of ['scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint']) { assert.ok(main.includes(p), `main.tsx ${p}`); assert.ok(vj.includes(p), `vercel.json ${p}`); }
 });
+test('hash routes accept page ids with digits (h1b-sprint)', () => { const app = readFileSync('src/App.tsx', 'utf8'); const re = new RegExp(app.match(/location\.hash\.match\((\/.*?\/)\)/)![1].slice(1, -1)); assert.equal('#/app/h1b-sprint'.match(re)?.[1], 'h1b-sprint'); });
