@@ -33,7 +33,7 @@ export default function Feedback() {
   };
   return (
     <>
-      <PageHeader eyebrow="Help shape it" title="Share your feedback" subtitle="No login needed. Akash reads every message." />
+      <PageHeader eyebrow="Help shape it" title="Share your feedback" subtitle="No login needed. Akash reads every message. If you leave an email, we aim to reply within 3 working days." />
       <EarlyAccessNote className="mb-5" />
       <Card className="mb-6">
         <form onSubmit={send} className="grid gap-4" aria-label="Feedback form">

@@ -5,6 +5,7 @@ import { funnelEvent } from "./server/events.js";
 import { googleClientId, signIn, visit } from "./server/users.js";
 import { aiRateLimit, checkBody, checkOrigin, clientIp } from "./server/guard.js";
 import express from "express";
+import aliveHandler from "./api/jobs/alive.js";
 import feedbackHandler from "./api/feedback.js";
 import commentsHandler from "./api/comments.js";
 import path from "path";
@@ -52,6 +53,7 @@ async function startServer() {
   });
   app.all("/api/feedback", (req, res) => feedbackHandler(req, res));
   app.all("/api/comments", (req, res) => commentsHandler(req, res));
+  app.post("/api/jobs/alive", (req, res) => aliveHandler(req, res));
   app.post("/api/jobs/search", async (req, res) => {
     try {
       checkOrigin(req.headers); await requireUser(req.headers); checkBody(req.body);

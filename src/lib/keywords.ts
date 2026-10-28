@@ -1,3 +1,4 @@
+import { porterStem } from './porter';
 /** Synonym- and tense-aware keyword matching (no AI). Light suffix stemmer + a small synonym map. Akash Sync Agent. */
 const SYN: string[][] = [
   ['js', 'javascript'], ['ts', 'typescript'], ['k8s', 'kubernetes'], ['ml', 'machine learning'], ['ai', 'artificial intelligence'],
@@ -5,7 +6,10 @@ const SYN: string[][] = [
   ['crm', 'customer relationship management'], ['clm', 'contract lifecycle management'], ['sql', 'mysql', 'postgresql', 'postgres'],
   ['excel', 'spreadsheets', 'spreadsheet'], ['lead', 'manage', 'supervise', 'head'], ['build', 'develop', 'create', 'implement'],
   ['analyse', 'analyze', 'analysis', 'analytics'], ['customer', 'client'], ['negotiate', 'negotiation'], ['draft', 'write', 'prepare'],
-  ['litigation', 'dispute resolution'], ['compliance', 'regulatory'], ['sales', 'business development', 'bd'],
+  ['litigation', 'dispute resolution'], ['react', 'react.js', 'reactjs'], ['node', 'node.js', 'nodejs'], ['vue', 'vue.js', 'vuejs'], ['next', 'next.js', 'nextjs'],
+  ['gcp', 'google cloud'], ['aws', 'amazon web services'], ['hr', 'human resources'], ['qa', 'quality assurance', 'testing'], ['ca', 'chartered accountant'], ['b2b', 'business to business'], ['b2c', 'business to consumer'], ['kyc', 'know your customer'], ['gst', 'goods and services tax'],
+  ['ppc', 'pay per click', 'google ads'], ['seo', 'search engine optimization', 'search engine optimisation'], ['ci/cd', 'continuous integration', 'devops'], ['erp', 'sap', 'oracle erp'],
+  ['team', 'cross-functional', 'collaborate', 'collaboration'], ['stakeholder', 'stakeholders', 'cross-functional'], ['communication', 'communicate', 'presentation', 'present'], ['compliance', 'regulatory'], ['sales', 'business development', 'bd'],
 ];
 /** "managed", "manages", "managing", "management" -> "manag". */
 export function stem(w: string): string {
@@ -24,8 +28,11 @@ export function hasTerm(text: string, term: string, pre?: string): boolean {
   const k = term.toLowerCase().split(/\s+/).map(stem).join(' ');
   if (t.includes(' ' + k + ' ')) return true;
   const g = GROUP.get(k);
+  if (!k.includes(' ')) { const ps = porterStem(uk(term)); if (ps.length >= 4 && t.split(' ').some((w) => w && porterStem(uk(w)) === ps)) return true; }
   return g != null && SYN[g].some((x) => t.includes(' ' + x.split(' ').map(stem).join(' ') + ' '));
 }
+/** British to American spelling before Porter stemming (organisation -> organization). */
+const uk = (w: string) => w.toLowerCase().replace(/isation/g, 'ization').replace(/is(e|ed|es|ing)$/, 'iz$1').replace(/our$/, 'or');
 export const prepared = (text: string) => ' ' + stems(text).join(' ') + ' ';
 /** Whole days since a posted date (YYYY-MM-DD or any Date-parsable text); -1 when unknown. */
 export function daysOld(posted?: string, now = Date.now()): number { const t = Date.parse(posted || ''); return Number.isFinite(t) ? Math.floor((now - t) / 864e5) : -1; }

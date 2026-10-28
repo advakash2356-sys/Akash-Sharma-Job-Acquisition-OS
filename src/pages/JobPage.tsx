@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { funnel } from '../lib/googleAuth';
 import { setStage } from '../lib/tracker';
 import JobFacts from '../components/JobFacts';
+import JobTruth from '../components/JobTruth';
 
 /** One-stop page for a single job: details, the original posting, Apply on site, and this job's documents. */
 export default function JobPage() {
@@ -34,6 +35,7 @@ export default function JobPage() {
           <Badge>{job.status}</Badge>
         </div>
         <JobFacts job={job} />
+        <JobTruth job={job} patch={patch} />
         {job.found?.decision && <p className="text-sm" data-testid="elig-reason"><b>Who can apply:</b> {job.found.decision.reason}{job.found.evidence?.length ? <span className="text-muted-foreground"> Based on: {job.found.evidence.join('; ')}.</span> : null}</p>}
         <div>
           <div className="label mb-2 text-primary">Step 6 · Apply yourself</div>

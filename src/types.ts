@@ -110,6 +110,8 @@ export interface Job {
   source?: string;
   /** Follow-up notes the user marked as sent (cadence stops after 2). */
   followUpsSent?: number;
+  /** Last check of the original link (Job Truth Score). */
+  alive?: { state: 'live' | 'dead' | 'unknown'; reason: string; at: string };
   /** Last reply the user pasted and how it was classified. */
   reply?: { text: string; kind: string; at: string };
   recruiterReview?: RecruiterReview;

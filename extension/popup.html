@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{font:14px system-ui,sans-serif;width:300px;margin:0;padding:14px;color:#1c1917;background:#f6f4ef}h1{font-size:16px;margin:0 0 6px}p{margin:6px 0;color:#57534e}
+button,label.btn{display:block;width:100%;box-sizing:border-box;min-height:40px;margin:8px 0;border-radius:10px;border:1px solid #d6d3d1;background:#fff;font:inherit;cursor:pointer;text-align:center;line-height:40px}
+button.primary{background:#1f4d3a;color:#fff;border-color:#1f4d3a}#msg{font-weight:600;color:#1c1917}small{color:#78716c}
+</style></head><body>
+<h1>JAOS Autofill (beta)</h1>
+<p id="who">No profile yet.</p>
+<label class="btn" for="file">Import profile file</label><input id="file" type="file" accept="application/json" hidden>
+<button id="fill" class="primary">Fill this page</button>
+<p id="msg"></p>
+<p><small>Fills empty fields only and highlights them in yellow. Check every field, then press Submit on the page yourself. It never submits and skips passwords, IDs, diversity and consent questions. Data stays in this browser.</small></p>
+<p><small>Built with Akash Sync Agent</small></p>
+<button id="clear">Remove my profile</button>
+<script src="popup.js"></script></body></html>

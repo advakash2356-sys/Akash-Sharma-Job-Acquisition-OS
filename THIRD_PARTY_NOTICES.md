@@ -365,3 +365,47 @@ specific language governing permissions and limitations under the License.
 
 Changes: ideas only were adapted and rewritten in TypeScript for Job Acquisition OS.
 ```
+
+## free-email-domains (MIT)
+`src/lib/freeMailDomains.ts` holds a 61-domain subset of https://github.com/Kikobeats/free-email-domains, used by Scam Shield to spot free email addresses.
+
+```
+The MIT License (MIT)
+
+Copyright © 2017 Kiko Beats <josefrancisco.verdu@gmail.com> (kikobeats.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+Scam Shield rules, Job Truth Score, Ghost-Proof Follow-up and the autofill extension are original code. GitHub was searched for MIT/Apache/BSD/ISC scam-pattern lists and autofill extensions; nothing suitable was found (the matches were unlicensed or tiny), so none was copied.
+
+## natural: Porter stemmer (MIT)
+`src/lib/porter.ts` is a TypeScript port of `lib/natural/stemmers/porter_stemmer.js` from https://github.com/NaturalNode/natural. Logic unchanged.
+
+```
+Copyright (c) 2011, Chris Umbel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+## tesseract.js and tesseract.js-core (Apache-2.0)
+OCR for scanned offer letters (Offer Shield). npm dependency `tesseract.js`; at build, `scripts/copy-ocr.mjs` copies `worker.min.js` and the LSTM WASM core into `dist/ocr/`, unmodified. Copyright the tesseract.js authors, https://github.com/naptha/tesseract.js. Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). The English language data is self-hosted (see below).
+
+## Resume-Matcher (Apache-2.0): idea only
+`src/lib/fitScore.ts` follows the idea in https://github.com/srbhr/Resume-Matcher of blending keyword coverage with whole-text similarity. Rewritten in TypeScript; no code copied. Copyright the Resume-Matcher contributors, Apache License 2.0.
+
+## OpenJobAutofill (MIT): approach only
+`extension/fieldmap.js` and `extension/content.js` use the per-portal site-adapter and select-option matching approach of https://github.com/Br1an67/OpenJobAutofill. Rewritten; no code copied. Copyright (c) 2026 Br1an67, MIT License.
+
+pdf.js (Apache-2.0) and mammoth.js (BSD-2-Clause) are existing dependencies, used unmodified to read offer letters.
+
+## Tesseract English language data (Apache-2.0)
+`dist/ocr/lang/eng.traineddata.gz` is copied at build, unmodified, from the npm package `@tesseract.js-data/eng` (4.0.0_best_int; package licence MIT). The data itself comes from https://github.com/tesseract-ocr/tessdata_best, licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). Copyright the Tesseract OCR authors. It is now served from this site; nothing is downloaded from jsDelivr.
