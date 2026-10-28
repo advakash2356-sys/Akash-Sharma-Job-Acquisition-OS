@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Job Acquisition OS Autofill (beta)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fills job application forms from your Job Acquisition OS profile. You review and submit; it never submits. By Akash Sync Agent.",
   "permissions": ["activeTab", "scripting", "storage"],
   "action": { "default_popup": "popup.html", "default_title": "JAOS Autofill" },

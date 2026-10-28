@@ -38,3 +38,13 @@ export function companyRates(jobs: Job[], today: string) {
   for (const j of jobs) if (j.appliedAt && j.company) { const k = j.company.trim(); by.set(k, [...(by.get(k) || []), j]); }
   return [...by.entries()].map(([company, js]) => ({ company, ...replyStats(js, today) })).filter((r) => r.applied > 0).sort((a, b) => b.applied - a.applied);
 }
+
+/** All three follow-up reminders as one calendar file (RFC 5545), 9:00 local, with the draft subject in the note. */
+export function followUpIcs(j: Job, name = ''): string {
+  if (!j.appliedAt) return '';
+  const esc = (s: string) => s.replace(/[\\,;]/g, (m) => '\\' + m).replace(/\n/g, '\\n');
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  const ev = STEPS.map((day, i) => { const n = (i + 1) as 1 | 2 | 3; const d = addDays(j.appliedAt!, day).replace(/-/g, ''); const dr = draft(j, n, name);
+    return ['BEGIN:VEVENT', `UID:${j.id}-ghost${n}@jaos`, `DTSTAMP:${stamp}`, `DTSTART:${d}T090000`, `DTEND:${d}T091500`, `SUMMARY:${esc(`Day ${day} follow-up: ${j.title} at ${j.company}`)}`, `DESCRIPTION:${esc(`${dr.subject}\n\n${dr.body}\n\n${j.url || ''}`)}`, 'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:Follow-up reminder', 'END:VALARM', 'END:VEVENT'].join('\r\n'); });
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Akash Sync Agent//Job Acquisition OS//EN', ...ev, 'END:VCALENDAR'].join('\r\n');
+}

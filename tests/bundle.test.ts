@@ -1,0 +1,36 @@
+// "iPhone bundle" tests. Sample data is made up. Akash Sync Agent.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import { incomeTax, slabTax, ctcToInHand } from '../src/lib/indiaTax';
+import { scanOffer, findCtc, toDays } from '../src/lib/offerShield';
+import { estimate44ADA, invoiceTotal, CHECKLIST, SOURCES } from '../src/lib/remoteKit';
+import { checkCin, checkGstin, lookups } from '../src/lib/employerCheck';
+import { porterStem } from '../src/lib/porter';
+import { hasTerm } from '../src/lib/keywords';
+import { fitScore, cosine } from '../src/lib/fitScore';
+import { followUpIcs } from '../src/lib/ghost';
+
+test('tax: rebate up to 12 lakh, slabs above', () => { assert.equal(incomeTax(1_200_000), 0); assert.equal(slabTax(1_500_000), 105_000); assert.equal(incomeTax(1_500_000), 109_200); assert.equal(incomeTax(1_210_000), Math.round(10_000 * 1.04)); });
+test('tax: 24 lakh', () => { assert.equal(slabTax(2_400_000), 300_000); });
+test('in-hand: 9 LPA estimate is sane', () => { const r = ctcToInHand({ ctc: 900_000 }); assert.equal(r.tax, 0); assert.ok(r.monthlyInHand > 60_000 && r.monthlyInHand < 72_000, String(r.monthlyInHand)); assert.ok(r.assumptions.length >= 5); });
+test('in-hand: variable is excluded from monthly', () => { assert.ok(ctcToInHand({ ctc: 2_000_000, variablePct: 20 }).monthlyInHand < ctcToInHand({ ctc: 2_000_000 }).monthlyInHand); });
+const OFFER = 'SAMPLE. Annual CTC of Rs 9,00,000. You agree to a service bond of 24 months and shall pay Rs 2,00,000 as liquidated damages. You must submit your original certificates which will be retained. The notice period is 90 days. You shall not join any competitor for 12 months after leaving. The joining bonus must be repaid if you resign within 12 months. Probation is 6 months.';
+test('offer: flags bond, documents, notice, non-compete, clawback', () => { const c = scanOffer(OFFER); const k = c.map((x) => x.kind);
+  for (const want of ['Service bond', 'Liquidated damages', 'Original documents held', 'Notice period', 'Non-compete', 'Clawback / repayment', 'Probation']) assert.ok(k.includes(want), want);
+  assert.equal(c.find((x) => x.kind === 'Notice period')!.risk, 'red'); assert.equal(c.find((x) => x.kind === 'Original documents held')!.risk, 'red'); assert.equal(c[0].risk, 'red'); });
+test('offer: short notice is info, CTC found', () => { assert.equal(scanOffer('SAMPLE. The notice period is 30 days for both sides.')[0].risk, 'info'); assert.equal(findCtc(OFFER), 900_000); assert.equal(findCtc('Your CTC is 8.5 LPA'), 850_000); assert.equal(toDays('3 months'.match(/(\d+)\s*(months)/)), 90); });
+test('remote: 44ADA', () => { const e = estimate44ADA(2_400_000); assert.equal(e.deemedIncome, 1_200_000); assert.equal(e.tax, 0); assert.ok(!estimate44ADA(8_000_000).eligible); assert.ok(CHECKLIST.length >= 6); assert.ok(SOURCES.every((s) => /gov\.in/.test(s.href))); });
+test('remote: invoice total', () => { assert.equal(invoiceTotal({ items: [{ desc: 'a', amount: 1000 }, { desc: 'b', amount: 250.5 }] } as any), 1250.5); });
+test('employer: CIN and GSTIN format', () => { assert.ok(checkCin('U72200KA2015PTC123456')!.ok); assert.ok(!checkCin('ABC123')!.ok); assert.equal(checkCin(''), null); assert.ok(checkGstin('27AAPFU0939F1ZV')!.ok); assert.ok(!checkGstin('27AAPFU0939F1Z')!.ok);
+  const l = lookups('Sample Foods', 'https://sample.example/jobs'); assert.ok(l.some((x) => x.href.includes('mca.gov.in'))); assert.ok(l.some((x) => x.href.includes('icann.org'))); });
+test('porter (natural, MIT) and UK spelling', () => { assert.equal(porterStem('presenting'), porterStem('presented')); assert.ok(hasTerm('Led organisational change', 'organizational')); assert.ok(hasTerm('Strong communicator, presented to leadership', 'communication')); });
+test('fit score blends coverage and similarity', () => { const jd = 'Sales executive. Manage B2B client accounts, negotiate contracts, CRM, Excel reporting.'; const good = fitScore('Sales executive. Managed B2B client accounts, negotiated contracts, Salesforce CRM, Excel.', jd), bad = fitScore('Pastry chef. Baking bread and cakes.', jd);
+  assert.ok(good.score > 70, String(good.score)); assert.ok(bad.score < 20, String(bad.score)); assert.ok(cosine('a b c', '') === 0); });
+test('ics: three follow-up events', () => { const ics = followUpIcs({ id: 'j', title: 'Analyst', company: 'Sample Co', url: '', description: '', status: 'Applied', createdAt: '2026-10-01', appliedAt: '2026-10-01', notes: '', interviews: [] } as any, 'Riya');
+  assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 3); assert.ok(ics.includes('DTSTART:20261022T090000')); });
+test('extension: adapters and select options', () => { const ctx: any = {}; vm.runInNewContext(readFileSync('extension/fieldmap.js', 'utf8'), { globalThis: ctx }); const M = ctx.JAOS_MAP;
+  assert.equal(M.adapterFor('acme.wd5.myworkdayjobs.com').name, 'Workday'); assert.equal(M.adapterFor('boards.greenhouse.io').name, 'Greenhouse'); assert.equal(M.adapterFor('www.naukri.com').name, 'Naukri'); assert.equal(M.adapterFor('example.com'), null);
+  assert.equal(M.pickOption(['Select', 'Delhi', 'Mumbai'], 'delhi'), 1); assert.equal(M.pickOption(['Select', 'New Delhi, India'], 'New Delhi'), 1); assert.equal(M.pickOption(['Select', 'Pune'], 'Delhi'), -1);
+  assert.equal(M.match('notice period'), 'noticePeriod'); assert.equal(M.match('current ctc'), 'currentCtc'); });

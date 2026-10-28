@@ -10,7 +10,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob: https://*.googleusercontent.com https://akashsyncagent.goatcounter.com https://*.goatcounter.com; font-src 'self' data:; media-src 'self'; connect-src 'self' https://accounts.google.com/gsi/ https://www.googleapis.com/calendar/ https://akashsyncagent.goatcounter.com; frame-src https://accounts.google.com/gsi/; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob: https://*.googleusercontent.com https://akashsyncagent.goatcounter.com https://*.goatcounter.com; font-src 'self' data:; media-src 'self'; connect-src 'self' https://cdn.jsdelivr.net/npm/@tesseract.js-data/ https://accounts.google.com/gsi/ https://www.googleapis.com/calendar/ https://akashsyncagent.goatcounter.com; frame-src https://accounts.google.com/gsi/; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         },
         {
           "key": "X-Content-Type-Options",
@@ -72,7 +72,7 @@
   ],
   "rewrites": [
     {
-      "source": "/(about|terms|feedback|privacy|security|accessibility|scam-shield)",
+      "source": "/(about|terms|feedback|privacy|security|accessibility|scam-shield|offer-shield|remote-kit)",
       "destination": "/index.html"
     },
     {

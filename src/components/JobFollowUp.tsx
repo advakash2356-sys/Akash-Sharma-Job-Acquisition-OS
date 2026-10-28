@@ -4,7 +4,7 @@ import { Badge, Button, Label, Textarea } from './ui';
 import type { Job } from '../types';
 import { todayStr } from '../lib/insights';
 import { REPLY_ADVICE, classifyReply, download, ics, slug, type ReplyKind } from '../lib/merged';
-import { draft, isGhosted, schedule } from '../lib/ghost';
+import { draft, followUpIcs, isGhosted, schedule } from '../lib/ghost';
 import { useApp } from '../lib/state';
 
 /** Ghost-Proof Follow-up: day 5/10/21 reminders, ready drafts, auto "ghosted" mark and a reply sorter. Browser only; you send everything. */
@@ -37,6 +37,7 @@ export default function JobFollowUp({ job, patch, go }: { job: Job; patch: (p: P
                   <a className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-border px-3 text-sm" href={`mailto:?subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(d.body)}`}><Mail size={14} /> Open in my email</a></div>
                 <p className="mt-1 text-xs text-muted-foreground">Nothing is sent by the app. Edit it so it sounds like you.</p></div>}
             </li>); })}
+            <li><Button size="sm" variant="outline" onClick={() => download(followUpIcs(job, profile.name), `follow-ups-${slug(job.company)}.ics`, 'text/calendar')}><CalendarPlus size={14} /> All 3 reminders in one calendar file</Button></li>
             <li><button className="cursor-pointer text-sm underline" onClick={() => go('outreach', job.id)}>Write a longer one in Outreach studio</button></li></ul>}
       </div>
       <div>

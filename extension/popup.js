@@ -11,7 +11,7 @@ $('fill').addEventListener('click', function () {
       var tabId = tabs[0].id;
       chrome.scripting.executeScript({ target: { tabId: tabId }, func: function (p) { window.__JAOS_PROFILE__ = p; }, args: [r.profile] })
         .then(function () { return chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['fieldmap.js', 'content.js'] }); })
-        .then(function (res) { var o = res && res[res.length - 1] && res[res.length - 1].result || { filled: 0 }; $('msg').textContent = 'Filled ' + o.filled + ' field(s). Check them, then submit yourself.'; })
+        .then(function (res) { var o = res && res[res.length - 1] && res[res.length - 1].result || { filled: 0 }; $('msg').textContent = (o.site ? o.site + ': ' : '') + 'filled ' + o.filled + ' field(s). Check them, then submit yourself.'; })
         .catch(function (x) { $('msg').textContent = 'Could not fill this page: ' + x.message; });
     });
   });

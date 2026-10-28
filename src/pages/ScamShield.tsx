@@ -3,6 +3,7 @@ import { ShieldAlert, Share2, Download, Trash2 } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
 import { normPhone, scanMessage, shareText, waLink, type ScamResult } from '../lib/scamShield';
 import { CREDIT } from '../lib/brand';
+import { checkCin, checkGstin, lookups } from '../lib/employerCheck';
 
 const SAMPLE = 'SAMPLE (made up): Hello, this is HR Kavya from Naukri. You are shortlisted for Tata Motors, salary double. Pay ₹1,800 registration fee by UPI to schedule 2 interviews today only. Contact on WhatsApp. Email: hr.kavya@naukri-jobs.in';
 const KEY = 'jaos_reported_numbers';
@@ -24,6 +25,7 @@ function cardPng(r: ScamResult): Promise<Blob | null> {
 
 export default function ScamShield() {
   const [msg, setMsg] = useState(''); const [email, setEmail] = useState(''); const [company, setCompany] = useState(''); const [phone, setPhone] = useState('');
+  const [cin, setCin] = useState(''); const [gst, setGst] = useState(''); const [site, setSite] = useState('');
   const [r, setR] = useState<ScamResult | null>(null); const [list, setList] = useState(load);
   const p = normPhone(phone); const mine = p ? list.filter((x) => x.n === p) : [];
   const save = (l: typeof list) => { setList(l); localStorage.setItem(KEY, JSON.stringify(l)); };
@@ -51,6 +53,18 @@ export default function ScamShield() {
           <Button variant="outline" onClick={shareCard}><Download size={15} /> Share card (image)</Button></div>
         <p className="text-xs text-muted-foreground">These are warning signs from simple rules, not a finding that anyone is a fraud. The share text and card never include the message, numbers or emails.</p>
       </Card>}
+      <Card className="mb-5 grid gap-3" data-testid="employer-check">
+        <h2 className="text-xl font-medium">Employer Reality Check</h2>
+        <p className="text-sm text-muted-foreground">Check the company is real on official registers. These links open the official sites; nothing is fetched or stored by this app.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div><Label htmlFor="ec">CIN (from the offer or website)</Label><Input id="ec" value={cin} onChange={(e) => setCin(e.target.value)} placeholder="U72200KA2015PTC123456" /></div>
+          <div><Label htmlFor="eg" hint="optional">GSTIN</Label><Input id="eg" value={gst} onChange={(e) => setGst(e.target.value)} /></div>
+          <div><Label htmlFor="ew" hint="optional">Company website</Label><Input id="ew" value={site} onChange={(e) => setSite(e.target.value)} /></div>
+        </div>
+        {[checkCin(cin), checkGstin(gst)].filter(Boolean).map((c, i) => <p key={i} className="text-sm" data-testid="format-check"><Badge tone={c!.ok ? 'primary' : 'danger'}>{c!.ok ? 'Format OK' : 'Check this'}</Badge> {c!.note}</p>)}
+        <ul className="grid gap-2 text-sm">{lookups(company || 'the company', site).map((l) => <li key={l.href}><a className="text-primary underline" href={l.href} target="_blank" rel="noreferrer">{l.label}</a> <span className="text-muted-foreground">· {l.tip}</span></li>)}</ul>
+        <p className="text-xs text-muted-foreground">Fee-scam signs to look for: asked to pay for training, kits, laptops or "refundable" deposits; offer without interview; a company that is not on MCA or is "Struck off".</p>
+      </Card>
       <Card className="grid gap-3" data-testid="my-numbers">
         <h2 className="text-xl font-medium">Numbers I've flagged</h2>
         <p className="text-sm text-muted-foreground">Keep your own list of numbers that asked you for money. Stored only in this browser. {p && (mine.length ? <b className="text-foreground">You flagged this number {mine.length} time{mine.length > 1 ? 's' : ''} before.</b> : 'This number is not in your list.')}</p>
