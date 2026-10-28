@@ -58,7 +58,7 @@ export function RunButton({ loading, onClick, children, disabled }: { loading: b
         {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
         {loading ? 'Working…' : children}
       </Button>
-      {blocked && <span id="need-key" className="text-xs text-muted-foreground">Needs your free API key. <button type="button" className="underline text-primary cursor-pointer" onClick={() => go('settings')}>Add it in Settings</button></span>}
+      {blocked && <span id="need-key" className="text-xs text-muted-foreground">The free AI is not switched on right now. <button type="button" className="underline text-primary cursor-pointer" onClick={() => go('settings')}>Use your own free key</button></span>}
     </span>
   );
 }

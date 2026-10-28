@@ -5,8 +5,8 @@ import { aiRateLimit, checkBody, checkOrigin, clientIp } from "../../server/guar
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   try {
-    checkOrigin(req.headers); await requireUser(req.headers); checkBody(req.body); aiRateLimit(clientIp(req.headers, req.socket?.remoteAddress));
-    const out = await handleAction(String(req.query.action), req.body || {}, keyFromHeaders(req.headers));
+    checkOrigin(req.headers); const u = await requireUser(req.headers); checkBody(req.body); const ip = clientIp(req.headers, req.socket?.remoteAddress); aiRateLimit(ip);
+    const out = await handleAction(String(req.query.action), req.body || {}, keyFromHeaders(req.headers), `g:${u.sub}`, ip);
     res.status(200).json(out);
   } catch (e: any) {
     const status = e instanceof ApiError ? e.status : 500;

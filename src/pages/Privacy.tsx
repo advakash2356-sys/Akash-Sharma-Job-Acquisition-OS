@@ -30,7 +30,7 @@ export default function Privacy() {
         <Item t="Who else processes data">
           <ul className="list-disc pl-5" data-testid="processors-list">
             <li><b>Google</b>: sign-in (Google Identity Services), and Google Sheets / Apps Script, which store the data above.</li>
-            <li><b>Google Gemini</b>: the text an AI feature needs, using your own key (or the owner's key if one is set). For feedback with an email, your name, rating and message are sent to Gemini with the owner's key to write one thank-you email.</li>
+            <li><b>Google Gemini</b>: the text an AI feature needs, using the site's free key (3 results a day per account, counted on the server by a hashed account id) or your own key if you added one. If the site's Gemini quota runs out, the same text goes to a free model through OpenRouter instead. On free tiers Google and the OpenRouter model provider may use what you send to improve their products, so leave out sensitive details such as ID numbers or health information. For feedback with an email, your name, rating and message are sent to Gemini with the owner's key to write one thank-you email.</li>
             <li><b>Job sources</b> (FreeHire, Himalayas, Remote OK, SarkariMap): your target job titles, countries and cities, never your resume, name or email.</li>
             <li><b>Vercel</b>, which hosts the site and keeps standard request logs.</li>
             <li><b>GoatCounter</b>, which counts anonymous page views and steps (see below).</li>

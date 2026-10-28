@@ -63,8 +63,8 @@ async function startServer() {
   });
   app.post("/api/ai/:action", async (req, res) => {
     try {
-      checkOrigin(req.headers); await requireUser(req.headers); checkBody(req.body); aiRateLimit(clientIp(req.headers, req.ip));
-      res.json(await handleAction(req.params.action, req.body || {}, keyFromHeaders(req.headers)));
+      checkOrigin(req.headers); const u = await requireUser(req.headers); checkBody(req.body); const ip = clientIp(req.headers, req.ip); aiRateLimit(ip);
+      res.json(await handleAction(req.params.action, req.body || {}, keyFromHeaders(req.headers), `g:${u.sub}`, ip));
     } catch (e: any) {
       res.status(e instanceof ApiError ? e.status : 500).json({ error: e.message || "Failed", code: e.code });
     }

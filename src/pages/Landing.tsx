@@ -26,7 +26,7 @@ function ShareButton({ className }: { className: string }) {
 const STEPS = [
   ['01', 'Bring your resume', 'Upload a PDF, DOCX or TXT, or fill a short Hindi/English form if you have none. Saved in your browser.'],
   ['02', 'Find real jobs', 'Real postings from FreeHire, Himalayas and Remote OK with the original link, filtered by where you can work, plus government notices with an official link and a future last date. Verify before you apply.'],
-  ['03', 'Score the role', 'A fit score with strengths, gaps and missing keywords (AI with your free Gemini key, otherwise a labelled keyword match).'],
+  ['03', 'Score the role', 'A fit score with strengths, gaps and missing keywords (AI, no key needed: 3 free results a day).'],
   ['04', 'Tailor and reach out', 'Resume, cover letter and outreach drafts from your resume only, with a fact check. You read and send them yourself.'],
   ['05', 'Face the screen', 'A simulated recruiter read, prep for each round (recruiter, hiring manager, technical, final, salary) and a mock interview with feedback.'],
   ['06', 'Land the offer', 'Track each stage to the offer, with next actions, reminders for your calendar, pay you log on each job, and your weekly pace.'],
@@ -110,7 +110,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           <div className="hero-fade mt-8 flex flex-wrap items-center gap-3">
             <button onClick={enter} className="inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-6 py-3 font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight size={18} /></button>
             <a href="#path" className="px-3 py-3 text-white/80 underline-offset-4 hover:underline">See how it works</a>
-            <span className="label ml-2 hidden text-white/60 sm:block">Free during early access · your resume & API key stay in your browser · sign in with Google</span>
+            <span className="label ml-2 hidden text-white/60 sm:block">Free during early access · no key needed · your resume stays in your browser · sign in with Google</span>
           </div>
           <p className="hero-fade mt-4 max-w-2xl text-sm text-white/75" data-testid="early-access-hero">Free during early access. Paid plans may be introduced later; we'll give advance notice and no one is charged without opting in.</p>
           {PROOF && <p className="hero-fade label mt-4 text-white/70" data-testid="social-proof">{PROOF.users.toLocaleString()} job seekers have started a search (as of {PROOF.asOf})</p>}
@@ -168,7 +168,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
               <p className="mt-1 max-w-sm text-sm text-white/75">Written per job from your resume text (read it before use). Export to PDF or DOCX with the date in the file name.</p>
             </div>
           </div>
-          <Tile cls="md:col-span-3" icon={<Gauge />} title="Candid fit score" body="0 to 100 against your own resume, with strengths, gaps and missing keywords. (Example score shown; real scores need your Gemini key.)" big="87" />
+          <Tile cls="md:col-span-3" icon={<Gauge />} title="Candid fit score" body="0 to 100 against your own resume, with strengths, gaps and missing keywords. (Example score shown. No key needed for real scores.)" big="87" />
           <Tile cls="md:col-span-2" icon={<ScanSearch />} title="Recruiter's 6-second read" body="A simulated shortlist read, plus a keyword match against the job description." />
           <Tile cls="md:col-span-1" icon={<TrendingUp />} title="Pay charts" body="Pay you log on jobs, against your minimum." />
           <Tile cls="md:col-span-2" icon={<Mail />} title="Outreach & templates" body="Open in Gmail or download .eml. You always press send." />

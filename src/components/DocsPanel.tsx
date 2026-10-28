@@ -133,7 +133,7 @@ export default function DocsPanel({ job: job0 }: { job: Job }) {
         <p className="mt-1 text-sm text-muted-foreground">Written only from the facts in your resume, for this job. Review each one, then download it. Nothing is sent or submitted for you.</p>
       </div>
       {!hasResume && <p className="rounded-lg bg-muted p-3 text-sm">Add your resume first. <button className="underline cursor-pointer" onClick={() => go('setup')}>Upload resume</button></p>}
-      {hasResume && !ready && <p className="rounded-lg bg-muted p-3 text-sm">Add your free Gemini key to create documents. <button className="underline cursor-pointer" onClick={() => go('settings')}>Add it in Settings</button></p>}
+      {hasResume && !ready && <p className="rounded-lg bg-muted p-3 text-sm">The free AI is not switched on right now. <button className="underline cursor-pointer" onClick={() => go('settings')}>Use your own free key</button></p>}
       <div className="flex flex-wrap items-center gap-3">
         <Button disabled={!canRun || pack.any} onClick={() => pack.all()} data-testid="generate-all">{pack.any ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}{pack.any ? 'Generating your pack…' : allDone ? 'Regenerate all three' : 'Approve & generate all'}</Button>
         <span className="text-xs text-muted-foreground">Creates the tailored resume, cover letter and outreach for this job, one after another (about 20 to 60 seconds).</span>

@@ -3,7 +3,7 @@ import { ApiError } from "./handlers.js";
 // Small, honest abuse guards shared by the Vercel functions and the dev server.
 const ORIGIN_OK = /^(https:\/\/akash-sharma-job-acquisition-os\.vercel\.app|https:\/\/akash-sharma-job-acquisition-[a-z0-9-]+-akash-sync-agent\.vercel\.app|http:\/\/localhost(:\d+)?|http:\/\/127\.0\.0\.1(:\d+)?)$/;
 const MAX_BODY = 200_000; // characters of JSON; a long resume plus a job description fits easily
-const AI_WINDOW_MS = 60_000, AI_MAX = 30; // AI calls per client per minute (best effort: in-memory per instance)
+const AI_WINDOW_MS = 60_000, AI_MAX = 10; // AI calls per client per minute (best effort: in-memory per instance)
 const aiHits = new Map<string, number[]>();
 
 // Trust Vercel-set headers; the first X-Forwarded-For value is client-spoofable.

@@ -16,7 +16,7 @@ export default function Overview() {
   const scored = jobs.filter((j) => j.score).length;
   const steps = [
     { done: hasResume, label: 'Add your resume', page: 'resume' as const },
-    { done: hasKey, label: 'Add your free Gemini API key', page: 'settings' as const },
+    { done: ready || hasKey, label: 'AI is on: no key needed (3 free results a day)', page: 'settings' as const },
     { done: jobs.length > 0, label: 'Add a job you want', page: 'jobs' as const },
     { done: scored > 0, label: 'Score it against your resume', page: 'jobs' as const },
   ];
@@ -45,8 +45,8 @@ export default function Overview() {
       {!ready && !checking && (
         <Card className="mb-6 border-primary/50 ring-1 ring-primary/30">
           <div className="label mb-1 text-primary">Step one</div>
-          <h2 className="text-4xl">Add your free API key</h2>
-          <p className="mt-1 mb-4 max-w-2xl text-sm text-muted-foreground">A free Gemini key from Google AI Studio powers tailoring, the recruiter read, interview prep and outreach. Takes a minute, no card. Until then the AI buttons stay disabled.</p>
+          <h2 className="text-4xl">Free AI is not switched on yet</h2>
+          <p className="mt-1 mb-4 max-w-2xl text-sm text-muted-foreground">Normally no key is needed: every account gets 3 free AI results a day. The site's free AI is not configured right now, so for the moment you can add your own free Gemini key instead.</p>
           <div className="flex flex-wrap gap-2"><Button onClick={() => go('setup')}>Start guided setup <ArrowRight size={16} /></Button><a className="inline-flex h-10 items-center rounded-full border border-border px-4 text-sm hover:bg-muted" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">Get a free key</a></div>
         </Card>
       )}

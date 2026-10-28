@@ -67,7 +67,7 @@ export default function ProfileMatch() {
         </Card>
       )}
       <Card className="mt-5 grid gap-4" data-testid="ms-card">
-        <div><h2 className="text-xl">Match score for a job</h2><p className="text-sm text-muted-foreground">Paste a job description. Gemini scores your resume (and the LinkedIn text above, if any) on skills, experience and keywords. This part uses AI with your Gemini key and sends the texts to Google.</p></div>
+        <div><h2 className="text-xl">Match score for a job</h2><p className="text-sm text-muted-foreground">Paste a job description. Gemini scores your resume (and the LinkedIn text above, if any) on skills, experience and keywords. This part uses AI (no key needed) and sends the texts to Google Gemini, or to an OpenRouter free model if Google is busy.</p></div>
         <div><Label htmlFor="ms-job">Job description</Label><Textarea id="ms-job" rows={6} value={job} onChange={(e) => setJob(e.target.value)} placeholder="Paste the full job post" /></div>
         <div><Button onClick={score} disabled={busy || job.trim().length < 50}>{busy ? 'Scoring…' : 'Score match'}</Button></div>
         {msErr && <p role="alert" className="text-sm text-danger">{msErr}</p>}

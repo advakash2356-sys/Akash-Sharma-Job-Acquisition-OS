@@ -30,13 +30,13 @@ export default function ApiKeyCard({ prominent }: { prominent?: boolean }) {
     <Card className={prominent ? 'border-primary/40 ring-1 ring-primary/30' : ''} id="api-key">
       <div className="mb-1 flex flex-wrap items-center gap-3">
         <KeyRound size={20} className="text-primary" />
-        <h2 className="text-3xl">Add your free API key</h2>
+        <h2 className="text-3xl">No key needed. Optional: your own key</h2>
         <Badge tone={hasKey ? 'primary' : 'muted'}>{hasKey ? 'Saved in this browser' : 'Not set'}</Badge>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        A free Gemini key from Google AI Studio powers every AI feature: resume tailoring, cover letters, fit scores, the recruiter's read, interview prep and outreach. It takes a minute and needs no card.{' '}
+        No key needed: every signed-in account gets 3 free AI results a day (tailoring, cover letters, fit scores, interview prep, outreach), powered by Google Gemini, with free OpenRouter models as a backup when Google is busy. Want unlimited? Add your own free Gemini key; then your requests use only your key, with no daily cap.{' '}
         <a className="underline text-primary" href={KEY_URL} target="_blank" rel="noreferrer">Get your free key at aistudio.google.com/apikey</a>.
-        Without a key the AI buttons stay disabled; everything else (jobs, charts, exports) works.
+        
       </p>
       <Label htmlFor="key">Gemini API key</Label>
       <div className="flex gap-2">
