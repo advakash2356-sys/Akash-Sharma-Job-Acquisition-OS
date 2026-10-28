@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '../components/ui';
-import { DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile } from '../lib/govJobs';
+import { dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile } from '../lib/govJobs';
 import { CREDIT } from '../lib/brand';
 
 const STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu & Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Other UT'];
@@ -9,7 +9,7 @@ export default function GovJobs() {
   const [p, setP] = useState<Profile>({ dob: '', edu: 'grad', stream12: 'other', cat: 'GEN', pwbd: false, esm: false, gender: 'male', state: '' });
   const [lesserOnly, setLesserOnly] = useState(false); const [showAll, setShowAll] = useState(false);
   const set = (k: keyof Profile) => (e: any) => setP({ ...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
-  const res = useMemo(() => (p.dob ? match(p) : []), [p]);
+  const res = useMemo(() => (p.dob && !dobInvalid(p.dob) ? match(p) : []), [p]);
   const list = res.filter((m) => (!lesserOnly || m.exam.lesser) && (showAll || m.ok));
   const n = res.filter((m) => m.ok).length, nl = res.filter((m) => m.ok && m.exam.lesser).length;
   return (
@@ -32,7 +32,8 @@ export default function GovJobs() {
         </div>
         <Button variant="ghost" className="w-fit" onClick={() => setP({ ...p, dob: '2001-05-10', edu: 'grad', cat: 'OBC' })}>Try a sample profile (made up)</Button>
       </Card>
-      {p.dob && <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-results">
+      {dobInvalid(p.dob) && <p className="mb-5 text-sm text-red-700" role="alert" data-testid="gov-dob-invalid">Invalid date: date of birth must be in the past.</p>}
+      {p.dob && !dobInvalid(p.dob) && <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-results">
         <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium">You may be eligible for {n} of {EXAMS.length}</h2><Badge tone="gold">{nl} lesser-known</Badge></div>
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={lesserOnly} onChange={(e) => setLesserOnly(e.target.checked)} data-testid="gov-lesser" /> Lesser-known only</label>
@@ -46,7 +47,7 @@ export default function GovJobs() {
           {e.note && <div className="text-sm text-muted-foreground">{e.note}</div>}
           {p.esm && e.esmNote && <div className="text-sm text-muted-foreground">{e.esmNote}</div>}
           {!ok && <ul className="mt-1 list-disc pl-5 text-sm text-red-700">{why.map((w) => <li key={w}>{w}</li>)}</ul>}
-          <div className="mt-1 flex flex-wrap gap-3 text-sm"><a className="text-primary underline" href={e.src} target="_blank" rel="noreferrer">Official notification / source</a><a className="text-primary underline" href={e.site} target="_blank" rel="noreferrer">Official site</a><span className="text-xs text-muted-foreground">Last verified {e.verified}</span></div>
+          <div className="mt-1 flex flex-wrap gap-3 text-sm"><a className="text-primary underline" href={e.src} target="_blank" rel="noopener noreferrer">Official notification / source</a><a className="text-primary underline" href={e.site} target="_blank" rel="noopener noreferrer">Official site</a><span className="text-xs text-muted-foreground">Last verified {e.verified}</span></div>
         </li>)}</ul>
         {list.length === 0 && <p className="text-sm">Nothing matches these filters.</p>}
       </Card>}
