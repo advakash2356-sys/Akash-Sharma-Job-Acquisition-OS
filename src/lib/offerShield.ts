@@ -9,7 +9,8 @@ export function toDays(m: RegExpMatchArray | null): number | null {
   return u.startsWith('day') ? n : u.startsWith('week') ? n * 7 : u.startsWith('month') ? n * 30 : n * 365;
 }
 const RULES: { kind: string; re: RegExp; why: string; risk: (s: string) => Risk }[] = [
-  { kind: 'Service bond', re: /\b(service (bond|agreement)|bond (period|amount)|minimum (service|tenure)|lock[- ]in)\b/i, why: 'You may have to pay money if you leave before a set time. Ask for the amount, how it reduces over time, and what it covers.', risk: (s) => (AMT.test(s) ? 'red' : 'amber') },
+  { kind: 'Service bond', re: /\b(service (bond|agreement)|bond|minimum (service|tenure)|lock[- ]in)\b/i, why: 'You may have to pay money if you leave before a set time. Ask for the amount, how it reduces over time, and what it covers.', risk: (s) => (AMT.test(s) || /penalt/i.test(s) ? 'red' : 'amber') },
+  { kind: 'Pay to join / deposit', re: /\b((refundable |security |caution )deposit|deposit (of|amount)|pay(ment)? (to|before) (join|joining)|joining (fee|charges?)|registration (fee|charges?)|kit (fee|charges?)|laptop (deposit|charges?))\b/i, why: 'Asking a new hire to pay a deposit or fee to join is a serious warning sign. Genuine employers do not charge candidates. Do not pay; ask for this in writing.', risk: () => 'red' },
   { kind: 'Non-compete', re: /\b(non[- ]?compete|shall not (join|work for|engage)|competitor|competing business)\b/i, why: 'Limits where you can work after leaving. In India, section 27 of the Indian Contract Act, 1872 generally makes restraints on trade after employment void, but read it and ask: https://www.indiacode.nic.in/bitstream/123456789/2187/2/A187209.pdf', risk: () => 'amber' },
   { kind: 'Non-solicit', re: /\bnon[- ]?solicit/i, why: 'Stops you approaching the company\'s clients or staff for a period. Check how long and how wide.', risk: () => 'info' },
   { kind: 'Notice period', re: /\b(notice period|(\d+|one|two|three|six)\s*(days?|months?)['’]?\s*(written )?notice|notice of (\d+|one|two|three))/i, why: 'Long notice periods make it harder to join your next job. 30 to 60 days is common; 90 days is long.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d >= 90 ? 'red' : d != null && d > 60 ? 'amber' : 'info'; } },
@@ -20,9 +21,9 @@ const RULES: { kind: string; re: RegExp; why: string; risk: (s: string) => Risk 
   { kind: 'Probation', re: /\bprobation/i, why: 'During probation notice is often shorter and confirmation is not automatic. Check the length and notice.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d > 180 ? 'amber' : 'info'; } },
   { kind: 'Garden leave / notice buy-out', re: /\b(garden leave|buy[- ]?out|salary in lieu)\b/i, why: 'Check whether you can pay to leave early and how the amount is worked out.', risk: () => 'info' },
   { kind: 'Broad IP / moonlighting', re: /\b(all (inventions|intellectual property)|whether or not during working hours|outside (of )?working hours|moonlight|dual employment|side (business|project))\b/i, why: 'May cover side projects done in your own time. Ask for personal projects to be carved out.', risk: () => 'amber' },
-  { kind: 'Variable pay', re: /\b(variable (pay|component)|performance (bonus|linked)|at the sole discretion)\b/i, why: 'Variable pay is not guaranteed. Count only fixed pay when comparing.', risk: () => 'info' },
+  { kind: 'Variable pay', re: /\b(variable|performance (bonus|linked)|at the sole discretion)\b/i, why: 'Variable pay is not guaranteed. Count only fixed pay when comparing.', risk: () => 'info' },
 ];
-const sentences = (t: string) => t.replace(/\r/g, '').replace(/\n{2,}/g, '. ').replace(/\s+/g, ' ').split(/(?<=[.;!?])\s+(?=[A-Z0-9(•-])/).map((s) => s.trim()).filter((s) => s.length > 15);
+const sentences = (t: string) => t.replace(/\r/g, '').replace(/([.;!?:])?[ \t]*\n{2,}/g, (_m, p) => (p ? p + ' ' : '. ')).replace(/(?<!\.)\.\s*\.(?!\.)/g, '.').replace(/\s+/g, ' ').split(/(?<=[.;!?])\s+(?=[A-Z0-9(•-])/).map((s) => s.trim()).filter((s) => s.length > 15);
 export function scanOffer(text: string): Clause[] {
   const out: Clause[] = [];
   for (const s of sentences(text || '')) for (const r of RULES) if (r.re.test(s)) {

@@ -34,3 +34,10 @@ test('extension: adapters and select options', () => { const ctx: any = {}; vm.r
   assert.equal(M.adapterFor('acme.wd5.myworkdayjobs.com').name, 'Workday'); assert.equal(M.adapterFor('boards.greenhouse.io').name, 'Greenhouse'); assert.equal(M.adapterFor('www.naukri.com').name, 'Naukri'); assert.equal(M.adapterFor('example.com'), null);
   assert.equal(M.pickOption(['Select', 'Delhi', 'Mumbai'], 'delhi'), 1); assert.equal(M.pickOption(['Select', 'New Delhi, India'], 'New Delhi'), 1); assert.equal(M.pickOption(['Select', 'Pune'], 'Delhi'), -1);
   assert.equal(M.match('notice period'), 'noticePeriod'); assert.equal(M.match('current ctc'), 'currentCtc'); });
+test('offer minors: bond shorthand, deposit, variable INR, no doubled stops', () => {
+  const c = scanOffer('SAMPLE.\n\nBond: 2 years, penalty Rs 1,50,000 if you leave early.\n\nYou must pay a refundable security deposit of Rs 25,000 before joining.\n\nVariable: INR 1,20,000 per year.\n\nNotice period is 30 days.');
+  const k = (n: string) => c.find((x) => x.kind === n);
+  assert.equal(k('Service bond')?.risk, 'red'); assert.equal(k('Pay to join / deposit')?.risk, 'red'); assert.ok(k('Variable pay')?.detail?.includes('INR 1,20,000'));
+  assert.ok(c.every((x) => !/\.\s*\./.test(x.sentence.replace(/\.\.\./g, ''))), JSON.stringify(c.map((x) => x.sentence)));
+  assert.ok(scanOffer('SAMPLE. Pay to join: a registration fee of Rs 2,000 is payable.').some((x) => x.kind === 'Pay to join / deposit'));
+});
