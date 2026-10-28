@@ -14,13 +14,15 @@ export default function ApiKeyCard({ prominent }: { prominent?: boolean }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const { hasKey } = useAiReady();
 
+  const shape = (v: string) => { const t = v.trim(); return /^AIza[0-9A-Za-z_-]{35}$/.test(t) ? '' : `This key is ${t.length} characters. Gemini keys are 39 characters and start with "AIza". Copy it again with the copy button in AI Studio.`; };
   const save = () => {
     if (!value.trim()) return setMsg({ ok: false, text: 'Paste a key first.' });
+    const w = shape(value); if (w) return setMsg({ ok: false, text: w });
     setUserApiKey(value); setValue(''); setMsg({ ok: true, text: 'Key saved in this browser only. Use Test key to check it.' });
   };
   const test = async () => {
-    if (value.trim()) { setUserApiKey(value); setValue(''); }
-    setTesting(true); setMsg(null);
+    if (value.trim()) { const w = shape(value); if (w) return setMsg({ ok: false, text: w }); setUserApiKey(value); setValue(''); }
+    setTesting(true); setMsg({ ok: true, text: 'Testing with Google. This can take up to 20 seconds.' });
     try { await callAi('test-key', {}); setMsg({ ok: true, text: 'The key works. AI features are ready.' }); }
     catch (e: any) { setMsg({ ok: false, text: e.message || 'Test failed.' }); }
     finally { setTesting(false); }
@@ -40,9 +42,10 @@ export default function ApiKeyCard({ prominent }: { prominent?: boolean }) {
       </p>
       <Label htmlFor="key">Gemini API key</Label>
       <div className="flex gap-2">
-        <Input id="key" type={show ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={value} onChange={(e) => setValue(e.target.value)} placeholder={hasKey ? '•••••••• saved. Paste to replace' : 'Paste your key'} />
+        <Input id="key" type={show ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={value} onChange={(e) => setValue(e.target.value)} placeholder={hasKey ? '•••••••• saved. Paste to replace' : 'Paste your key'} aria-describedby="key-len" />
         <Button variant="outline" onClick={() => setShow(!show)} aria-label={show ? 'Hide key' : 'Show key'}>{show ? <EyeOff size={16} /> : <Eye size={16} />}</Button>
       </div>
+      {value && <p id="key-len" className="mt-1 text-xs text-muted-foreground">{value.trim().length} of 39 characters{value.trim().length === 39 && value.trim().startsWith('AIza') ? ', looks right' : ''}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button onClick={save}>Save key</Button>
         <Button variant="outline" onClick={test} disabled={testing || (!hasKey && !value.trim())}>{testing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Test key</Button>
