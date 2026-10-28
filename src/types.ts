@@ -11,6 +11,8 @@ export interface Profile {
   dailyTarget: string;
   /** Extra instructions appended to every AI request (tone, constraints). */
   aiInstructions: string;
+  /** One sentence in the user's own words, placed verbatim in cover letters. */
+  coverOwnLine?: string;
   /** Plain-text resume. This is what every AI feature reads. */
   resumeText: string;
   /** Comma-separated skills pulled from the resume by AI (editable). */

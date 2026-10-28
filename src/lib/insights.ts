@@ -1,3 +1,4 @@
+import { hasTerm, prepared } from './keywords';
 import type { Job } from '../types';
 
 const STOP = new Set('the and for with you your our are will this that from have has was were been their they them who what when where how can all any not but out into over such per via more most other than then also use using used work working team teams role roles job able about must should within across ability strong good great experience years year including include plus etc new help helps make making build building looking join one two its his her she him should would could may might each both well'.split(' '));
@@ -7,9 +8,9 @@ export function keywordGap(resume: string, description: string) {
   const freq = new Map<string, number>();
   words.forEach((w) => freq.set(w, (freq.get(w) || 0) + 1));
   const top = [...freq.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length).slice(0, 24).map(([w]) => w);
-  const r = resume.toLowerCase();
-  const hit = top.filter((w) => r.includes(w));
-  const miss = top.filter((w) => !r.includes(w));
+  const r = prepared(resume); // synonym- and tense-aware
+  const hit = top.filter((w) => hasTerm('', w, r));
+  const miss = top.filter((w) => !hasTerm('', w, r));
   return { hit, miss, pct: top.length ? Math.round((hit.length / top.length) * 100) : 0 };
 }
 
