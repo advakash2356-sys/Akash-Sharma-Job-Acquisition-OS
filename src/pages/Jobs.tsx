@@ -169,11 +169,11 @@ export default function Jobs() {
           </div>
           <div className="mb-4 flex gap-2">{(['list', 'board'] as const).map((v) => <button key={v} onClick={() => setView(v)} aria-pressed={view === v} className={`label rounded-full border px-3 py-1.5 cursor-pointer ${view === v ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}>{v}</button>)}</div>
           {view === 'board' ? (
-            <div className="grid gap-3 overflow-x-auto md:grid-cols-5">
+            <div className="flex gap-3 overflow-x-auto pb-2" data-testid="board">
               {JOB_STATUSES.map((st) => (
-                <div key={st} className="min-w-[200px]"><div className="label mb-2 text-muted-foreground">{st} · {jobs.filter((j) => j.status === st).length}</div>
+                <div key={st} className="w-[220px] shrink-0"><div className="label mb-2 text-muted-foreground">{st} · {jobs.filter((j) => j.status === st).length}</div>
                   <div className="grid gap-2">{jobs.filter((j) => j.status === st).map((j) => (
-                    <button key={j.id} onClick={() => go('job', j.id)} className="glass rounded-2xl p-3 text-left cursor-pointer hover:border-primary"><div className="truncate text-sm font-medium">{j.title}</div><div className="truncate text-xs text-muted-foreground">{j.company}</div>{j.score && <div className="mt-1 font-mono text-gold">{j.score.score}</div>}</button>
+                    <button key={j.id} onClick={() => go('job', j.id)} className="glass block w-full min-w-0 overflow-hidden rounded-2xl p-3 text-left cursor-pointer hover:border-primary"><div className="truncate text-sm font-medium">{j.title}</div><div className="truncate text-xs text-muted-foreground">{j.company}</div>{j.score && <div className="mt-1 font-mono text-gold">{j.score.score}</div>}</button>
                   ))}</div></div>
               ))}
             </div>
@@ -189,7 +189,10 @@ export default function Jobs() {
                 {j.found?.decision && <Badge tone={j.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge" title={j.found.decision.reason}>{j.found.decision.badge}</span></Badge>}
                 {j.found && daysOld(j.found.postedAt) > 30 && <Badge tone="danger">Older than 30 days · may be closed</Badge>}
                 {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `${j.found.source === 'Himalayas' || j.found.source === 'Remote OK' ? '' : 'FreeHire · '}${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
-                <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
+                <Select className="h-8 w-36 cursor-pointer rounded-full text-xs" aria-label={`Status of ${j.title}`} data-testid="list-status" value={j.status}
+                  onChange={(e) => { const st = e.target.value as JobStatus; setJobs((js) => js.map((x) => (x.id === j.id ? { ...x, ...setStage(x, st) } : x))); }}>
+                  {JOB_STATUSES.map((st) => <option key={st}>{st}</option>)}
+                </Select>
                 {(j.tailoredResume || j.coverLetter || j.outreach) && <Badge tone="primary">{[j.tailoredResume && 'Resume', j.coverLetter && 'Letter', j.outreach && 'Outreach'].filter(Boolean).join(' · ')}</Badge>}
                 <Button size="sm" variant="outline" onClick={() => go('job', j.id)}>Open job</Button>
                 <div className="basis-full"><JobFacts job={j} compact /></div>
