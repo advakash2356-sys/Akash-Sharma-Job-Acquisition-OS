@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FileSearch, Upload } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
-import { DISCLAIMER, findCtc, scanOffer, type Clause } from '../lib/offerShield';
+import { DISCLAIMER, findCtc, findVariablePct, scanOffer, type Clause } from '../lib/offerShield';
 import { ctcToInHand, inr, TAX_YEAR } from '../lib/indiaTax';
 import { OFFER_ACCEPT, readOfferFile } from '../lib/docText';
 
@@ -16,7 +16,7 @@ export default function OfferShield() {
   const [s, setS] = useState<[Side, Side]>([{ ...empty }, { ...empty }]);
   const [basic, setBasic] = useState('50'); const [pt, setPt] = useState('2400');
   const set = (i: 0 | 1, p: Partial<Side>) => setS((x) => { const y = [...x] as [Side, Side]; y[i] = { ...y[i], ...p }; return y; });
-  const load = async (i: 0 | 1, f?: File) => { if (!f) return; set(i, { busy: 'Reading…' }); try { const t = await readOfferFile(f, (b) => set(i, { busy: b })); const c = findCtc(t); set(i, { text: t, busy: '', ...(c ? { ctc: String(c) } : {}) }); } catch (e: any) { set(i, { busy: e?.message || 'Could not read the file.' }); } };
+  const load = async (i: 0 | 1, f?: File) => { if (!f) return; set(i, { busy: 'Reading…' }); try { const t = await readOfferFile(f, (b) => set(i, { busy: b })); const c = findCtc(t), v = findVariablePct(t); set(i, { text: t, busy: '', ...(c ? { ctc: String(c) } : {}), ...(v != null ? { variable: String(v) } : {}) }); } catch (e: any) { set(i, { busy: e?.message || 'Could not read the file.' }); } };
   const res = s.map((x) => ({ clauses: x.text.trim() ? scanOffer(x.text) : [], pay: Number(x.ctc) > 0 ? ctcToInHand({ ctc: Number(x.ctc), variablePct: Number(x.variable) || 0, basicPct: Number(basic) || 50, professionalTax: Number(pt) || 0 }) : null }));
   const both = res[0].pay && res[1].pay;
   return (
