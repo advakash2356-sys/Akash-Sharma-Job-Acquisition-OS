@@ -34,3 +34,33 @@ test('extension: adapters and select options', () => { const ctx: any = {}; vm.r
   assert.equal(M.adapterFor('acme.wd5.myworkdayjobs.com').name, 'Workday'); assert.equal(M.adapterFor('boards.greenhouse.io').name, 'Greenhouse'); assert.equal(M.adapterFor('www.naukri.com').name, 'Naukri'); assert.equal(M.adapterFor('example.com'), null);
   assert.equal(M.pickOption(['Select', 'Delhi', 'Mumbai'], 'delhi'), 1); assert.equal(M.pickOption(['Select', 'New Delhi, India'], 'New Delhi'), 1); assert.equal(M.pickOption(['Select', 'Pune'], 'Delhi'), -1);
   assert.equal(M.match('notice period'), 'noticePeriod'); assert.equal(M.match('current ctc'), 'currentCtc'); });
+
+import { deadline, sprint, parseLcaCsv, filterEmployers, SAMPLE_CSV, SOURCES as H1B_SOURCES, DISCLAIMER as H1B_DISC } from '../src/lib/h1b';
+import { checkAgent, CAP_WITH_GST, SOURCES as AGENT_SOURCES } from '../src/lib/agentCheck';
+test('h1b: two deadlines, +60 days, I-94 cap', () => {
+  const d = sprint({ lastWorked: '2026-10-01', officialEnd: '2026-10-15', i94End: '', today: '2026-10-28' });
+  assert.equal(d.length, 2); assert.equal(d[0].lastDay, '2026-11-30'); assert.equal(d[1].lastDay, '2026-12-14'); assert.equal(d[0].daysLeft, 33);
+  const c = deadline('x', '2026-10-01', '2026-11-10', '2026-10-28')!; assert.equal(c.lastDay, '2026-11-10'); assert.ok(c.cappedByI94);
+  assert.equal(deadline('x', 'bad', '', '2026-10-28'), null); assert.match(H1B_DISC, /attorney/);
+  assert.ok(H1B_SOURCES.every((s) => /^https:\/\/www\.(uscis|ecfr|dol|federalregister)\.gov\//.test(s.href)));
+});
+test('h1b: LCA CSV keeps allowlisted columns only, filters', () => {
+  const rows = parseLcaCsv(SAMPLE_CSV); assert.equal(rows.length, 6); assert.ok(rows.every((r) => !('EMPLOYER_POC_EMAIL' in r)));
+  assert.equal(rows[0].WAGE_RATE_OF_PAY_FROM, '$165,000');
+  const all = filterEmployers(rows, { title: 'engineer' }); assert.equal(all[0].employer, 'Sample Cloud Co (made up)'); assert.equal(all[0].filings, 2);
+  assert.ok(!all.some((e) => /Retail/.test(e.employer)), 'withdrawn excluded');
+  assert.ok(!filterEmployers(rows, { skipStaffing: true }).some((e) => /Staffing/.test(e.employer)));
+  assert.equal(filterEmployers(rows, { state: 'tx' }).length, 1); assert.equal(filterEmployers(rows, { minWage: 160000 }).length, 2);
+  assert.throws(() => parseLcaCsv('a,b\n1,2'), /EMPLOYER_NAME/);
+});
+test('agent check: Rule 25 cap, excluded costs, cash, never "fraud"', () => {
+  assert.equal(CAP_WITH_GST, 35400);
+  const r = checkAgent('Dubai driver job. Service charge Rs 85,000 cash, medical and air ticket Rs 25,000 extra. Submit passport today.');
+  assert.ok(r.overseas); assert.equal(r.maxFee, 85000); const t = r.signs.map((s) => s.title).join('|');
+  assert.match(t, /above the legal cap/); assert.match(t, /Visa, medical or ticket/); assert.match(t, /Cash/); assert.match(t, /registration number/); assert.match(t, /passport/);
+  assert.ok(!JSON.stringify(r.signs).match(/\bis a fraud|\bfraudster|\bscammer/i));
+  const ok = checkAgent('Saudi job via RA B-0123/MUM/PER/1000+/5/9876/2020. Service fee ₹30,000 + GST by bank transfer.');
+  assert.ok(!ok.signs.some((s) => s.level === 'red')); assert.ok(!ok.signs.some((s) => /registration/.test(s.title)));
+  assert.equal(checkAgent('Qatar job, fees 1.2 lakh').maxFee, 120000);
+  assert.ok(AGENT_SOURCES.some((s) => /emigrate\.gov\.in/.test(s.href)));
+});

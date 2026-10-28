@@ -16,6 +16,7 @@ Job Acquisition OS (MIT, © 2026 Akash Sync Agent) reuses or adapts the followin
 | Himalayas Jobs API | Remote job data (locationRestrictions, timezoneRestrictions). Shown with a visible source name and link to the Himalayas job page; not passed on to other job boards (himalayas.app/terms#api) | Himalayas | API terms (data, not code) | https://himalayas.app/api |
 | Remote OK API | Remote job data, cached 6 hours. Every job links to its Remote OK page and names Remote OK as the source, as its API terms require | Remote OK | API terms (data, not code) | https://remoteok.com/api |
 | awesome-llm-apps | Ideas adapted, not code: the resume_job_matcher scoring (skills, experience and keyword-gap breakdown, `src/lib/matchScore.ts`, `server/handlers.ts` match-score) and the ai-dashboard-canvas-agent dashboard style (KPI cards and simple charts, `src/admin/AdminApp.tsx`) | Shubham Saboo and contributors | Apache-2.0 | https://github.com/Shubhamsaboo/awesome-llm-apps |
+| h1b-job-search-mcp | Idea only, rewritten in TypeScript (`src/lib/h1b.ts`): read the DOL LCA disclosure file, use the EMPLOYER_NAME, JOB_TITLE/SOC_TITLE, WORKSITE_CITY, CASE_STATUS and WAGE_RATE_OF_PAY_FROM columns, and optionally skip staffing agencies by name. No code copied; no data downloaded or scraped by the app | aryaminus | MIT | https://github.com/aryaminus/h1b-job-search-mcp |
 
 Projects that were reviewed and **not** used: giscus (MIT; every commenter must log in with GitHub, and team replies would show a GitHub username, not "Akash Sync Agent team"), remark42 (MIT; needs its own always-on server), dwyl/learn-to-send-email-via-google-script-html-no-server (GPL-2.0, excluded by licence), Reactive Resume (MIT, a full app; nothing copied), OpenResume (AGPL-3.0, excluded by licence), Awesome-CV (LPPL, LaTeX, excluded).
 
@@ -409,3 +410,30 @@ pdf.js (Apache-2.0) and mammoth.js (BSD-2-Clause) are existing dependencies, use
 
 ## Tesseract English language data (Apache-2.0)
 `dist/ocr/lang/eng.traineddata.gz` is copied at build, unmodified, from the npm package `@tesseract.js-data/eng` (4.0.0_best_int; package licence MIT). The data itself comes from https://github.com/tesseract-ocr/tessdata_best, licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). Copyright the Tesseract OCR authors. It is now served from this site; nothing is downloaded from jsDelivr.
+
+
+## h1b-job-search-mcp (MIT)
+
+```
+MIT License
+
+Copyright (c) 2024 aryaminus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
