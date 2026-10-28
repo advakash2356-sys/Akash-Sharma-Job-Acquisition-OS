@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { normalizeScore } from "../src/lib/matchScore.js";
-import { openRouterConfigured, openRouterGenerate } from "./openrouter.js";
+import { openRouterConfigured, openRouterGenerate } from "./fallback.js";
 import { checkCap, addUse } from "./quota.js";
 import { ACCENTS, SECTIONS, TEMPLATES, sanitizeSpec, todayIST } from "../src/lib/resumeStyle.js";
 
@@ -48,7 +48,7 @@ const FAST: GenOpts = { models: ["gemini-flash-lite-latest", "gemini-flash-lates
 /** Tries models in order. Every call has a hard timeout and the whole request has a time budget, so nothing can hang. */
 // Clients built on the site's own key: these may fall back to OpenRouter free models. A user's own key never does.
 const SITE = new WeakSet<GoogleGenAI>(), SITE_NO_GEMINI = new WeakSet<GoogleGenAI>();
-const fallbackable = (e: any) => { const g = googleError(e); return (e as ApiError)?.code === "TIMEOUT" || g.status === 429 || g.status === 503 || g.status === 504 || /RESOURCE_EXHAUSTED|quota|overloaded|UNAVAILABLE/i.test(g.message); };
+const fallbackable = (e: any) => !(e instanceof ApiError && /^(NO_RESUME|BAD_INPUT)$/.test(String(e.code))); // 429, quota, overload, timeout or any upstream error
 
 async function generate(client: GoogleGenAI, req: { contents: string; config?: any }, opts: GenOpts = {}): Promise<{ text?: string }> {
   if (SITE_NO_GEMINI.has(client)) return openRouterGenerate(req);

@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkCap, addUse, _resetMem, quotaKey, CAP_MESSAGE } from '../server/quota';
-import { isFreeModel, extractJson, DEFAULT_OR_MODELS } from '../server/openrouter';
+import { isFreeModel, extractJson, DEFAULT_OR_MODELS } from '../server/fallback';
 import { handleAction, keyFromHeaders, ApiError } from '../server/handlers';
 import { checkBody } from '../server/guard';
 
@@ -58,4 +58,17 @@ test('end to end (stubbed network): OpenRouter free fallback answers, counts tow
     assert.match(sent.url, /openrouter\.ai\/api\/v1\/chat\/completions/); assert.ok(sent.body.models.every(isFreeModel)); assert.equal(sent.auth, 'Bearer or-test');
     await assert.rejects(handleAction('score-job', body, undefined, 'g:e2e'), (e: any) => e.code === 'DAILY_CAP');
   } finally { globalThis.fetch = real; delete process.env.OPENROUTER_API_KEY; }
+});
+test('chain: Groq 429 -> OpenRouter answers; unset providers skipped; NVIDIA/Cerebras not in chain', async () => {
+  const { PROVIDERS, fallbackGenerate } = await import('../server/fallback');
+  assert.deepEqual(PROVIDERS.map((p) => p.name), ['groq', 'openrouter']);
+  process.env.GROQ_API_KEY = 'gq'; process.env.OPENROUTER_API_KEY = 'or';
+  const real = globalThis.fetch; const hits: string[] = [];
+  globalThis.fetch = (async (url: any) => { hits.push(String(url));
+    if (String(url).includes('groq')) return new Response(JSON.stringify({ error: { message: 'rate limit', code: 429 } }), { status: 429 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }); }) as any;
+  try {
+    const r = await fallbackGenerate({ contents: 'hi' }); assert.equal(r.provider, 'openrouter'); assert.equal(hits.length, 2);
+    delete process.env.GROQ_API_KEY; hits.length = 0; await fallbackGenerate({ contents: 'hi' }); assert.equal(hits.length, 1);
+  } finally { globalThis.fetch = real; delete process.env.GROQ_API_KEY; delete process.env.OPENROUTER_API_KEY; }
 });
