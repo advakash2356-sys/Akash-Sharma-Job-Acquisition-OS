@@ -109,6 +109,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
           </h1>
           <div className="hero-fade mt-8 flex flex-wrap items-center gap-3">
             <button onClick={enter} className="inline-flex items-center gap-2 rounded-full bg-[#ff6a2b] px-6 py-3 font-medium text-[#1a0c05] hover:opacity-90 cursor-pointer">Start your path <ArrowUpRight size={18} /></button>
+            <span data-testid="early-access-badge" className="rounded-full border border-[#ff6a2b]/60 bg-[#ff6a2b]/10 px-3 py-1 text-xs font-medium text-[#ffb08a]">Free during early access (limited time)</span>
             <a href="#path" className="px-3 py-3 text-white/80 underline-offset-4 hover:underline">See how it works</a>
             <span className="label ml-2 hidden text-white/60 sm:block">Free during early access · your resume & API key stay in your browser · sign in with Google</span>
           </div>

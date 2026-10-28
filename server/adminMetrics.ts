@@ -79,8 +79,26 @@ export function computeMetrics(users: Row[], events: Row[], feedback: Row[], now
   };
   const sentiment = ratings.length ? [{ name: "Positive (4-5)", value: ratings.filter((r) => r >= 4).length }, { name: "Neutral (3)", value: ratings.filter((r) => r === 3).length }, { name: "Negative (1-2)", value: ratings.filter((r) => r <= 2).length }].filter((x) => x.value) : null;
   const flagged = users.filter((u) => /^yes/i.test(u[8] || "")).length;
+  // Marketing: everything keyed by the ?src= tag a person first arrived with (Events "Source" column).
+  const srcOf = new Map<string, string>();
+  for (const e of ev) if (e.source && !srcOf.has(e.email)) srcOf.set(e.email, e.source);
+  const src = (email: string) => srcOf.get(email) || "direct / unknown";
+  const per = new Map<string, { visit: Set<string>; signup: Set<string>; profile: Set<string>; job: Set<string> }>();
+  const bucket = (s: string) => { if (!per.has(s)) per.set(s, { visit: new Set(), signup: new Set(), profile: new Set(), job: new Set() }); return per.get(s)!; };
+  for (const e of ev) { const b = bucket(src(e.email)); if (e.type === "visit") b.visit.add(e.email); if (e.type === "signup") b.signup.add(e.email); if (e.type === "profile_done") b.profile.add(e.email); if (e.type === "job_viewed") b.job.add(e.email); }
+  const bySource = [...per.entries()].map(([source, b]) => ({ source, visits: b.visit.size, signups: b.signup.size, profileFilled: b.profile.size, jobViewed: b.job.size, qr: source.startsWith("qr") })).sort((a, b) => b.signups - a.signups || b.jobViewed - a.jobViewed);
+  const days14 = Array.from({ length: 14 }, (_, i) => today - (13 - i) * DAY);
+  const daily = days14.map((t) => { const row: Record<string, number | string> = { day: iso(t) }; for (const e of ev) if (e.day === t && e.type === "signup") { const s = src(e.email); row[s] = (Number(row[s]) || 0) + 1; } return row; });
+  const all = (t: string) => new Set(ev.filter((e) => e.type === t).map((e) => e.email)).size;
+  const mFunnel = [{ step: "Visit (signed-in return)", users: all("visit") }, { step: "Signed up", users: all("signup") }, { step: "Profile filled", users: all("profile_done") }, { step: "Job viewed", users: all("job_viewed") }];
+  const lastPulse = new Map<string, string>();
+  for (const e of ev) if (e.type === "price_pulse") { const m = /choice=([a-z_]+)/.exec(e.detail); if (m) lastPulse.set(e.email, m[1]); }
+  const pulse = tally([...lastPulse.values()]);
+  const marketing = ev.length ? { bySource, topSources: bySource.slice(0, 5), qrSources: bySource.filter((s) => s.qr), daily, sources: bySource.map((s) => s.source), funnel: mFunnel, pricePulse: pulse, pulseResponses: lastPulse.size } : null;
+
   return {
     asOf: iso(today),
+    marketing,
     totals: { users: users.length || null, flaggedDevices: users.length ? flagged : null, visits: users.length ? users.reduce((a, u) => a + (Number(u[5]) || 0), 0) : null, feedback: fb.length || null, avgRating: ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : null },
     active: ev.length ? { dau, wau, mau, stickiness: pct(dau, mau) } : null,
     growth: { signupsWoW: sPrev ? pct(s7 - sPrev, sPrev) : null, signupsThisWeek: first.size ? s7 : null, activeWoW: wauPrev ? pct(wau - wauPrev, wauPrev) : null },

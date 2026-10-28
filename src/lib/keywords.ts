@@ -29,4 +29,5 @@ export function hasTerm(text: string, term: string, pre?: string): boolean {
 export const prepared = (text: string) => ' ' + stems(text).join(' ') + ' ';
 /** Whole days since a posted date (YYYY-MM-DD or any Date-parsable text); -1 when unknown. */
 export function daysOld(posted?: string, now = Date.now()): number { const t = Date.parse(posted || ''); return Number.isFinite(t) ? Math.floor((now - t) / 864e5) : -1; }
-export const isCampaignTag = (s: string) => /^[a-z]{2,15}-\d{1,3}$/.test(s);
+/** Campaign tags: short channel codes (ig, yt, fb, wa, x) or channel plus a tag, e.g. reddit-3, reel-7, qr_reel20, ig_grp4. */
+export const isCampaignTag = (s: string) => /^(ig|yt|fb|wa|x|li|tg|qr)$/.test(s) || /^[a-z]{2,15}[-_][a-z0-9_-]{1,24}$/.test(s);

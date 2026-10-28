@@ -1,6 +1,6 @@
 import { ApiError } from "./handlers.js";
 import { communityConfigured } from "./community.js";
-const OK = ["profile_done", "job_viewed", "docs_generated", "apply_click", ...["saved", "applied", "screening", "interviewing", "offer", "accepted", "rejected", "withdrawn"].map((s) => `stage_${s}`)];
+const OK = ["price_pulse", "profile_done", "job_viewed", "docs_generated", "apply_click", ...["saved", "applied", "screening", "interviewing", "offer", "accepted", "rejected", "withdrawn"].map((s) => `stage_${s}`)];
 const hits = new Map<string, number>();
 /** Funnel event for a signed-in user. Apps Script only accepts it for an email + device id registered at a verified sign-in. */
 export async function funnelEvent(b: any, ip: string) {

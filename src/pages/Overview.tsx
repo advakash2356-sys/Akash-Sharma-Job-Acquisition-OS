@@ -3,6 +3,7 @@ import { ArrowRight, Check, Circle, Flame } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { Button, Card, PageHeader } from '../components/ui';
 import FocusTimer from '../components/FocusTimer';
+import PricePulse from '../components/PricePulse';
 import { useAiReady } from '../lib/aiReady';
 import { useApp } from '../lib/state';
 import { getUserApiKey } from '../lib/userApiKey';
@@ -41,6 +42,7 @@ export default function Overview() {
           <p className="mt-3 max-w-xl text-white/75">{target ? `Applications you marked as sent today: ${sp.today} of ${target}. You apply on each employer's site; the app does not apply for you.` : 'Set a daily target in Settings.'} {sp.streak > 0 && `${sp.streak}-day streak.`}</p>
         </div>
       </section>
+      {jobs.length > 0 && <div className="mb-8"><PricePulse /></div>}
 
       {!ready && !checking && (
         <Card className="mb-6 border-primary/50 ring-1 ring-primary/30">
