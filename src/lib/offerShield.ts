@@ -9,7 +9,7 @@ export function toDays(m: RegExpMatchArray | null): number | null {
   return u.startsWith('day') ? n : u.startsWith('week') ? n * 7 : u.startsWith('month') ? n * 30 : n * 365;
 }
 const RULES: { kind: string; re: RegExp; why: string; risk: (s: string) => Risk }[] = [
-  { kind: 'Service bond', re: /\b(service (bond|agreement)|bond|minimum (service|tenure)|lock[- ]in)\b/i, why: 'You may have to pay money if you leave before a set time. Ask for the amount, how it reduces over time, and what it covers.', risk: (s) => (AMT.test(s) || /penalt/i.test(s) ? 'red' : 'amber') },
+  { kind: 'Service bond', re: /\b(service (bond|agreement)|bond(?!\s+period)|minimum (service|tenure)|lock[- ]in)\b/i, why: 'You may have to pay money if you leave before a set time. Ask for the amount, how it reduces over time, and what it covers.', risk: (s) => (AMT.test(s) || /penalt/i.test(s) ? 'red' : 'amber') },
   { kind: 'Pay to join / deposit', re: /\b((refundable |security |caution )deposit|deposit (of|amount)|pay(ment)? (to|before) (join|joining)|joining (fee|charges?)|registration (fee|charges?)|kit (fee|charges?)|laptop (deposit|charges?))\b/i, why: 'Asking a new hire to pay a deposit or fee to join is a serious warning sign. Genuine employers do not charge candidates. Do not pay; ask for this in writing.', risk: () => 'red' },
   { kind: 'Non-compete', re: /\b(non[- ]?compete|shall not (join|work for|engage)|competitor|competing business)\b/i, why: 'Limits where you can work after leaving. In India, section 27 of the Indian Contract Act, 1872 generally makes restraints on trade after employment void, but read it and ask: https://www.indiacode.nic.in/bitstream/123456789/2187/2/A187209.pdf', risk: () => 'amber' },
   { kind: 'Non-solicit', re: /\bnon[- ]?solicit/i, why: 'Stops you approaching the company\'s clients or staff for a period. Check how long and how wide.', risk: () => 'info' },
@@ -40,5 +40,11 @@ export function findCtc(text: string): number | null {
   const lpa = t.match(/(\d+(?:\.\d+)?)\s*(?:lpa|lakhs? per annum)/i); if (lpa) return Math.round(Number(lpa[1]) * 100_000);
   const m = t.match(/(?:ctc|cost to (?:the )?company|annual (?:gross )?(?:salary|compensation))[^₹\d]{0,40}(?:₹|rs\.?|inr)?\s?(\d[\d,]{4,})/i);
   return m ? Number(m[1].replace(/,/g, '')) : null;
+}
+/** Pulls a variable-pay percentage like "Variable pay of 15%" or "15% variable" from the letter, if stated. */
+export function findVariablePct(text: string): number | null {
+  const t = (text || '').replace(/\s+/g, ' ');
+  const m = t.match(/variable(?: pay| component| bonus)?[^%\d.]{0,40}(\d{1,2}(?:\.\d+)?)\s*%/i) || t.match(/(\d{1,2}(?:\.\d+)?)\s*%\s*(?:of (?:the |your )?(?:ctc|salary) )?(?:as |is )?variable/i);
+  const n = m ? Number(m[1]) : NaN; return n > 0 && n <= 60 ? n : null;
 }
 export const DISCLAIMER = 'Information, not legal advice. Rules-based reading in your browser can miss or misread clauses. For a binding view, ask a qualified professional of your choice.';
