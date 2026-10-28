@@ -90,3 +90,5 @@ test('gov jobs: OBC relaxation and qualification', () => {
   const cgl = (c: any) => govMatch({ ...base, cat: c }).find((m) => m.exam.id === 'ssc-cgl')!; assert.equal(cgl('GEN').upper, 32); assert.equal(cgl('OBC').upper, 35); assert.equal(cgl('SC').upper, 37);
   assert.ok(!govMatch({ ...base, edu: '10' }).find((m) => m.exam.id === 'upsc-cse')!.ok);
   assert.ok(!govMatch({ ...base, dob: '2002-01-01', gender: 'female' }).find((m) => m.exam.id === 'upsc-cds')!.ok); });
+import { dobInvalid } from '../src/lib/govJobs';
+test('gov jobs: future/today DOB is invalid; no rrbcdg links', () => { assert.ok(dobInvalid('2099-01-01')); assert.ok(dobInvalid('2026-10-29', '2026-10-29')); assert.ok(!dobInvalid('2001-05-10')); assert.ok(GOV.every((e) => !e.src.includes('rrbcdg'))); });
