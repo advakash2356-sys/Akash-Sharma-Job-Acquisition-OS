@@ -1,11 +1,11 @@
 /** Reads an offer letter in the browser: PDF and DOCX text (pdf.js, mammoth), scans and photos by OCR (tesseract.js, Apache-2.0).
- *  The OCR engine is served from this site (/ocr/); only the English language data file is downloaded from jsDelivr. Your document never leaves the device. */
+ *  The OCR engine and English language data are served from this site (/ocr/). Nothing is fetched from third parties; your document never leaves the device. */
 import { ParseError, parseResumeFile } from './resumeParser';
 
 async function ocr(images: (HTMLCanvasElement | File)[], onProgress?: (p: string) => void): Promise<string> {
   const { createWorker } = await import('tesseract.js');
-  onProgress?.('Loading the text reader (first time about 10 MB)…');
-  const worker = await createWorker('eng', 1, { workerPath: '/ocr/worker.min.js', corePath: '/ocr/', workerBlobURL: false, logger: (m: any) => m?.status === 'recognizing text' && onProgress?.(`Reading the scan… ${Math.round((m.progress || 0) * 100)}%`) });
+  onProgress?.('Loading the text reader (first time about 7 MB)…');
+  const worker = await createWorker('eng', 1, { workerPath: '/ocr/worker.min.js', corePath: '/ocr/', langPath: '/ocr/lang', gzip: true, workerBlobURL: false, logger: (m: any) => m?.status === 'recognizing text' && onProgress?.(`Reading the scan… ${Math.round((m.progress || 0) * 100)}%`) });
   try { const out: string[] = []; for (const im of images) out.push((await worker.recognize(im as any)).data.text); return out.join('\n\n'); }
   finally { await worker.terminate(); }
 }

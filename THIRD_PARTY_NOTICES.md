@@ -397,7 +397,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ```
 
 ## tesseract.js and tesseract.js-core (Apache-2.0)
-OCR for scanned offer letters (Offer Shield). npm dependency `tesseract.js`; at build, `scripts/copy-ocr.mjs` copies `worker.min.js` and the LSTM WASM core into `dist/ocr/`, unmodified. Copyright the tesseract.js authors, https://github.com/naptha/tesseract.js. Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). The English language data is downloaded at run time from jsDelivr (`@tesseract.js-data/eng`, Apache-2.0).
+OCR for scanned offer letters (Offer Shield). npm dependency `tesseract.js`; at build, `scripts/copy-ocr.mjs` copies `worker.min.js` and the LSTM WASM core into `dist/ocr/`, unmodified. Copyright the tesseract.js authors, https://github.com/naptha/tesseract.js. Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). The English language data is self-hosted (see below).
 
 ## Resume-Matcher (Apache-2.0): idea only
 `src/lib/fitScore.ts` follows the idea in https://github.com/srbhr/Resume-Matcher of blending keyword coverage with whole-text similarity. Rewritten in TypeScript; no code copied. Copyright the Resume-Matcher contributors, Apache License 2.0.
@@ -406,3 +406,6 @@ OCR for scanned offer letters (Offer Shield). npm dependency `tesseract.js`; at 
 `extension/fieldmap.js` and `extension/content.js` use the per-portal site-adapter and select-option matching approach of https://github.com/Br1an67/OpenJobAutofill. Rewritten; no code copied. Copyright (c) 2026 Br1an67, MIT License.
 
 pdf.js (Apache-2.0) and mammoth.js (BSD-2-Clause) are existing dependencies, used unmodified to read offer letters.
+
+## Tesseract English language data (Apache-2.0)
+`dist/ocr/lang/eng.traineddata.gz` is copied at build, unmodified, from the npm package `@tesseract.js-data/eng` (4.0.0_best_int; package licence MIT). The data itself comes from https://github.com/tesseract-ocr/tessdata_best, licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). Copyright the Tesseract OCR authors. It is now served from this site; nothing is downloaded from jsDelivr.
