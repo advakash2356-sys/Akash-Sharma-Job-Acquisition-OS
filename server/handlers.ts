@@ -28,7 +28,7 @@ function explain(e: any): ApiError {
   if (e instanceof ApiError) return e;
   const g = googleError(e);
   const m = g.message;
-  if (/API key not valid|API_KEY_INVALID|API key expired|invalid api key/i.test(m)) return new ApiError(401, `Google says this API key is invalid: "${m}". Copy a fresh key from aistudio.google.com/apikey.`, "BAD_API_KEY");
+  if (/API key not valid|API_KEY_INVALID|API key expired|invalid api key/i.test(m)) return new ApiError(400, `Google says this API key is invalid: "${m}". Copy a fresh key from aistudio.google.com/apikey.`, "BAD_API_KEY");
   if (g.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(m)) return new ApiError(429, `Google says the free-tier limit is reached: "${m}". Wait a minute and retry.`, "RATE_LIMIT");
   if (/location is not supported|not available in your (country|region)/i.test(m)) return new ApiError(403, `Google says the Gemini API is not available from this server's region: "${m}".`, "REGION");
   if (g.status === 403 || /PERMISSION_DENIED/i.test(m)) return new ApiError(403, `Google denied access for this key: "${m}". The key may be restricted or the Generative Language API disabled for its project.`, "PERMISSION");
@@ -210,10 +210,10 @@ TRACKED JOBS:\n${tracked || "(none)"}\n\nITEMS:\n${items}`, {
 
 export async function handleAction(action: string, body: Body, apiKey?: string) {
   const key = apiKey || process.env.GEMINI_API_KEY;
-  if (!key) throw new ApiError(401, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
+  if (!key) throw new ApiError(400, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
   if (action === "test-key") {
     try {
-      await generate(new GoogleGenAI({ apiKey: key }), { contents: "Reply with the single word: ok" });
+      await generate(new GoogleGenAI({ apiKey: key }), { contents: "Reply with the single word: ok" }, { models: ["gemini-flash-lite-latest", "gemini-flash-latest"], perCallMs: 10000, budgetMs: 22000 });
       return { result: { ok: true } };
     } catch (e: any) { throw explain(e); }
   }

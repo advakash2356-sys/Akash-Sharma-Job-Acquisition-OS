@@ -35,6 +35,8 @@ export async function authedFetch(url: string, init: RequestInit, opts: CallOpts
   const go = (t: string) => fetchLimited(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...(t ? { Authorization: `Bearer ${t}` } : {}) } }, opts, what);
   let res = await go(await getIdToken());
   if (res.status !== 401) return res;
+  // Only a sign-in problem should trigger re-auth; any other 401 (e.g. an older server's bad-API-key reply) is returned as is.
+  try { const c = (await res.clone().json())?.code; if (c && !/^AUTH_|^BAD_TOKEN$|^EMAIL_UNVERIFIED$/.test(c)) return res; } catch { /* not JSON */ }
   const t = await refreshIdToken();
   if (t) { res = await go(t); if (res.status !== 401) return res; }
   let t2 = '';
