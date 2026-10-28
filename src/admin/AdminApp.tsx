@@ -106,7 +106,23 @@ function Pitch({ m, inputs, setInputs, saveInputs }: { m: M; inputs: M; setInput
   );
 }
 
-const TABS = ['Overview', 'Pitch', 'Users', 'Feedback', 'Comments', 'Settings', 'Audit log'] as const;
+const SrcTable = ({ rows }: { rows: M[] }) => <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-muted-foreground"><th>Source (?src=)</th><th>Visits</th><th>Sign-ups</th><th>Profile filled</th><th>Job viewed</th><th>Sign-up → job viewed</th></tr></thead><tbody>{rows.map((r) => <tr key={r.source} className="border-t border-border"><td className="font-mono">{r.source}</td><td>{r.visits}</td><td>{r.signups}</td><td>{r.profileFilled}</td><td>{r.jobViewed}</td><td>{r.signups ? `${Math.round((r.jobViewed / r.signups) * 100)}%` : '—'}</td></tr>)}</tbody></table></div>;
+function Marketing({ mk }: { mk: M }) {
+  if (!mk) return <Box t="Marketing" id="admin-marketing"><NoData /></Box>;
+  const PULSE: Record<string, string> = { no: 'No', coffee: 'A coffee (~$3)', monthly: '$5-10 / month', after_job: 'Only after a job' };
+  return (
+    <div className="grid gap-4" data-testid="admin-marketing">
+      <Box t="Conversion funnel (all sources, people)" id="mk-funnel"><div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">{mk.funnel.map((f: M) => <Stat key={f.step} k={f.step} v={f.users} />)}</div><p className="mt-2 text-xs text-muted-foreground">Visits count signed-in return visits only. Anonymous page views live in GoatCounter (opt-in), not here.</p></Box>
+      <Box t="Top sources" id="mk-top"><SrcTable rows={mk.topSources} /></Box>
+      <Box t="Sign-ups by source, last 14 days" id="mk-daily"><ResponsiveContainer width="100%" height={240}><BarChart data={mk.daily}><CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="day" tickFormatter={(d) => d.slice(5)} fontSize={11} /><YAxis allowDecimals={false} fontSize={11} /><Tooltip {...TT} /><Legend />{mk.sources.map((s: string, i: number) => <Bar key={s} dataKey={s} stackId="a" fill={COLORS[i % COLORS.length]} />)}</BarChart></ResponsiveContainer></Box>
+      <Box t="Per-reel QR codes (?src=qr_…)" id="mk-qr">{mk.qrSources.length ? <SrcTable rows={mk.qrSources} /> : <NoData />}</Box>
+      <Box t={`Price-interest pulse (${mk.pulseResponses} answers, click-only, no payments)`} id="mk-pulse">{mk.pricePulse ? <ul className="grid gap-1 text-sm">{mk.pricePulse.map((p: M) => <li key={p.name}>{PULSE[p.name] || p.name}: <b>{p.value}</b></li>)}</ul> : <NoData />}</Box>
+      <Box t="All sources" id="mk-all"><SrcTable rows={mk.bySource} /></Box>
+    </div>
+  );
+}
+
+const TABS = ['Overview', 'Marketing', 'Pitch', 'Users', 'Feedback', 'Comments', 'Settings', 'Audit log'] as const;
 export default function AdminApp() {
   const [state, setState] = useState<'checking' | '404' | 'verify' | 'loading' | 'ready' | 'error'>('checking');
   const [err, setErr] = useState('');
@@ -192,6 +208,7 @@ export default function AdminApp() {
         </div>
       </>}
 
+      {tab === 'Marketing' && <Marketing mk={m.marketing} />}
       {tab === 'Pitch' && <Pitch m={m} inputs={inputs} setInputs={setInputs} saveInputs={() => op({ op: 'inputs-save', inputs }, 'Inputs saved.')} />}
 
       {tab === 'Users' && <Box t={`Users (${users.length})`} id="admin-users">

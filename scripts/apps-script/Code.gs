@@ -17,7 +17,7 @@ const USERS_HEAD = ['Email', 'Name', 'Mobile (self-entered, unverified)', 'First
 
 const EVENTS_HEAD = ['Time (IST)', 'Date (IST)', 'Email', 'Event', 'Source', 'Device ID', 'Detail'];
 const ADMINLOG_HEAD = ['Time (IST)', 'Admin', 'Action', 'Target', 'Details'];
-const FUNNEL_EVENTS = ['signup', 'signin', 'visit', 'profile_done', 'job_viewed', 'docs_generated', 'apply_click', 'stage_saved', 'stage_applied', 'stage_screening', 'stage_interviewing', 'stage_offer', 'stage_accepted', 'stage_rejected', 'stage_withdrawn'];
+const FUNNEL_EVENTS = ['signup', 'signin', 'visit', 'profile_done', 'job_viewed', 'docs_generated', 'apply_click', 'stage_saved', 'stage_applied', 'stage_screening', 'stage_interviewing', 'stage_offer', 'stage_accepted', 'stage_rejected', 'stage_withdrawn', 'price_pulse'];
 const SOURCE_OK = /^[a-z0-9_-]{0,40}$/;
 
 function secret_() { return PropertiesService.getScriptProperties().getProperty('SHARED_SECRET') || ''; }

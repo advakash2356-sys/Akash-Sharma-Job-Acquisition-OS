@@ -6,13 +6,16 @@ import { computeMetrics } from "./adminMetrics.js";
 // Admin dashboard API. Every call re-verifies a fresh Google ID token and compares the verified email with ADMIN_EMAIL.
 // Anyone else gets the same 404 as an unknown URL. The Apps Script secret never leaves the server.
 export const adminEmail = () => (process.env.ADMIN_EMAIL || "adv.akash2356@gmail.com").trim().toLowerCase();
+/** Gmail ignores dots and +tags in the local part, so adv.akash2356@ and advakash2356@ are the same inbox. */
+export const normEmail = (e: unknown) => { const v = String(e || "").trim().toLowerCase(); const [l, d] = v.split("@"); return d === "gmail.com" || d === "googlemail.com" ? l.split("+")[0].replace(/\./g, "") + "@gmail.com" : v; };
+export const isAdminEmail = (e: unknown) => !!String(e || "").trim() && normEmail(e) === normEmail(adminEmail());
 const NOT_FOUND = () => new ApiError(404, "Not found", "NOT_FOUND");
 
 async function requireAdmin(auth: unknown) {
   const m = /^Bearer (.+)$/.exec(String(auth || ""));
   if (!m) throw NOT_FOUND();
   let p; try { p = await verifyGoogleIdToken(m[1]); } catch { throw NOT_FOUND(); }
-  if (p.email.toLowerCase() !== adminEmail()) throw NOT_FOUND();
+  if (!isAdminEmail(p.email)) throw NOT_FOUND();
   return p;
 }
 async function script(payload: object) {
@@ -42,7 +45,7 @@ function sanitizePricing(c: any) {
 
 export async function adminCheck(b: any) {
   // Only says whether to show the verify button; real access is checked on every data call.
-  if (String(b?.email || "").trim().toLowerCase() !== adminEmail()) throw NOT_FOUND();
+  if (!isAdminEmail(b?.email)) throw NOT_FOUND();
   return { ok: true };
 }
 /** Lets the app show the Admin link: 200 only for a verified admin ID token, the usual 404 for anyone else. */
