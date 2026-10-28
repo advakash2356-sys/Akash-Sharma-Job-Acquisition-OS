@@ -72,7 +72,7 @@
   ],
   "rewrites": [
     {
-      "source": "/(about|terms|feedback|privacy|security|accessibility)",
+      "source": "/(about|terms|feedback|privacy|security|accessibility|scam-shield)",
       "destination": "/index.html"
     },
     {

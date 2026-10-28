@@ -365,3 +365,20 @@ specific language governing permissions and limitations under the License.
 
 Changes: ideas only were adapted and rewritten in TypeScript for Job Acquisition OS.
 ```
+
+## free-email-domains (MIT)
+`src/lib/freeMailDomains.ts` holds a 61-domain subset of https://github.com/Kikobeats/free-email-domains, used by Scam Shield to spot free email addresses.
+
+```
+The MIT License (MIT)
+
+Copyright © 2017 Kiko Beats <josefrancisco.verdu@gmail.com> (kikobeats.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+Scam Shield rules, Job Truth Score, Ghost-Proof Follow-up and the autofill extension are original code. GitHub was searched for MIT/Apache/BSD/ISC scam-pattern lists and autofill extensions; nothing suitable was found (the matches were unlicensed or tiny), so none was copied.

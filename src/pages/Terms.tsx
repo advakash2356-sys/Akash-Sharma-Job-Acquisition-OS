@@ -13,6 +13,15 @@ export default function Terms() {
         <S t="Price">
           <p>Job Acquisition OS is free during early access. Paid plans may be introduced later; we'll give advance notice and no one is charged without opting in. Your own Gemini key is billed (if at all) by Google under your own Google account, not by us.</p>
         </S>
+        <S t="Billing promise for any future paid plan">
+          <ul className="list-disc pl-5" data-testid="billing-promise">
+            <li>One plan, one price. No add-ons billed separately.</li>
+            <li>One cancel button in Settings that stops every charge at once.</li>
+            <li>An email reminder at least 3 days before any renewal.</li>
+            <li>The refund rule is written on the pricing page before you pay.</li>
+            <li>Nobody is charged without opting in.</li>
+          </ul>
+        </S>
         <S t="Age">
           <p data-testid="age-18">18+ only. You must be 18 or older to use Job Acquisition OS.</p>
         </S>

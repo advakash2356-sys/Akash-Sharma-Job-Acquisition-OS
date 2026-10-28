@@ -5,7 +5,8 @@ const SYN: string[][] = [
   ['crm', 'customer relationship management'], ['clm', 'contract lifecycle management'], ['sql', 'mysql', 'postgresql', 'postgres'],
   ['excel', 'spreadsheets', 'spreadsheet'], ['lead', 'manage', 'supervise', 'head'], ['build', 'develop', 'create', 'implement'],
   ['analyse', 'analyze', 'analysis', 'analytics'], ['customer', 'client'], ['negotiate', 'negotiation'], ['draft', 'write', 'prepare'],
-  ['litigation', 'dispute resolution'], ['compliance', 'regulatory'], ['sales', 'business development', 'bd'],
+  ['litigation', 'dispute resolution'], ['react', 'react.js', 'reactjs'], ['node', 'node.js', 'nodejs'], ['vue', 'vue.js', 'vuejs'], ['next', 'next.js', 'nextjs'],
+  ['gcp', 'google cloud'], ['aws', 'amazon web services'], ['hr', 'human resources'], ['qa', 'quality assurance', 'testing'], ['ca', 'chartered accountant'], ['compliance', 'regulatory'], ['sales', 'business development', 'bd'],
 ];
 /** "managed", "manages", "managing", "management" -> "manag". */
 export function stem(w: string): string {

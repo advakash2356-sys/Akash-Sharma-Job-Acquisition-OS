@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarPlus, KanbanSquare } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select } from '../components/ui';
+import ReplyRate from '../components/ReplyRate';
 import { useApp } from '../lib/state';
 import { JOB_STATUSES, type Job, type JobStatus } from '../types';
 import { downloadIcs, dueState, setStage, stageCounts } from '../lib/tracker';
@@ -16,6 +17,7 @@ export default function Tracker() {
   return (
     <>
       <PageHeader eyebrow="Pipeline" title="Application tracker" subtitle="Move each job through its stages, keep dates and notes, and set the next action with a reminder. Reminders show here and on the dashboard; download an .ics to add one to your calendar." />
+      <ReplyRate jobs={jobs} />
       <div data-testid="tracker-counts" className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
         {JOB_STATUSES.map((s) => <Card key={s} className="p-3"><div className="text-xs text-muted-foreground">{s}</div><div className="text-2xl font-semibold">{c[s] || 0}</div></Card>)}
       </div>
