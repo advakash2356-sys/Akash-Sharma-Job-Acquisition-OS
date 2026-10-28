@@ -95,7 +95,7 @@ export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => v
               <div><div className="mb-1 text-sm font-medium">Gaps</div><ul className="list-disc space-y-1 pl-5 text-sm">{s.gaps.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
             </div>
             <div className="flex flex-wrap gap-1.5">{s.keywords.map((k, i) => <Badge key={i}>{k}</Badge>)}</div>
-            <RealityCheck score={s.score} gaps={s.gaps} postedDaysAgo={job.found?.postedAt && daysOld(job.found.postedAt) >= 0 ? daysOld(job.found.postedAt) : null} />
+            <RealityCheck jobText={job.description} score={s.score} gaps={s.gaps} postedDaysAgo={job.found?.postedAt && daysOld(job.found.postedAt) >= 0 ? daysOld(job.found.postedAt) : null} />
           </div>
         )}
       </section>

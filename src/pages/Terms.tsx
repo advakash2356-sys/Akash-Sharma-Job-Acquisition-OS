@@ -30,6 +30,9 @@ export default function Terms() {
         <S t="Your data">
           <p>Your resume, jobs and API key stay in your browser's local storage; sign-in and feedback details go to the owner's private Google Sheet. See <a className="underline text-primary" href="/privacy">Privacy & security</a> for exactly what goes where.</p>
         </S>
+        <S t="Reality check and course suggestions">
+          <p id="courses">The Reality check and course suggestions are generated automatically from an AI match result and may be wrong or out of date. They are general information, not career, education or financial advice. Check with the employer what the role really needs. Course links go to the providers' own public search pages (Google Skills, Microsoft Learn, freeCodeCamp, Coursera, LinkedIn Learning); they are not affiliate links and JAOS earns nothing from them. Course content, length and price are set by each provider. JAOS is not responsible for any course you buy or its results. You must tick the notice before suggestions are shown.</p>
+        </S>
         <S t="Fair use">
           <p>Do not use the app to spam employers, scrape sites, or break any law or platform terms. The job search has a rate limit to keep it fair.</p>
         </S>

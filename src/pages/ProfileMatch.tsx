@@ -84,7 +84,7 @@ export default function ProfileMatch() {
             {ms.missingKeywords.length > 0 && <p><Badge>Keyword gaps</Badge> {ms.missingKeywords.join(', ')}. Add only the ones that are true for you.</p>}
             {ms.fixes.length > 0 && <ul className="list-disc pl-5">{ms.fixes.map((f, i) => <li key={i}>{f}</li>)}</ul>}
             <p className="text-muted-foreground">AI estimate. Check it yourself; never add a skill you do not have.</p>
-            <RealityCheck score={ms.overall} gaps={[...ms.missingSkills, ...ms.missingKeywords]} fixes={ms.fixes} />
+            <RealityCheck jobText={job} score={ms.overall} gaps={[...ms.missingSkills, ...ms.missingKeywords]} fixes={ms.fixes} />
           </div>
         )}
       </Card>
