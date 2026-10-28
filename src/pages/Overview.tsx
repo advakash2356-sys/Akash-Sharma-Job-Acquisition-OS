@@ -47,7 +47,7 @@ export default function Overview() {
           <div className="label mb-1 text-primary">Step one</div>
           <h2 className="text-4xl">Add your free API key</h2>
           <p className="mt-1 mb-4 max-w-2xl text-sm text-muted-foreground">A free Gemini key from Google AI Studio powers tailoring, the recruiter read, interview prep and outreach. Takes a minute, no card. Until then the AI buttons stay disabled.</p>
-          <div className="flex flex-wrap gap-2"><Button onClick={() => go('setup')}>Start guided setup <ArrowRight size={16} /></Button><a className="inline-flex h-10 items-center rounded-full border border-border px-4 text-sm hover:bg-muted" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">Get a free key</a></div>
+          <div className="flex flex-wrap gap-2"><Button onClick={() => go('setup')}>Start guided setup <ArrowRight size={16} /></Button><a className="inline-flex h-10 items-center rounded-full border border-border px-4 text-sm hover:bg-muted" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Get your free Gemini key</a></div>
         </Card>
       )}
 
