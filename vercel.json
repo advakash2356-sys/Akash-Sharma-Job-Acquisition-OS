@@ -105,7 +105,7 @@
   ],
   "rewrites": [
     {
-      "source": "/(about|terms|feedback|privacy|security|accessibility|scam-shield|offer-shield|remote-kit)",
+      "source": "/(about|terms|feedback|privacy|security|accessibility|scam-shield|offer-shield|remote-kit|h1b-sprint)",
       "destination": "/index.html"
     },
     {

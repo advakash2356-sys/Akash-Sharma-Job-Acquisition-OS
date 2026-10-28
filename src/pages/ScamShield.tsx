@@ -4,6 +4,8 @@ import { Badge, Button, Card, Input, Label, PageHeader, Textarea } from '../comp
 import { normPhone, scanMessage, shareText, waLink, type ScamResult } from '../lib/scamShield';
 import { CREDIT } from '../lib/brand';
 import { checkCin, checkGstin, lookups } from '../lib/employerCheck';
+import { CAP_WITH_GST, RA_LINK, SOURCES as AGENT_SOURCES, checkAgent, type AgentResult } from '../lib/agentCheck';
+import { readOfferFile } from '../lib/docText';
 
 const SAMPLE = 'SAMPLE (made up): Hello, this is HR Kavya from Naukri. You are shortlisted for Tata Motors, salary double. Pay ₹1,800 registration fee by UPI to schedule 2 interviews today only. Contact on WhatsApp. Email: hr.kavya@naukri-jobs.in';
 const KEY = 'jaos_reported_numbers';
@@ -26,7 +28,7 @@ function cardPng(r: ScamResult): Promise<Blob | null> {
 export default function ScamShield() {
   const [msg, setMsg] = useState(''); const [email, setEmail] = useState(''); const [company, setCompany] = useState(''); const [phone, setPhone] = useState('');
   const [cin, setCin] = useState(''); const [gst, setGst] = useState(''); const [site, setSite] = useState('');
-  const [r, setR] = useState<ScamResult | null>(null); const [list, setList] = useState(load);
+  const [r, setR] = useState<ScamResult | null>(null); const [ad, setAd] = useState(''); const [ar, setAr] = useState<AgentResult | null>(null); const [ocr, setOcr] = useState(''); const [list, setList] = useState(load);
   const p = normPhone(phone); const mine = p ? list.filter((x) => x.n === p) : [];
   const save = (l: typeof list) => { setList(l); localStorage.setItem(KEY, JSON.stringify(l)); };
   const shareCard = async () => { if (!r) return; const b = await cardPng(r); if (!b) return; const f = new File([b], 'job-offer-check.png', { type: 'image/png' });
@@ -53,6 +55,20 @@ export default function ScamShield() {
           <Button variant="outline" onClick={shareCard}><Download size={15} /> Share card (image)</Button></div>
         <p className="text-xs text-muted-foreground">These are warning signs from simple rules, not a finding that anyone is a fraud. The share text and card never include the message, numbers or emails.</p>
       </Card>}
+      <Card className="mb-5 grid min-w-0 gap-3" data-testid="agent-check">
+        <h2 className="text-xl font-medium">Agent Check: overseas job agents</h2>
+        <p className="text-sm text-muted-foreground">Going abroad through a recruiting agent? A registered agent may charge at most ₹30,000 plus 18% GST (₹{CAP_WITH_GST.toLocaleString('en-IN')}) for its services. Paste the ad or open a WhatsApp screenshot; it is read on this device.</p>
+        <Textarea aria-label="Agent ad text" rows={4} value={ad} onChange={(e) => { setAd(e.target.value); setAr(null); }} placeholder="Paste the agent's message or ad" />
+        <div className="flex flex-wrap gap-2"><Button disabled={ad.trim().length < 10} onClick={() => setAr(checkAgent(ad))}><ShieldAlert size={16} /> Check the fee</Button>
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border px-4 text-sm">Read a screenshot<input type="file" accept="image/*" className="sr-only" data-testid="agent-ocr" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setOcr('Reading the screenshot…'); try { const t = await readOfferFile(f, setOcr); setAd(t); setAr(checkAgent(t)); setOcr(''); } catch (x: any) { setOcr(x?.message || 'Could not read the image.'); } }} /></label>
+          <Button variant="ghost" onClick={() => { const s = 'SAMPLE (made up): Urgent visa for Dubai. Helper and driver jobs. Service charge Rs 85,000 cash, medical and air ticket Rs 25,000 extra. Submit passport today.'; setAd(s); setAr(checkAgent(s)); }}>Try a sample (made up)</Button></div>
+        {ocr && <p className="text-sm text-muted-foreground">{ocr}</p>}
+        {ar && <div className="grid gap-2" data-testid="agent-result">{ar.signs.length ? <ul className="grid gap-2">{ar.signs.map((s, i) => <li key={i} className="rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]"><b style={{ color: COLORS[s.level] }}>{s.title}</b> · {s.detail}{s.match && <span className="mt-1 block text-xs text-muted-foreground">Found: "{s.match}"</span>}</li>)}</ul> : <p className="text-sm">No fee or warning signs found by these rules.</p>}
+          <ul className="list-disc pl-5 text-sm">{ar.advice.map((a) => <li key={a}>{a}</li>)}</ul></div>}
+        <a className="w-fit text-sm text-primary underline" href={RA_LINK} target="_blank" rel="noreferrer">Check the agent on eMigrate (official list of active recruiting agents)</a>
+        <ul className="grid gap-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">{AGENT_SOURCES.map((s) => <li key={s.href}><a className="underline" href={s.href} target="_blank" rel="noreferrer">{s.label}</a></li>)}</ul>
+        <p className="text-xs text-muted-foreground">Warning signs from simple rules, not a finding that any agent is a fraud. Information, not legal advice.</p>
+      </Card>
       <Card className="mb-5 grid gap-3" data-testid="employer-check">
         <h2 className="text-xl font-medium">Employer Reality Check</h2>
         <p className="text-sm text-muted-foreground">Check the company is real on official registers. These links open the official sites; nothing is fetched or stored by this app.</p>
