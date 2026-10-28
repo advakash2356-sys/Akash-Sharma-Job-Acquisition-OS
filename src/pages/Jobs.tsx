@@ -8,7 +8,7 @@ import { uid, today } from '../lib/utils';
 import { setStage } from '../lib/tracker';
 import JobFacts from '../components/JobFacts';
 import { JOB_STATUSES, type Job, type JobScore, type JobStatus, type RecruiterReview } from '../types';
-import { SOURCES, keywordGap } from '../lib/insights';
+import { SOURCES, keywordGap, jobFit, jobKeywordText } from '../lib/insights';
 import JobFollowUp from '../components/JobFollowUp';
 import { daysLeftLabel, findDuplicate, parseNotice } from '../lib/merged';
 
@@ -55,7 +55,7 @@ export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => v
   const s = job.score;
   const rv = useAiAction<RecruiterReview>('recruiter-review', job);
   const { profile } = useApp();
-  const gap = hasResume ? keywordGap(profile.resumeText, job.description) : null;
+  const gap = hasResume ? keywordGap(profile.resumeText, jobKeywordText(job)) : null;
   const score = async () => { const r = await ai.run(); if (r) patch({ score: r }); };
 
   return (
@@ -66,7 +66,7 @@ export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => v
             ? <><b>Government job notice</b> · last date to apply: <b>{job.found.govt.lastDate}</b> ({daysLeftLabel(job.found.govt.lastDate)}). {(() => { const n = parseNotice(job.description); const parts = [n.notificationNo && `Notice no. ${n.notificationNo}`, n.pay && `Pay stated: ${n.pay}`, n.age && `Age: ${n.age}`, n.minYears != null && `Experience: ${n.minYears}+ years`].filter(Boolean); return parts.length ? <>{parts.join(' · ')}. </> : null; })()} {job.found.govt.official ? <>The link opens the <b>official notification</b>.</> : <>The link opens {job.found.govt.via}, a news site that lists notices. Check the official notification there before applying.</>} Found via {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}.</>
             : <><b>Real posting found via {job.found.source === 'Himalayas' || job.found.source === 'Remote OK' ? job.found.source : 'FreeHire'}</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.</>}
           {job.found.decision && <p className="mt-1" data-testid="elig-reason"><b>{job.found.decision.badge}.</b> {job.found.decision.reason}</p>}
-          {job.found.fit && <p className="mt-1">{job.found.fit.kind === 'ai' ? 'AI fit' : 'Keyword match'} {job.found.fit.score}/100: {job.found.fit.summary}</p>}
+          {job.found.fit && <p className="mt-1">{job.found.fit.kind === 'ai' ? `AI fit ${job.found.fit.score}/100` : `Keyword match ${gap ? gap.pct : job.found.fit.score}%`}: {job.found.fit.summary}</p>}
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -146,7 +146,7 @@ export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => v
 }
 
 export default function Jobs() {
-  const { jobs, setJobs, go } = useApp();
+  const { jobs, setJobs, go, profile } = useApp();
   const [adding, setAdding] = useState(false);
   const [view, setView] = useState<'list' | 'board'>('list');
   const [filter, setFilter] = useState<'All' | JobStatus>('All');
@@ -185,7 +185,7 @@ export default function Jobs() {
                   <div className="truncate font-medium">{j.title}</div>
                   <div className="truncate text-sm text-muted-foreground">{j.company} · added {j.createdAt}</div>
                 </button>
-                {(j.score || j.found?.fit) && <span className="font-mono text-lg text-gold" title={j.score ? 'AI score' : j.found?.fit?.kind === 'ai' ? 'AI fit' : 'Keyword match'}>{j.score ? j.score.score : j.found!.fit!.score}</span>}
+                {(() => { const f = jobFit(j, profile.resumeText); return f && <span className="font-mono text-lg text-gold" title={f.kind === 'ai' ? 'AI fit score' : 'Keyword match %'}>{f.score}{f.kind === 'keyword' ? '%' : ''}</span>; })()}
                 {j.found?.decision && <Badge tone={j.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge" title={j.found.decision.reason}>{j.found.decision.badge}</span></Badge>}
                 {j.found && daysOld(j.found.postedAt) > 30 && <Badge tone="danger">Older than 30 days · may be closed</Badge>}
                 {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `${j.found.source === 'Himalayas' || j.found.source === 'Remote OK' ? '' : 'FreeHire · '}${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}

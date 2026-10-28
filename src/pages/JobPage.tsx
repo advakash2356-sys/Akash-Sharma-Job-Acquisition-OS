@@ -1,3 +1,4 @@
+import { jobFit } from '../lib/insights';
 import { ArrowLeft, ExternalLink, MapPin, CalendarDays } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, PageHeader, Select } from '../components/ui';
 import DocsPanel from '../components/DocsPanel';
@@ -13,12 +14,12 @@ import JobFacts from '../components/JobFacts';
 
 /** One-stop page for a single job: details, the original posting, Apply on site, and this job's documents. */
 export default function JobPage() {
-  const { jobs, selectedJobId, setJobs, go } = useApp();
+  const { jobs, selectedJobId, setJobs, go, profile } = useApp();
   const job = jobs.find((j) => j.id === selectedJobId);
   useEffect(() => { if (job) funnel('job_viewed'); }, [job?.id]);
   if (!job) return <><PageHeader title="Job" /><EmptyState icon={<Briefcase size={32} />} title="Pick a job" body="Open a job from your list to see its details, apply link and documents." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} /></>;
   const patch = (p: Partial<Job>) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, ...p } : j)));
-  const fit = job.score?.score ?? job.found?.fit?.score;
+  const f = jobFit(job, profile.resumeText);
   return (
     <>
       <button onClick={() => go('jobs')} className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-primary cursor-pointer"><ArrowLeft size={15} /> All jobs</button>
@@ -29,7 +30,7 @@ export default function JobPage() {
           {job.found?.postedAt && <span className="inline-flex items-center gap-1"><CalendarDays size={14} /> Posted {job.found.postedAt}</span>}
           {job.found?.decision && <Badge tone={job.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge">{job.found.decision.badge}</span></Badge>}
           {job.found?.govt && <Badge tone="gold">Govt · last date {job.found.govt.lastDate}</Badge>}
-          {fit != null && <Badge tone="gold">Fit {fit}/100 {job.score ? '(AI)' : job.found?.fit?.kind === 'ai' ? '(AI)' : '(keyword)'}</Badge>}
+          {f && <Badge tone="gold">{f.kind === 'ai' ? `Fit ${f.score}/100 (AI)` : `Keyword match ${f.score}%`}</Badge>}
           <Badge>{job.status}</Badge>
         </div>
         <JobFacts job={job} />

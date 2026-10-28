@@ -3,6 +3,16 @@ import type { Job } from '../types';
 
 const STOP = new Set('the and for with you your our are will this that from have has was were been their they them who what when where how can all any not but out into over such per via more most other than then also use using used work working team teams role roles job able about must should within across ability strong good great experience years year including include plus etc new help helps make making build building looking join one two its his her she him should would could may might each both well'.split(' '));
 
+/** One fit number for a job, used everywhere (list, job page, detail panel) so they always agree.
+ *  AI score wins; otherwise the live keyword match of the resume against title + description. */
+export function jobKeywordText(job: Pick<Job, 'title' | 'description'>) { return `${job.title} ${job.description}`; }
+export function jobFit(job: Job, resume: string): { score: number; kind: 'ai' | 'keyword' } | null {
+  if (job.score) return { score: job.score.score, kind: 'ai' };
+  if (job.found?.fit?.kind === 'ai') return { score: job.found.fit.score, kind: 'ai' };
+  if (resume.trim()) return { score: keywordGap(resume, jobKeywordText(job)).pct, kind: 'keyword' };
+  return job.found?.fit ? { score: job.found.fit.score, kind: job.found.fit.kind } : null;
+}
+
 export function keywordGap(resume: string, description: string) {
   const words = (description.toLowerCase().match(/[a-z][a-z+#./-]{2,}/g) || []).filter((w) => !STOP.has(w));
   const freq = new Map<string, number>();
