@@ -14,7 +14,9 @@ export default function ApiKeyCard({ prominent }: { prominent?: boolean }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const { hasKey } = useAiReady();
 
-  const shape = (v: string) => { const t = v.trim(); return /^AIza[0-9A-Za-z_-]{35}$/.test(t) ? '' : `This key is ${t.length} characters. Gemini keys are 39 characters and start with "AIza". Copy it again with the copy button in AI Studio.`; };
+  // Google issues two key formats: new "AQ." keys (about 53 characters) and older "AIza" keys (39). Format is not enforced;
+  // Test key asks Google. Only an obviously partial paste (under 30 characters) is stopped.
+  const shape = (v: string) => { const t = v.trim(); return t.length < 30 ? `This key is only ${t.length} characters, so it looks cut off. Copy it again with the copy button in AI Studio.` : ''; };
   const save = () => {
     if (!value.trim()) return setMsg({ ok: false, text: 'Paste a key first.' });
     const w = shape(value); if (w) return setMsg({ ok: false, text: w });
@@ -45,7 +47,7 @@ export default function ApiKeyCard({ prominent }: { prominent?: boolean }) {
         <Input id="key" type={show ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={value} onChange={(e) => setValue(e.target.value)} placeholder={hasKey ? '•••••••• saved. Paste to replace' : 'Paste your key'} aria-describedby="key-len" />
         <Button variant="outline" onClick={() => setShow(!show)} aria-label={show ? 'Hide key' : 'Show key'}>{show ? <EyeOff size={16} /> : <Eye size={16} />}</Button>
       </div>
-      {value && <p id="key-len" className="mt-1 text-xs text-muted-foreground">{value.trim().length} of 39 characters{value.trim().length === 39 && value.trim().startsWith('AIza') ? ', looks right' : ''}</p>}
+      {value && <p id="key-len" className="mt-1 text-xs text-muted-foreground">{value.trim().length} characters{value.trim().length < 30 ? ' (looks cut off; new keys start with "AQ." and are about 53 characters)' : '. Press Test key to check it with Google.'}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button onClick={save}>Save key</Button>
         <Button variant="outline" onClick={test} disabled={testing || (!hasKey && !value.trim())}>{testing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Test key</Button>
