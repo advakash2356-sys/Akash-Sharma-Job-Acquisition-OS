@@ -6,6 +6,7 @@ import { useApp } from '../lib/state';
 import { STAGES, type MockTurn, type StageId, type StagePrep } from '../lib/prep';
 import { today } from '../lib/utils';
 import { Briefcase } from 'lucide-react';
+import { VoiceInterview } from '../components/VoiceInterview';
 
 /** Face the screening: per job and per round, likely questions with STAR drafts from real resume facts, red flags, questions to ask, and a mock interview. */
 export default function PrepPage() {
@@ -16,7 +17,7 @@ export default function PrepPage() {
   const prep = useAiAction<StagePrep>('stage-prep', job);
   const mock = useAiAction<{ feedback: string; score: number; nextQuestion: string; done: boolean }>('mock-interview', job);
   const [answer, setAnswer] = useState('');
-  if (!job) return <><PageHeader eyebrow="Face the screening" title="Interview prep" /><EmptyState icon={<Briefcase size={32} />} title="Add a job first" body="Prep is built from a job post and your resume." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} /></>;
+  if (!job) return <><PageHeader eyebrow="Face the screening" title="Interview prep" /><EmptyState icon={<Briefcase size={32} />} title="Add a job first" body="Prep is built from a job post and your resume." action={<Button onClick={() => go('jobs')}>Go to Jobs</Button>} /><div className="mt-5"><VoiceInterview /></div></>;
   const patch = (p: object) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, ...p } : j)));
   const sp = job.stagePrep?.[stage];
   const turns: MockTurn[] = job.mock?.[stage] || [];
@@ -33,6 +34,7 @@ export default function PrepPage() {
   return (
     <>
       <PageHeader eyebrow="Face the screening" title="Interview prep" subtitle="For each round: likely questions, answer drafts built only from your resume, the red flags a recruiter would spot, and a mock interview with feedback. AI-generated (Google Gemini) — review before use." />
+      <VoiceInterview />
       <Card className="mb-5 grid gap-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[240px] flex-1"><Label htmlFor="prep-job">Job</Label><Select id="prep-job" value={job.id} onChange={(e) => setId(e.target.value)}>{jobs.map((j) => <option key={j.id} value={j.id}>{j.title} · {j.company} ({j.status})</option>)}</Select></div>

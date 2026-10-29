@@ -92,3 +92,10 @@ test('gov jobs: OBC relaxation and qualification', () => {
   assert.ok(!govMatch({ ...base, dob: '2002-01-01', gender: 'female' }).find((m) => m.exam.id === 'upsc-cds')!.ok); });
 import { dobInvalid } from '../src/lib/govJobs';
 test('gov jobs: future/today DOB is invalid; no rrbcdg links', () => { assert.ok(dobInvalid('2099-01-01')); assert.ok(dobInvalid('2026-10-29', '2026-10-29')); assert.ok(!dobInvalid('2001-05-10')); assert.ok(GOV.every((e) => !e.src.includes('rrbcdg'))); });
+import { analyze, naturalize, highlight } from '../src/lib/voiceInterview';
+import { checkOneStop } from '../src/lib/oneStop';
+test('voice: fillers, slang, wpm and STAR', () => { const a = analyze('Um so basically yeah I was gonna, you know, fix stuff. When I was at my last job I had to cut delays, I decided to set up a tracker and it reduced delays by 30%.', 10, ['delay', 'result'], 'behavioural');
+  assert.ok(a.fillers.length >= 3); assert.ok(a.slang.includes('gonna')); assert.ok(a.wpm! > 170); assert.ok(a.star.situation && a.star.action && a.star.result); assert.ok(a.delivery < 80);
+  assert.ok(!/\bum\b|basically|gonna/i.test(naturalize('Um I am gonna basically lead the team'))); assert.ok(highlight('um hello').some((p) => p.filler)); });
+test('one-stop: CTC mismatch + free mail + fee = red', () => { const r = checkOneStop('Annual CTC of Rs 9,00,000. Notice period is 30 days.', 'Your CTC Rs 9,50,000. Pay Rs 3,500 verification fee.', 'hr@gmail.com', 'Sample Foods');
+  assert.equal(r.verdict, 'red'); assert.ok(r.cross.some((c) => /CTC differs/.test(c.title))); assert.ok(r.cross.some((c) => /free email/.test(c.title))); });

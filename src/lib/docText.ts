@@ -9,7 +9,7 @@ async function ocr(images: (HTMLCanvasElement | File)[], onProgress?: (p: string
   try { const out: string[] = []; for (const im of images) out.push((await worker.recognize(im as any)).data.text); return out.join('\n\n'); }
   finally { await worker.terminate(); }
 }
-async function pdfPagesToCanvas(file: File, max = 4): Promise<HTMLCanvasElement[]> {
+async function pdfPagesToCanvas(file: File, max = 10): Promise<HTMLCanvasElement[]> {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise; const out: HTMLCanvasElement[] = [];

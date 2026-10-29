@@ -5,7 +5,12 @@ import { normPhone, scanMessage, shareText, waLink, type ScamResult } from '../l
 import { CREDIT } from '../lib/brand';
 import { checkCin, checkGstin, lookups } from '../lib/employerCheck';
 import { CAP_WITH_GST, RA_LINK, SOURCES as AGENT_SOURCES, checkAgent, type AgentResult } from '../lib/agentCheck';
-import { readOfferFile } from '../lib/docText';
+import { OFFER_ACCEPT, readOfferFile } from '../lib/docText';
+import { downloadText, mailtoLink } from '../lib/exportResult';
+import { Steps } from '../components/Steps';
+import { LocalNote } from '../components/LocalNote';
+import { usePersisted, clearPersisted } from '../lib/persist';
+import { Mail, Upload } from 'lucide-react';
 
 const SAMPLE = 'SAMPLE (made up): Hello, this is HR Kavya from Naukri. You are shortlisted for Tata Motors, salary double. Pay ₹1,800 registration fee by UPI to schedule 2 interviews today only. Contact on WhatsApp. Email: hr.kavya@naukri-jobs.in';
 const KEY = 'jaos_reported_numbers';
@@ -26,7 +31,11 @@ function cardPng(r: ScamResult): Promise<Blob | null> {
 }
 
 export default function ScamShield() {
-  const [msg, setMsg] = useState(''); const [email, setEmail] = useState(''); const [company, setCompany] = useState(''); const [phone, setPhone] = useState('');
+  const [f, setF] = usePersisted('jaos_scam_inputs', { msg: '', email: '', company: '', phone: '' }); const { msg, email, company, phone } = f;
+  const setMsg = (v: string) => setF((x) => ({ ...x, msg: v })), setEmail = (v: string) => setF((x) => ({ ...x, email: v })), setCompany = (v: string) => setF((x) => ({ ...x, company: v })), setPhone = (v: string) => setF((x) => ({ ...x, phone: v }));
+  const [fileMsg, setFileMsg] = useState('');
+  const openFile = async (file?: File) => { if (!file) return; setFileMsg('Reading…'); try { const t = await readOfferFile(file, setFileMsg); setMsg(t); setR(null); setFileMsg(`Read ${file.name} on this device.`); } catch (x: any) { setFileMsg(x?.message || 'Could not read the file.'); } };
+  const report = (x: ScamResult) => [`Job offer check: ${x.verdict.toUpperCase()} - ${x.headline}`, '', ...x.signs.map((g) => `- ${g.title}: ${g.detail}`), '', 'What to do:', ...x.advice.map((a) => `- ${a}`), '', 'Warning signs from simple rules, not a finding that anyone is a fraud.', 'Checked free at akash-sharma-job-acquisition-os.vercel.app/scam-shield'].join('\n');
   const [cin, setCin] = useState(''); const [gst, setGst] = useState(''); const [site, setSite] = useState('');
   const [r, setR] = useState<ScamResult | null>(null); const [ad, setAd] = useState(''); const [ar, setAr] = useState<AgentResult | null>(null); const [ocr, setOcr] = useState(''); const [list, setList] = useState(load);
   const p = normPhone(phone); const mine = p ? list.filter((x) => x.n === p) : [];
@@ -37,7 +46,10 @@ export default function ScamShield() {
   return (
     <>
       <PageHeader eyebrow="Free · runs in your browser" title="Scam Shield: check a recruiter's message" subtitle="Paste a job offer, call notes or email. It looks for warning signs such as fees, look-alike emails, pressure and chat-only contact, in English, Hindi and Hinglish. Nothing you paste leaves this device." />
+      <LocalNote onClear={() => { clearPersisted('jaos_scam_inputs', 'jaos_steps_scam', KEY); location.reload(); }} />
+      <Steps id="scam" title="Check an offer in 4 steps" steps={[{ title: 'Paste the message, or upload the PDF / screenshot', body: 'Then press "Check for warning signs".' }, { title: 'Read the verdict, then save or email it', body: 'Download the report, then attach it in your own email app, or use "Email it".' }, { title: 'Going abroad? Check the agent fee (Agent Check below)', body: 'Then look the agent up on eMigrate.' }, { title: 'Check the company is real (Employer Reality Check below)', body: 'Then compare the CIN/GSTIN with the official registers.' }]} />
       <Card className="mb-5 grid gap-3" data-testid="scam-form">
+        <div className="flex flex-wrap items-center gap-2"><label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border px-4 text-sm hover:bg-muted"><Upload size={15} /> Upload PDF or image (multi-page PDF OK)<input type="file" hidden accept={OFFER_ACCEPT} data-testid="scam-file" onChange={(e) => openFile(e.target.files?.[0])} /></label>{fileMsg && <span className="text-sm text-muted-foreground" role="status">{fileMsg}</span>}</div>
         <div><Label htmlFor="sm">Message</Label><Textarea id="sm" rows={6} value={msg} onChange={(e) => { setMsg(e.target.value); setR(null); }} placeholder="Paste the message or what the caller said" /></div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div><Label htmlFor="se" hint="optional">Their email</Label><Input id="se" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
@@ -51,8 +63,11 @@ export default function ScamShield() {
         <div className="flex flex-wrap items-center gap-3"><span className="h-4 w-4 rounded-full" style={{ background: COLORS[r.verdict] }} /><Badge tone={r.verdict === 'red' ? 'danger' : r.verdict === 'amber' ? 'gold' : 'primary'}><span data-testid="scam-verdict">{r.verdict === 'red' ? 'Red' : r.verdict === 'amber' ? 'Amber' : 'Green'}</span></Badge><p className="font-medium">{r.headline}</p></div>
         {r.signs.length > 0 && <ul className="grid gap-2">{r.signs.map((s, i) => <li key={i} className="rounded-lg border border-border p-3 text-sm"><b style={{ color: COLORS[s.level] }}>{s.title}</b> · {s.detail}{s.match && <span className="mt-1 block text-xs text-muted-foreground">Found: "{s.match}"</span>}</li>)}</ul>}
         <div className="text-sm"><b>What to do</b><ul className="mt-1 list-disc pl-5">{r.advice.map((a) => <li key={a}>{a}</li>)}</ul></div>
-        <div className="flex flex-wrap gap-2"><a className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm" href={waLink(shareText(r))} target="_blank" rel="noreferrer"><Share2 size={15} /> Warn friends on WhatsApp</a>
-          <Button variant="outline" onClick={shareCard}><Download size={15} /> Share card (image)</Button></div>
+        <div className="flex flex-wrap gap-2"><a className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm" href={waLink(shareText(r))} target="_blank" rel="noopener noreferrer"><Share2 size={15} /> Warn friends on WhatsApp</a>
+          <Button variant="outline" onClick={shareCard}><Download size={15} /> Share card (image)</Button>
+          <Button variant="outline" onClick={() => downloadText('job-offer-check.txt', report(r))} data-testid="scam-download"><Download size={15} /> Download report</Button>
+          <a className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-sm" href={mailtoLink('Job offer check: ' + r.verdict, report(r))} data-testid="scam-mailto"><Mail size={15} /> Email it</a></div>
+        <p className="text-xs text-muted-foreground">"Email it" opens your own email app with a short summary; nothing is sent by us. To send the full report, download it and attach the file yourself.</p>
         <p className="text-xs text-muted-foreground">These are warning signs from simple rules, not a finding that anyone is a fraud. The share text and card never include the message, numbers or emails.</p>
       </Card>}
       <Card className="mb-5 grid min-w-0 gap-3" data-testid="agent-check">
@@ -65,8 +80,8 @@ export default function ScamShield() {
         {ocr && <p className="text-sm text-muted-foreground">{ocr}</p>}
         {ar && <div className="grid gap-2" data-testid="agent-result">{ar.signs.length ? <ul className="grid gap-2">{ar.signs.map((s, i) => <li key={i} className="rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]"><b style={{ color: COLORS[s.level] }}>{s.title}</b> · {s.detail}{s.match && <span className="mt-1 block text-xs text-muted-foreground">Found: "{s.match}"</span>}</li>)}</ul> : <p className="text-sm">No fee or warning signs found by these rules.</p>}
           <ul className="list-disc pl-5 text-sm">{ar.advice.map((a) => <li key={a}>{a}</li>)}</ul></div>}
-        <a className="w-fit text-sm text-primary underline" href={RA_LINK} target="_blank" rel="noreferrer">Check the agent on eMigrate (official list of active recruiting agents)</a>
-        <ul className="grid gap-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">{AGENT_SOURCES.map((s) => <li key={s.href}><a className="underline" href={s.href} target="_blank" rel="noreferrer">{s.label}</a></li>)}</ul>
+        <a className="w-fit text-sm text-primary underline" href={RA_LINK} target="_blank" rel="noopener noreferrer">Check the agent on eMigrate (official list of active recruiting agents)</a>
+        <ul className="grid gap-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">{AGENT_SOURCES.map((s) => <li key={s.href}><a className="underline" href={s.href} target="_blank" rel="noopener noreferrer">{s.label}</a></li>)}</ul>
         <p className="text-xs text-muted-foreground">Warning signs from simple rules, not a finding that any agent is a fraud. Information, not legal advice.</p>
       </Card>
       <Card className="mb-5 grid gap-3" data-testid="employer-check">
@@ -78,7 +93,7 @@ export default function ScamShield() {
           <div><Label htmlFor="ew" hint="optional">Company website</Label><Input id="ew" value={site} onChange={(e) => setSite(e.target.value)} /></div>
         </div>
         {[checkCin(cin), checkGstin(gst)].filter(Boolean).map((c, i) => <p key={i} className="text-sm" data-testid="format-check"><Badge tone={c!.ok ? 'primary' : 'danger'}>{c!.ok ? 'Format OK' : 'Check this'}</Badge> {c!.note}</p>)}
-        <ul className="grid gap-2 text-sm">{lookups(company || 'the company', site).map((l) => <li key={l.href}><a className="text-primary underline" href={l.href} target="_blank" rel="noreferrer">{l.label}</a> <span className="text-muted-foreground">· {l.tip}</span></li>)}</ul>
+        <ul className="grid gap-2 text-sm">{lookups(company || 'the company', site).map((l) => <li key={l.href}><a className="text-primary underline" href={l.href} target="_blank" rel="noopener noreferrer">{l.label}</a> <span className="text-muted-foreground">· {l.tip}</span></li>)}</ul>
         <p className="text-xs text-muted-foreground">Fee-scam signs to look for: asked to pay for training, kits, laptops or "refundable" deposits; offer without interview; a company that is not on MCA or is "Struck off".</p>
       </Card>
       <Card className="grid gap-3" data-testid="my-numbers">
