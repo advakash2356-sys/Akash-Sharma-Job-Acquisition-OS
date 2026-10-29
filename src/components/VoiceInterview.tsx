@@ -57,6 +57,7 @@ export function VoiceInterview() {
         <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium">Your scores</h2><Badge tone="primary">Overall {overall}/100</Badge></div>
         {turns.map((x, i) => <div key={i} className="grid gap-2 rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]">
           <b>{x.q}</b>
+          {x.a.noAnswer && <Badge tone="danger">No real answer detected</Badge>}
           <div className="flex flex-wrap gap-2"><Badge tone="primary">Answer {x.a.score}/100</Badge><Badge>Content {x.a.content}</Badge><Badge>Delivery {x.a.delivery}</Badge>{x.a.wpm != null && <Badge>{x.a.wpm} wpm</Badge>}<Badge>{x.a.words} words</Badge><Badge>STAR {Object.values(x.a.star).filter(Boolean).length}/4</Badge></div>
           <p data-testid="voice-transcript">{highlight(x.answer).map((p, k) => p.filler ? <mark key={k} className="rounded bg-red-100 px-0.5 text-red-800">{p.text}</mark> : <span key={k}>{p.text}</span>)}</p>
           {x.a.tips.length > 0 && <ul className="list-disc pl-5 text-muted-foreground">{x.a.tips.map((t) => <li key={t}>{t}</li>)}</ul>}
