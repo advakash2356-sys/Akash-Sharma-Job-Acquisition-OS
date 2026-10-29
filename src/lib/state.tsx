@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import type { Job, Profile } from '../types';
 
-export type PageId = 'setup' | 'overview' | 'jobs' | 'interviews' | 'resume' | 'tailor' | 'outreach' | 'salary' | 'insights' | 'prep' | 'privacy' | 'settings' | 'about' | 'terms' | 'tracker' | 'profilematch' | 'security' | 'accessibility' | 'feedback' | 'job' | 'scam-shield' | 'offer-shield' | 'remote-kit' | 'h1b-sprint' | 'gov-jobs' | 'notfound';
+export type PageId = 'setup' | 'overview' | 'jobs' | 'interviews' | 'resume' | 'tailor' | 'outreach' | 'salary' | 'insights' | 'prep' | 'privacy' | 'settings' | 'about' | 'terms' | 'tracker' | 'profilematch' | 'security' | 'accessibility' | 'feedback' | 'job' | 'scam-shield' | 'offer-shield' | 'remote-kit' | 'h1b-sprint' | 'gov-jobs' | 'voice-practice' | 'notfound';
 
 export interface AppCtx {
   profile: Profile;

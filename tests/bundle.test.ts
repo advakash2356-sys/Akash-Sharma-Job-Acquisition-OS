@@ -72,7 +72,7 @@ test('agent check: Rule 25 cap, excluded costs, cash, never "fraud"', () => {
 });
 test('clean URLs: every public page path opens its page', () => {
   const main = readFileSync('src/main.tsx', 'utf8'), vj = readFileSync('vercel.json', 'utf8');
-  for (const p of ['scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint', 'gov-jobs']) { assert.ok(main.includes(p), `main.tsx ${p}`); assert.ok(vj.includes(p), `vercel.json ${p}`); }
+  for (const p of ['scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint', 'gov-jobs', 'voice-practice']) { assert.ok(main.includes(p), `main.tsx ${p}`); assert.ok(vj.includes(p), `vercel.json ${p}`); }
 });
 test('hash routes accept page ids with digits (h1b-sprint)', () => { const app = readFileSync('src/App.tsx', 'utf8'); const re = new RegExp(app.match(/location\.hash\.match\((\/.*?\/)\)/)![1].slice(1, -1)); assert.equal('#/app/h1b-sprint'.match(re)?.[1], 'h1b-sprint'); });
 test('agent check: domestic pay-to-join is red, cap only for overseas', () => {
@@ -99,3 +99,5 @@ test('voice: fillers, slang, wpm and STAR', () => { const a = analyze('Um so bas
   assert.ok(!/\bum\b|basically|gonna/i.test(naturalize('Um I am gonna basically lead the team'))); assert.ok(highlight('um hello').some((p) => p.filler)); });
 test('one-stop: CTC mismatch + free mail + fee = red', () => { const r = checkOneStop('Annual CTC of Rs 9,00,000. Notice period is 30 days.', 'Your CTC Rs 9,50,000. Pay Rs 3,500 verification fee.', 'hr@gmail.com', 'Sample Foods');
   assert.equal(r.verdict, 'red'); assert.ok(r.cross.some((c) => /CTC differs/.test(c.title))); assert.ok(r.cross.some((c) => /free email/.test(c.title))); });
+test('voice: um-only or gibberish answers score near 0', () => { for (const t of ['um uh um basically um', 'asdfgh qwrtzp xkcdv bbbbb zzzzz mmmm']) { const a = analyze(t, 8, ['team'], 'hr'); assert.ok(a.noAnswer, t); assert.ok(a.score <= 5, String(a.score)); }
+  assert.ok(!analyze('I led a team of eight people and we cut delays by thirty percent last year.', 8, ['team'], 'hr').noAnswer); });

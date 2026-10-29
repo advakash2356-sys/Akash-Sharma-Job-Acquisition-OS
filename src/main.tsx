@@ -10,7 +10,7 @@ import { inject } from '@vercel/analytics';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 
 // Clean public URLs (/about, /scam-shield, /h1b-sprint, /gov-jobs, ...) open that page of the app.
-const m = location.pathname.match(/^\/(about|terms|feedback|privacy|security|accessibility|scam-shield|offer-shield|remote-kit|h1b-sprint|gov-jobs)\/?$/);
+const m = location.pathname.match(/^\/(about|terms|feedback|privacy|security|accessibility|scam-shield|offer-shield|remote-kit|h1b-sprint|gov-jobs|voice-practice)\/?$/);
 if (m && !location.hash.startsWith('#/app')) history.replaceState(null, '', `/${m[1]}${location.search}#/app/${m[1]}`);
 const isAdmin = /^\/admin\/?$/.test(location.pathname);
 if (!isAdmin) {
