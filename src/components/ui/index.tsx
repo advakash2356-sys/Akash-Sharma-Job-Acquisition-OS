@@ -53,8 +53,8 @@ const BANNERS = ['/ridges-path.jpg', '/hero-poster.jpg', '/desk-offer.jpg'];
 export function PageHeader({ title, subtitle, action, eyebrow }: { title: string; subtitle?: string; action?: React.ReactNode; eyebrow?: string }) {
   const img = BANNERS[(title.length + title.charCodeAt(0)) % BANNERS.length];
   return (
-    <header className="grain relative mb-8 overflow-hidden rounded-[28px] fade-up">
-      <img src={img} alt="" className="absolute inset-0 h-full w-full object-cover" />
+    <header className="grain relative mb-8 overflow-hidden rounded-[28px]">
+      <img src={img.replace('.jpg', '.webp')} srcSet={`${img.replace('.jpg', '-768.webp')} 768w, ${img.replace('.jpg', '.webp')} 1280w`} sizes="(max-width: 768px) 100vw, 1100px" width={1280} height={720} fetchPriority="high" decoding="async" alt="" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/25" />
       <div className="relative flex flex-wrap items-end justify-between gap-4 px-6 pb-7 pt-20 text-[#f4ede2] sm:px-10 sm:pt-28">
         <div>

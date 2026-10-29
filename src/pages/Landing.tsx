@@ -33,6 +33,8 @@ const STEPS = [
 ];
 
 export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; toggleTheme: () => void; enter: () => void }) {
+  // The hero video (1.4 MB) only loads on wide screens with motion allowed; phones get the light poster image.
+  const [wide] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 768px) and (prefers-reduced-motion: no-preference)").matches);
   const root = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => { track('landing_view'); }, []);
@@ -51,7 +53,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
 
     const ctx = gsap.context(() => {
       gsap.from('.hero-line', { yPercent: 110, opacity: 0, duration: 1.1, ease: 'power4.out', stagger: 0.12, delay: 0.15 });
-      gsap.from('.hero-fade', { opacity: 0, y: 20, duration: 1, delay: 0.7, stagger: 0.1 });
+      gsap.from('.hero-fade', { y: 12, duration: 0.5, stagger: 0.05 }); // no opacity fade: keeps the main text visible at first paint (LCP)
       gsap.to('.hero-media', { scale: 1.18, yPercent: 8, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
       gsap.to('.hero-copy', { opacity: 0, y: -80, ease: 'none', scrollTrigger: { trigger: '.hero', start: '30% top', end: 'bottom top', scrub: true } });
 
@@ -96,8 +98,8 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
       {/* HERO */}
       <section className="hero relative h-[100svh] min-h-[640px] overflow-hidden bg-[#0d0b0a] text-[#f4ede2] grain">
         <div className="hero-media absolute inset-0 will-change-transform">
-          <img src="/hero-poster.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
-          <video className="absolute inset-0 hidden h-full w-full object-cover motion-safe:block" src="/hero-loop.mp4" poster="/hero-poster.jpg" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
+          <img src="/hero-poster.webp" srcSet="/hero-poster-768.webp 768w, /hero-poster.webp 1280w" sizes="100vw" fetchPriority="high" decoding="async" width={1280} height={720} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          {wide && <video className="absolute inset-0 hidden h-full w-full object-cover motion-safe:block" src="/hero-loop.mp4" poster="/hero-poster.webp" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d0b0a] via-[#0d0b0a]/30 to-[#0d0b0a]/50" />
         <div className="hero-copy relative z-10 flex h-full flex-col justify-end px-5 pb-14 sm:px-10 sm:pb-20">
@@ -161,7 +163,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         <h2 className="display reveal mb-10 max-w-3xl text-[clamp(2.4rem,6vw,5rem)] leading-[0.95]">Everything between "applied" and "accepted".</h2>
         <div className="grid auto-rows-[220px] gap-4 md:grid-cols-6">
           <div className="reveal glass relative overflow-hidden rounded-3xl p-6 md:col-span-3 md:row-span-2">
-            <img src="/desk-offer.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-90" />
+            <img src="/desk-offer.webp" loading="lazy" decoding="async" alt="" className="absolute inset-0 h-full w-full object-cover opacity-90" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
             <div className="relative flex h-full flex-col justify-end text-[#f4ede2]">
               <FileText className="mb-3 text-[#ff6a2b]" />
@@ -180,7 +182,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
 
       {/* PRIVATE + CTA */}
       <section id="private" className="relative overflow-hidden bg-[#0d0b0a] px-5 py-28 text-[#f4ede2] sm:px-10 grain">
-        <img src="/desk-offer.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
+        <img src="/desk-offer.webp" loading="lazy" decoding="async" alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
         <div className="relative mx-auto max-w-5xl text-center">
           <Lock className="reveal mx-auto mb-5 text-[#ff6a2b]" />
           <h2 className="display reveal text-[clamp(2.6rem,8vw,7rem)] leading-[0.92]">Your resume lives in <span className="italic text-[#ff6a2b]">your browser.</span></h2>
