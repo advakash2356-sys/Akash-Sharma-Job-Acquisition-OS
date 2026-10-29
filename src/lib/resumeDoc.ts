@@ -4,9 +4,9 @@
 // RenderCV (https://github.com/rendercv/rendercv, MIT, © Sina Atalay and contributors) and the
 // jsonresume-theme-even layout (https://github.com/rbardini/jsonresume-theme-even, MIT, © Rafael Bardini).
 // The code below is written for this app; see THIRD_PARTY_NOTICES.md.
-import { jsPDF } from 'jspdf';
+import type { jsPDF } from 'jspdf';
 import { aiFooter } from './brand';
-import { AlignmentType, BorderStyle, Document, Footer, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
+type Docx = typeof import('docx');
 import { track } from './analytics';
 import { ACCENTS, SECTIONS, defaultSpec, type Section, type StyleSpec } from './resumeStyle';
 
@@ -28,7 +28,7 @@ function stampFooter(doc: jsPDF) {
   for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(130); const t = aiFooter().replace('—', '-'); doc.text(t, (W - doc.getTextWidth(t)) / 2, H - 18); }
   doc.setTextColor(0);
 }
-const footerDocx = () => new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: aiFooter(), size: 14, color: '888888' })] })] });
+const footerDocx = ({ Footer, Paragraph, AlignmentType, TextRun }: Docx) => new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: aiFooter(), size: 14, color: '888888' })] })] });
 
 export function normalise(x: any): ResumeDoc | null {
   if (!x || typeof x !== 'object' || !x.basics) return null;
@@ -101,7 +101,8 @@ function save(blob: Blob, name: string) {
 }
 
 /** ATS-friendly PDF: real selectable text, standard fonts, one column, standard headings, one accent colour. No app branding. */
-export function resumePdf(r: ResumeDoc, base: string, spec: StyleSpec = defaultSpec()) {
+export async function resumePdf(r: ResumeDoc, base: string, spec: StyleSpec = defaultSpec()) {
+  const { jsPDF } = await import('jspdf');
   const T = tokens(spec);
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = T.margin, cw = W - m * 2;
@@ -148,10 +149,11 @@ export function resumePdf(r: ResumeDoc, base: string, spec: StyleSpec = defaultS
 }
 
 export async function resumeDocx(r: ResumeDoc, base: string, spec: StyleSpec = defaultSpec()) {
+  const D = await import('docx'); const { AlignmentType, BorderStyle, Document, HeadingLevel, Packer, Paragraph, TextRun } = D;
   const T = tokens(spec); const c = (h: string) => h.replace('#', '');
   const hp = (pt: number) => Math.round(pt * 2); const tw = (pt: number) => Math.round(pt * 20);
   const al = T.center ? AlignmentType.CENTER : AlignmentType.LEFT;
-  const P: Paragraph[] = [];
+  const P: InstanceType<Docx["Paragraph"]>[] = [];
   P.push(new Paragraph({ alignment: al, children: [new TextRun({ text: r.basics.name || 'Resume', bold: true, size: hp(T.nameSize), color: c(T.nameColor) })] }));
   if (r.basics.label) P.push(new Paragraph({ alignment: al, children: [new TextRun({ text: r.basics.label, italics: T.labelItalic, size: hp(T.title), color: '333333' })] }));
   const contact = join(r.basics.location, r.basics.email, r.basics.phone, r.basics.url);
@@ -167,12 +169,13 @@ export async function resumeDocx(r: ResumeDoc, base: string, spec: StyleSpec = d
     }
   }
   const mg = tw(T.margin);
-  const doc = new Document({ creator: r.basics.name || 'Candidate', title: `${r.basics.name} resume`, styles: { default: { document: { run: { font: T.docxFont } } } }, sections: [{ properties: { page: { margin: { top: mg, bottom: mg, left: mg, right: mg } } }, footers: { default: footerDocx() }, children: P }] });
+  const doc = new Document({ creator: r.basics.name || 'Candidate', title: `${r.basics.name} resume`, styles: { default: { document: { run: { font: T.docxFont } } } }, sections: [{ properties: { page: { margin: { top: mg, bottom: mg, left: mg, right: mg } } }, footers: { default: footerDocx(D) }, children: P }] });
   save(await Packer.toBlob(doc), `${base}.docx`); track('export');
 }
 
 /** Cover letter as a plain business letter. The header names the job it is for. */
-export function letterPdf(text: string, forLine: string, base: string) {
+export async function letterPdf(text: string, forLine: string, base: string) {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 56;
   let y = m;
@@ -183,7 +186,8 @@ export function letterPdf(text: string, forLine: string, base: string) {
   doc.save(`${base}.pdf`); track('export');
 }
 export async function letterDocx(text: string, forLine: string, base: string) {
-  const doc = new Document({ styles: { default: { document: { run: { font: 'Calibri' } } } }, sections: [{ footers: { default: footerDocx() }, children: [
+  const D = await import('docx'); const { AlignmentType, Document, Packer, Paragraph, TextRun } = D;
+  const doc = new Document({ styles: { default: { document: { run: { font: 'Calibri' } } } }, sections: [{ footers: { default: footerDocx(D) }, children: [
     new Paragraph({ alignment: AlignmentType.LEFT, spacing: { after: 240 }, children: [new TextRun({ text: forLine, bold: true, size: 19, color: '555555' })] }),
     ...text.replace(/\*\*(.*?)\*\*/g, '$1').split('\n').map((l) => new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: l, size: 22 })] })),
   ] }] });

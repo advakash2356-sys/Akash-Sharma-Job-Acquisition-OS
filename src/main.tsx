@@ -6,8 +6,6 @@ import SiteBanner from './components/SiteBanner';
 import './index.css';
 import { CONSENT_EVENT, countVisit, statsOptedOut, visitSource } from './lib/analytics';
 import { rememberSource } from './lib/googleAuth';
-import { inject } from '@vercel/analytics';
-import { injectSpeedInsights } from '@vercel/speed-insights';
 
 // Clean public URLs (/about, /scam-shield, /h1b-sprint, /gov-jobs, ...) open that page of the app.
 const m = location.pathname.match(/^\/(about|terms|feedback|privacy|security|accessibility|scam-shield|offer-shield|remote-kit|h1b-sprint|gov-jobs|voice-practice)\/?$/);
@@ -16,9 +14,17 @@ const isAdmin = /^\/admin\/?$/.test(location.pathname);
 if (!isAdmin) {
   countVisit(); // no-op until the visitor consents
   rememberSource(visitSource()?.source || '', !statsOptedOut());
-  // Vercel Web Analytics + Speed Insights: cookieless; skipped for visitors who opted out of stats.
-  inject({ beforeSend: (e) => (statsOptedOut() ? null : e) });
-  injectSpeedInsights();
+  // Vercel Web Analytics + Speed Insights load ONLY after the visitor chooses "Allow" (and never with GPC or Do Not Track on).
+  // Until then neither script is downloaded or run. Opting out later stops sending via beforeSend.
+  let vercelOn = false;
+  const startVercel = async () => {
+    if (vercelOn || statsOptedOut()) return; vercelOn = true;
+    const [{ inject }, { injectSpeedInsights }] = await Promise.all([import('@vercel/analytics'), import('@vercel/speed-insights')]);
+    inject({ beforeSend: (e) => (statsOptedOut() ? null : e) });
+    injectSpeedInsights({ beforeSend: (e) => (statsOptedOut() ? null : e) });
+  };
+  startVercel();
+  window.addEventListener(CONSENT_EVENT, () => { startVercel(); });
   window.addEventListener(CONSENT_EVENT, () => { if (!statsOptedOut()) { countVisit(); rememberSource('', true); } }, { once: true });
 }
 

@@ -34,6 +34,7 @@ export default function Privacy() {
             <li><b>Job sources</b> (FreeHire, Himalayas, Remote OK, SarkariMap): your target job titles, countries and cities, never your resume, name or email.</li>
             <li><b>Vercel</b>, which hosts the site and keeps standard request logs.</li>
             <li><b>GoatCounter</b>, which counts anonymous page views and steps (see below).</li>
+            <li><b>Vercel Web Analytics and Vercel Speed Insights</b> (from our host, Vercel): cookieless page-view counts and page-speed measurements. Only loaded after you choose "Allow" (see below).</li>
           </ul>
         </Item>
         <Item t="Your consent and rights (DPDP Act, 2023)">
@@ -58,6 +59,7 @@ export default function Privacy() {
         <Item t="Usage counts and cookies">
           {ANALYTICS_ON
             ? <><p>This deployment counts a few anonymous steps with GoatCounter ({ANALYTICS_HOST}), a cookieless, open-source counter: landing view, start setup, resume added, key added, first job found, export, feedback sent and share. Each count is just the step name. It also counts one page view per visit: the page address (for example /about) and, if you came through one of our shared links, the channel named in that link (for example ref=instagram). It does not send resume text, keys, names, jobs or contact data. Your browser fetches a tiny counter image from {ANALYTICS_HOST}, so GoatCounter sees your IP address and browser type for that request; it does not store them (it keeps a random ID in memory for 8 hours to avoid double counts). No cookies are set. Counting is off by default: nothing is counted, and no referral source is saved, until you choose "Allow" on the banner or tick the box in Settings. It stays off if your browser sends Do Not Track or Global Privacy Control.</p>
+            <p>With the same "Allow" choice, and only then, the site also loads Vercel Web Analytics and Vercel Speed Insights from this site's own address (no other domain). They record the page address, referrer, device type, browser, country (derived from the IP address, which they do not store) and page-load speed. They set no cookies. To opt out at any time, choose "Don't allow" on the banner or untick the box in Settings: nothing more is sent. Opting in is the same box. Do Not Track or Global Privacy Control keeps them off.</p>
             {gpcOn() && <p data-testid="gpc-note" className="rounded-lg bg-primary/10 px-3 py-2 text-primary">Global Privacy Control honoured: your browser sends GPC, so usage counting is off.</p>}</>
             : <p>This deployment does not count usage: no analytics code is switched on. If the owner turns on counting later, this paragraph changes to list exactly what is counted.</p>}
           <p>There are no advertising scripts, and fonts are bundled with the site rather than loaded from a third party. We do not sell your data.</p>
