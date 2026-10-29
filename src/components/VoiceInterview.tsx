@@ -11,7 +11,7 @@ const SR: any = typeof window !== 'undefined' ? (window as any).SpeechRecognitio
 const speak = (t: string, onEnd?: () => void) => { if (!('speechSynthesis' in window)) { onEnd?.(); return; } speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'en-IN'; u.rate = 0.95; u.onend = () => onEnd?.(); speechSynthesis.speak(u); };
 
 /** Voice interview practice. Questions are spoken by the browser; answers are scored by simple rules on this device. */
-export function VoiceInterview() {
+export function VoiceInterview({ onTurn }: { onTurn?: (a: Analysis, q: string) => void } = {}) {
   const [cfg, setCfg] = usePersisted('jaos_voice_cfg', { role: '', round: 'hr' as Round });
   const [turns, setTurns] = usePersisted<Turn[]>('jaos_voice_turns', []);
   const [idx, setIdx] = useState(-1); const [follow, setFollow] = useState(false);
@@ -28,7 +28,7 @@ export function VoiceInterview() {
     s.onend = () => setRec(false); r.current = s; t0.current = Date.now(); setSecs(0); clearInterval(timer.current); timer.current = setInterval(() => setSecs(Math.round((Date.now() - t0.current) / 1000)), 500); s.start(); setRec(true);
   };
   const stop = () => { r.current?.stop(); clearInterval(timer.current); setRec(false); };
-  const submit = () => { stop(); if (!cur) return; const a = analyze(text, SR && secs ? secs : null, cur.keys, cfg.round); setTurns([...turns, { q: qText, answer: text, secs: SR && secs ? secs : null, a }]);
+  const submit = () => { stop(); if (!cur) return; const a = analyze(text, SR && secs ? secs : null, cur.keys, cfg.round); setTurns([...turns, { q: qText, answer: text, secs: SR && secs ? secs : null, a }]); onTurn?.(a, qText);
     if (!follow) ask(idx, true); else if (idx + 1 < qs.length) ask(idx + 1, false); else { setIdx(qs.length); speak('Thank you. That is the end of this practice call.'); } };
   const overall = turns.length ? Math.round(turns.reduce((s, x) => s + x.a.score, 0) / turns.length) : null;
   const replay = () => { let i = 0; const next = () => { if (i < turns.length) { speak(turns[i].q); i++; } }; next(); return next; };
@@ -57,7 +57,7 @@ export function VoiceInterview() {
         <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium">Your scores</h2><Badge tone="primary">Overall {overall}/100</Badge></div>
         {turns.map((x, i) => <div key={i} className="grid gap-2 rounded-lg border border-border p-3 text-sm [overflow-wrap:anywhere]">
           <b>{x.q}</b>
-          {x.a.noAnswer && <Badge tone="danger">No real answer detected</Badge>}
+          {x.a.noAnswer && <Badge tone="danger">No real answer detected</Badge>}{x.a.tooShort && <Badge tone="gold">Answer too short</Badge>}
           <div className="flex flex-wrap gap-2"><Badge tone="primary">Answer {x.a.score}/100</Badge><Badge>Content {x.a.content}</Badge><Badge>Delivery {x.a.delivery}</Badge>{x.a.wpm != null && <Badge>{x.a.wpm} wpm</Badge>}<Badge>{x.a.words} words</Badge><Badge>STAR {Object.values(x.a.star).filter(Boolean).length}/4</Badge></div>
           <p data-testid="voice-transcript">{highlight(x.answer).map((p, k) => p.filler ? <mark key={k} className="rounded bg-red-100 px-0.5 text-red-800">{p.text}</mark> : <span key={k}>{p.text}</span>)}</p>
           {x.a.tips.length > 0 && <ul className="list-disc pl-5 text-muted-foreground">{x.a.tips.map((t) => <li key={t}>{t}</li>)}</ul>}
