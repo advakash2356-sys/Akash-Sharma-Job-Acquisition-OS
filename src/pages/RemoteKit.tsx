@@ -1,9 +1,12 @@
-import { useState } from 'react';
+
 import { FileDown } from 'lucide-react';
 import { Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
 import { CHECKLIST, DISCLAIMER, EXPORT_LINE, SOURCES, estimate44ADA, invoiceTotal, type InvoiceData } from '../lib/remoteKit';
 import { inr } from '../lib/indiaTax';
 import { CREDIT } from '../lib/brand';
+import { Steps } from '../components/Steps';
+import { LocalNote } from '../components/LocalNote';
+import { usePersisted, clearPersisted } from '../lib/persist';
 
 const SAMPLE: InvoiceData = { number: 'SAMPLE-001', date: new Date().toISOString().slice(0, 10), from: 'Riya Sharma (sample)', fromAddress: 'Delhi, India', gstin: '', lutArn: '', pan: '', client: 'Sample Client LLC', clientAddress: 'Austin, Texas', clientCountry: 'United States', currency: 'USD', items: [{ desc: 'Software development services, October 2026', amount: 2500 }], bank: 'Bank name, account number, SWIFT/BIC' };
 
@@ -23,15 +26,15 @@ async function invoicePdf(d: InvoiceData) {
 }
 
 export default function RemoteKit() {
-  const [rec, setRec] = useState('2400000'); const [inv, setInv] = useState<InvoiceData>({ ...SAMPLE, items: [{ ...SAMPLE.items[0] }] });
+  const [rec, setRec] = usePersisted('jaos_remote_receipts', '2400000'); const [inv, setInv] = usePersisted<InvoiceData>('jaos_remote_invoice', { ...SAMPLE, items: [{ ...SAMPLE.items[0] }] });
   const e = estimate44ADA(Number(rec) || 0);
   const f = (k: keyof InvoiceData) => (ev: { target: { value: string } }) => setInv({ ...inv, [k]: ev.target.value });
   return (
     <>
       <PageHeader eyebrow="Free · for Indians paid by foreign clients" title="Remote-Ready India kit" subtitle="A checklist for LUT and FIRA, a section 44ADA tax estimate, and an export invoice PDF. Everything stays in your browser." />
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="remote-disclaimer">{DISCLAIMER}</p>
-      <Card className="mb-5 grid gap-3" data-testid="remote-checklist"><h2 className="text-xl font-medium">Checklist</h2>
-        <ol className="grid list-decimal gap-2 pl-5 text-sm">{CHECKLIST.map((c) => <li key={c.step}><b>{c.step}.</b> {c.detail}</li>)}</ol></Card>
+      <LocalNote onClear={() => { clearPersisted('jaos_remote_receipts', 'jaos_remote_invoice', 'jaos_steps_remote'); location.reload(); }} />
+      <div data-testid="remote-checklist"><Steps id="remote" title="Get remote-ready, step by step" steps={[...CHECKLIST.map((c) => ({ title: c.step, body: <>Then: {c.detail}</> })), { title: 'Estimate your tax (Section 44ADA, below)', body: 'Enter this year\'s receipts. Then set aside the monthly amount shown.' }, { title: 'Make your export invoice (below)', body: 'Fill in your details, then download the PDF and send it to your client from your own email.' }]} /></div>
       <Card className="mb-5 grid gap-3" data-testid="remote-44ada"><h2 className="text-xl font-medium">Section 44ADA estimate</h2>
         <div className="max-w-xs"><Label htmlFor="rr">Gross receipts this year (₹)</Label><Input id="rr" inputMode="numeric" value={rec} onChange={(ev) => setRec(ev.target.value.replace(/\D/g, ''))} /></div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-sm">{[['Deemed income (50%)', inr(e.deemedIncome)], ['Estimated tax', inr(e.tax)], ['Set aside per month', inr(e.monthlySetAside)], ['44ADA limit', e.eligible ? 'Within' : 'Above']].map(([k, v]) => <div key={k}><div className="label text-muted-foreground">{k}</div><div className="font-mono text-xl">{v}</div></div>)}</div>
