@@ -440,3 +440,6 @@ SOFTWARE.
 
 ## Government Jobs tab (src/lib/govJobs.ts)
 No third-party code or data reused. Searched GitHub (Oct 2026): candidate datasets were unlicensed (karankofficial41-cell/india-govt-jobs-2026), GPL-3.0 (lalithaar/indian-exams-database) or CC BY 4.0 (specfit.in), none on our allowed list. Eligibility data is hand-copied from official notifications (government works, facts), each linked with a last-verified date.
+
+## jszip (MIT or GPL-3.0, used under MIT) — zip-slip advisory GHSA-36fh-84j7-cv5h
+mammoth's prebuilt browser file (mammoth/mammoth.browser) bundled its own JSZip 3.7.1, which is affected by the zip-slip advisory (fixed in 3.8.0). We now import mammoth's normal entry, so the single shared JSZip 3.10.2 (not affected) is used, and package.json pins jszip ^3.10.2 via overrides. Files are only read in memory in the browser; nothing is extracted to disk.
