@@ -1,3 +1,4 @@
+import { COMMON } from './commonWords';
 // Voice interview practice: rule-based scoring of content and delivery, all in the browser. Akash Sync Agent.
 export type Round = 'hr' | 'technical' | 'behavioural';
 export const ROUNDS: Record<Round, string> = { hr: 'HR', technical: 'Technical', behavioural: 'Behavioural' };
@@ -25,7 +26,7 @@ const STIFF = ['herewith', 'kindly', 'do the needful', 'hereby', 'aforementioned
 const HEDGE = ['i think maybe', 'i guess', 'not sure', 'probably', 'i hope', 'sorry'];
 const STAR = { situation: /\b(when|situation|at my (last|previous)|while i was|once)\b/i, task: /\b(task|goal|needed to|had to|responsib)/i, action: /\b(i (decided|built|led|called|created|set up|spoke|changed|wrote|fixed|organi[sz]ed|trained|analy[sz]ed))\b/i, result: /\b(result|so that|which (led|meant)|increased|reduced|saved|improved|\d+ ?%|percent)\b/i };
 const count = (t: string, w: string) => (t.match(new RegExp(`\\b${w.replace(/ /g, '\\s+')}\\b`, 'gi')) || []).length;
-export interface Analysis { words: number; wpm: number | null; fillers: { w: string; n: number }[]; fillerRate: number; slang: string[]; stiff: string[]; hedges: string[]; star: Record<keyof typeof STAR, boolean>; relevance: number; content: number; delivery: number; score: number; tips: string[]; rewrite: string; noAnswer: boolean }
+export interface Analysis { words: number; wpm: number | null; fillers: { w: string; n: number }[]; fillerRate: number; slang: string[]; stiff: string[]; hedges: string[]; star: Record<keyof typeof STAR, boolean>; relevance: number; content: number; delivery: number; score: number; tips: string[]; rewrite: string; noAnswer: boolean; tooShort: boolean; commonRatio: number }
 export function analyze(text: string, seconds: number | null, keys: string[], round: Round): Analysis {
   const t = (text || '').trim(), lower = t.toLowerCase(), words = t ? t.split(/\s+/).length : 0;
   const wpm = seconds && seconds > 3 ? Math.round(words / (seconds / 60)) : null;
@@ -50,9 +51,13 @@ export function analyze(text: string, seconds: number | null, keys: string[], ro
   delivery = Math.max(0, delivery);
   const fset = new Set(FILLERS.flatMap((f) => f.split(' ')));
   const real = (lower.match(/[a-z\u0900-\u097f']+/g) || []).filter((w) => !fset.has(w) && (/[aeiouy]/.test(w) || /[\u0900-\u097f]/.test(w)) && !/(.)\1{2,}/.test(w));
-  const noAnswer = real.length < 5 || real.length / Math.max(1, words) < 0.5;
-  if (noAnswer) return { words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance: 0, content: 0, delivery: Math.min(delivery, 10), score: Math.min(5, Math.round(real.length)), tips: ['No real answer detected. Answer the question in full sentences: what you did, how, and the result.', ...tips], rewrite: '', noAnswer: true };
-  return { noAnswer: false, words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance, content, delivery, score: Math.round(0.55 * content + 0.45 * delivery), tips, rewrite: naturalize(t) };
+  const toks = lower.match(/[a-z']+/g) || [], commonRatio = toks.length ? toks.filter((w) => COMMON.has(w.replace(/'s$/, ''))).length / toks.length : 0;
+  const nonsense = real.length / Math.max(1, words) < 0.5 || (toks.length >= 3 && commonRatio < 0.25);
+  const tooShort = !nonsense && real.length > 0 && real.length < 5;
+  const noAnswer = nonsense || real.length === 0;
+  if (tooShort) return { words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance: 0, content: 0, delivery: Math.min(delivery, 20), score: Math.min(10, real.length * 2), tips: ['Answer too short. Add what you did, how you did it, and the result.'], rewrite: naturalize(t), noAnswer: false, tooShort: true, commonRatio };
+  if (noAnswer) return { tooShort: false, commonRatio, words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance: 0, content: 0, delivery: Math.min(delivery, 10), score: Math.min(5, Math.round(real.length)), tips: ['No real answer detected. Answer the question in full sentences: what you did, how, and the result.', ...tips], rewrite: '', noAnswer: true };
+  return { noAnswer: false, tooShort: false, commonRatio, words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance, content, delivery, score: Math.round(0.55 * content + 0.45 * delivery), tips, rewrite: naturalize(t) };
 }
 /** "Say it more naturally": removes fillers, swaps slang and stiff phrases. Uses only your own words. */
 export function naturalize(t: string) {

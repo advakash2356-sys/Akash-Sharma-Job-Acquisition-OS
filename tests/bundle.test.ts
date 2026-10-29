@@ -101,3 +101,12 @@ test('one-stop: CTC mismatch + free mail + fee = red', () => { const r = checkOn
   assert.equal(r.verdict, 'red'); assert.ok(r.cross.some((c) => /CTC differs/.test(c.title))); assert.ok(r.cross.some((c) => /free email/.test(c.title))); });
 test('voice: um-only or gibberish answers score near 0', () => { for (const t of ['um uh um basically um', 'asdfgh qwrtzp xkcdv bbbbb zzzzz mmmm']) { const a = analyze(t, 8, ['team'], 'hr'); assert.ok(a.noAnswer, t); assert.ok(a.score <= 5, String(a.score)); }
   assert.ok(!analyze('I led a team of eight people and we cut delays by thirty percent last year.', 8, ['team'], 'hr').noAnswer); });
+test('voice: made-up words near 0; short genuine answer is "too short"', () => { const a = analyze('blah florp zing wobble quix snarf', 6, ['team'], 'hr'); assert.ok(a.noAnswer && a.score <= 5, String(a.score));
+  const b = analyze('Yes, I did that', 3, ['team'], 'hr'); assert.ok(b.tooShort && !b.noAnswer); });
+import { addAnswer, NEW_GAME, sanity, toLevel, reminderIcs } from '../src/lib/voiceGame';
+test('game: baseline 4-5, small capped growth, gate gives 0', () => {
+  const good = analyze('When I was at my last job our team had to cut delivery delays. I decided to set up a daily tracker with the vendors and I called each one every morning. As a result we reduced delays by 30% in two months and the customer was happy.', 40, ['team', 'result', 'delay'], 'behavioural');
+  assert.ok(sanity(good).ok); let g = addAnswer(NEW_GAME, good, '2026-10-29').game; assert.ok(g.level! >= 4 && g.level! <= 5);
+  for (let i = 0; i < 10; i++) g = addAnswer(g, good, '2026-10-29').game; assert.ok(g.todayGain <= 0.3 + 1e-9); assert.ok(g.level! - g.baseline! <= 0.3 + 1e-9);
+  const bad = addAnswer(g, analyze('um uh um basically um', 5, ['team'], 'hr'), '2026-10-29'); assert.ok(!bad.counted && bad.rating === 0 && bad.game.xp === g.xp);
+  const next = addAnswer(g, good, '2026-10-30').game; assert.equal(next.streak, 2); assert.equal(toLevel(100), 10); assert.ok(/RRULE:FREQ=DAILY/.test(reminderIcs(19, 'https://x'))); });
