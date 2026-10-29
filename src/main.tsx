@@ -6,6 +6,8 @@ import SiteBanner from './components/SiteBanner';
 import './index.css';
 import { CONSENT_EVENT, countVisit, statsOptedOut, visitSource } from './lib/analytics';
 import { rememberSource } from './lib/googleAuth';
+import { inject } from '@vercel/analytics';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 
 // Clean public URLs (/about, /scam-shield, /h1b-sprint, /gov-jobs, ...) open that page of the app.
 const m = location.pathname.match(/^\/(about|terms|feedback|privacy|security|accessibility|scam-shield|offer-shield|remote-kit|h1b-sprint|gov-jobs)\/?$/);
@@ -14,6 +16,9 @@ const isAdmin = /^\/admin\/?$/.test(location.pathname);
 if (!isAdmin) {
   countVisit(); // no-op until the visitor consents
   rememberSource(visitSource()?.source || '', !statsOptedOut());
+  // Vercel Web Analytics + Speed Insights: cookieless; skipped for visitors who opted out of stats.
+  inject({ beforeSend: (e) => (statsOptedOut() ? null : e) });
+  injectSpeedInsights();
   window.addEventListener(CONSENT_EVENT, () => { if (!statsOptedOut()) { countVisit(); rememberSource('', true); } }, { once: true });
 }
 
