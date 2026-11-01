@@ -18,7 +18,7 @@ let cache: { at: number; out: GovFeed } | null = null;
 
 export interface GovPosting {
   id: string; title: string; org: string; state: string; location: string; lastDate: string; startDate?: string;
-  pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; applyUrl?: string;
+  pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; /** "site" = link is the body's careers/listing page, not the advert itself. */ linkKind?: "notice" | "site"; applyUrl?: string;
   postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS" | "JAOS curated (official notice)"; lesserKnown: boolean; verifiedAt: string;
   /** Playbook §5 fields (best effort from the notice text; empty when not stated). */
   level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; minAge?: number; maxAge?: number; eduTags?: string[];
@@ -39,7 +39,7 @@ export function empTypeOf(t: string): EmpType {
   if (/deputation|absorption/i.test(t)) return "deputation";
   if (/apprentice/i.test(t)) return "apprenticeship";
   if (/\b(JRF|SRF|fellow(ship)?|young professional)\b/i.test(t)) return "fellowship";
-  if (/contract|contractual|project (associate|assistant|scientist)|walk-?in|consultant|tenure/i.test(t)) return "contractual";
+  if (/contract basis|on contract\b|contractual|fixed[- ]term|project (associate|assistant|scientist)|walk-?in|consultant|tenure/i.test(t)) return "contractual";
   return "permanent";
 }
 export function agesOf(t: string): { minAge?: number; maxAge?: number } {

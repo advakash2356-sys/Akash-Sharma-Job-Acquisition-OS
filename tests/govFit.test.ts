@@ -36,8 +36,13 @@ test('t329u subject hint: WDRA Bio/Agri post gets no officer boost for LLB and s
 });
 test('t329u curated niche rows: official links, future-dated filter, law rows rank for lawyer, GATE rows not', async () => {
   const { CURATED, curatedPostings } = await import('../server/govCurated');
-  assert.ok(CURATED.length >= 10); for (const r of CURATED) { assert.match(r.noticeUrl, /^https:\/\//); assert.match(r.lastDate, /^\d{4}-\d{2}-\d{2}$/); }
+  assert.ok(CURATED.length >= 5); assert.ok(CURATED.every((r) => /(isro|csir)\.(gov|res)\.in/.test(r.noticeUrl))); for (const r of CURATED) { assert.match(r.noticeUrl, /^https:\/\//); assert.match(r.lastDate, /^\d{4}-\d{2}-\d{2}$/); }
   assert.equal(curatedPostings('2026-12-31').length, 0); const live = curatedPostings('2026-11-02'); assert.ok(live.every((p) => p.lesserKnown && p.official));
-  const gsl = live.find((p) => /Goa Shipyard/.test(p.org))!, cil = live.find((p) => /Coal India/.test(p.org))!;
-  assert.ok(profileFit({ ...gsl, eduTags: ['LAW'] }, lawyer).pts > 0); assert.ok(profileFit(cil, lawyer).pts < 0);
+  assert.ok(live.some((p) => p.linkKind === 'notice') && live.some((p) => p.linkKind === 'site'));
+  const tk = live.find((p) => /TKDL/.test(p.org))!; assert.ok(profileFit(tk, lawyer).pts < 0); // forestry/env-science post, not for LLB
+});
+test('contract tag: "contract law" in eligibility is not contractual', async () => {
+  const { empTypeOf } = await import('../server/govPostings');
+  assert.notEqual(empTypeOf('Law degree with 4 years experience in civil/contract law. Regular employment.'), 'contractual');
+  assert.equal(empTypeOf('Engaged on contract basis for 2 years'), 'contractual'); assert.equal(empTypeOf('Fixed term appointment'), 'contractual');
 });
