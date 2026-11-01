@@ -8,7 +8,7 @@
  * emails and phone numbers are stripped from snippets. Nothing is invented: a missing field is shown as "see notice".
  */
 import { dmy } from "./govtFeed.js";
-import { inDomain } from "../src/lib/gov/providers.js";
+import { inDomain } from "../src/lib/gov/domain.js";
 
 const FH = "https://freehire.me/api/v1/jobs/search";
 const RSS = "https://sarkarimap.org/rss.xml";

@@ -9,15 +9,8 @@ export interface CountryJobProvider {
   /** Is this URL on an official government or whitelisted public-sector domain? */
   verifyOfficialDomain(url: string): { trusted: boolean; tier: 'GOV_TLD' | 'WHITELIST_PSU' | 'UNTRUSTED' };
 }
-const host = (u: string) => { try { return new URL(u).hostname.toLowerCase(); } catch { return ''; } };
-const onDomain = (h: string, d: string) => h === d || h.endsWith('.' + d);
-export const IN_WHITELIST = ['ibps.in', 'sbi.co.in', 'rbi.org.in', 'nabard.org', 'pfrda.org.in', 'licindia.in', 'ntpc.co.in', 'ongcindia.com', 'bhel.com', 'iocl.com', 'coalindia.in', 'sailcareers.com', 'becil.com', 'edcilindia.co.in', 'careerindianairforce.cdac.in', 'samarth.edu.in', 'digialm.com'];
-export function inDomain(url: string) {
-  const h = host(url); if (!h || !/^https?:/.test(url)) return { trusted: false, tier: 'UNTRUSTED' as const };
-  if (/\.(gov\.in|nic\.in|ac\.in|edu\.in|res\.in)$/.test(h)) return { trusted: true, tier: 'GOV_TLD' as const };
-  if (IN_WHITELIST.some((d) => onDomain(h, d))) return { trusted: true, tier: 'WHITELIST_PSU' as const };
-  return { trusted: false, tier: 'UNTRUSTED' as const };
-}
+import { host, onDomain, inDomain } from './domain';
+export { inDomain, IN_WHITELIST } from './domain';
 const tld = (re: RegExp, extra: string[] = []) => (url: string) => { const h = host(url); return re.test(h) || extra.some((d) => onDomain(h, d)) ? { trusted: true, tier: 'GOV_TLD' as const } : { trusted: false, tier: 'UNTRUSTED' as const }; };
 const s = (name: string, url: string, covers: string): Source => ({ name, url, covers, reach: 'ok' });
 
