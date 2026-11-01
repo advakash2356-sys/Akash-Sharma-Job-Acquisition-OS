@@ -114,7 +114,7 @@ import { keysFrom } from '../src/lib/voiceInterview';
 test('voice: follow-up keys come from the follow-up question; .ics in UTC', () => {
   assert.ok(keysFrom('How do you plan your work now to avoid that?').some((k) => k.startsWith('plan')));
   const ics = reminderIcs(19, 'https://x', new Date('2026-11-01T10:00:00Z')); assert.match(ics, /DTSTART:\d{8}T\d{6}Z/); assert.match(ics, /DTSTAMP:20261101T100000Z/); });
-import { defaults, setBoth, load, KEY, NO_CONSENT, setConsent, expire, addMonths, exportJson, CONSENT_TEXT } from '../src/lib/consent';
+import { setBoth, load, KEY, NO_CONSENT, setConsent, expire, addMonths, exportJson, CONSENT_TEXT } from '../src/lib/consent';
 test('consent: NO_CONSENT shape, timestamped, 6-month CV retention, withdraw and expiry logged', () => {
   assert.equal(NO_CONSENT.sms.given, false); assert.equal(NO_CONSENT.cv.given, false);
   let s = setConsent(NO_CONSENT, 'cv', true, 'profile', '2026-11-01T06:00:00.000Z'); assert.equal(s.cv.until, '2027-05-01T06:00:00.000Z'); assert.equal(s.log[0].text, CONSENT_TEXT.cv);
@@ -122,13 +122,14 @@ test('consent: NO_CONSENT shape, timestamped, 6-month CV retention, withdraw and
   const e = expire(s, '2027-05-02T00:00:00.000Z'); assert.equal(e.cv.given, false); assert.equal(e.log.at(-1)!.action, 'expired');
   assert.equal(addMonths('2026-08-31T00:00:00.000Z', 6), '2027-02-28T00:00:00.000Z'); assert.ok(JSON.parse(exportJson(s)).log.length === 3); });
 
-test('consent: ticked by default, untick persists after reload, withdraw both, export succeeds', () => {
+test('consent: optional and unticked by default, tick records, untick persists after reload, withdraw both, export succeeds', () => {
   const mem = new Map<string, string>(); (globalThis as any).localStorage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v); }, removeItem: (k: string) => { mem.delete(k); } };
   (globalThis as any).window = { dispatchEvent() { return true; } };
-  let s = load(); assert.equal(s.sms.given, true); assert.equal(s.cv.given, true); assert.ok(s.cv.until); assert.deepEqual(s.log.map((e) => e.action), ['default-on', 'default-on']);
-  s = setConsent(s, 'sms', false, 'profile'); mem.set(KEY, JSON.stringify(s));
+  let s = load(); assert.equal(s.sms.given, false); assert.equal(s.cv.given, false); assert.equal(s.log.length, 0); assert.equal(mem.size, 0, 'nothing stored until the user acts');
+  s = setConsent(s, 'sms', true, 'gov-jobs'); s = setConsent(s, 'cv', true, 'gov-jobs'); mem.set(KEY, JSON.stringify(s));
+  assert.ok(load().sms.given && load().cv.until, 'click records consent with timestamp and retention date');
+  s = setConsent(load(), 'sms', false, 'gov-jobs'); mem.set(KEY, JSON.stringify(s));
   const r = load(); assert.equal(r.sms.given, false, 'untick persists after reload'); assert.equal(r.cv.given, true);
-  const w = setBoth(r, false, 'profile'); assert.equal(w.cv.given, false); assert.equal(w.log.at(-1)!.action, 'withdrawn');
+  const w = setBoth(r, false, 'gov-jobs'); assert.equal(w.cv.given, false); assert.equal(w.log.at(-1)!.action, 'withdrawn');
   const j = JSON.parse(exportJson(w)); assert.equal(j.current.sms.given, false); assert.equal(j.log.length, 4); assert.ok(j.version);
-  assert.equal(defaults('2026-11-01T00:00:00.000Z').cv.until, '2027-05-01T00:00:00.000Z');
   delete (globalThis as any).localStorage; delete (globalThis as any).window; });
