@@ -5,7 +5,7 @@ export type Spec = '' | 'law' | 'engineering' | 'medical' | 'finance' | 'other';
 export type Edu = '10' | '12' | 'iti' | 'diploma' | 'grad' | 'eng' | 'pg';
 export type Cat = 'GEN' | 'EWS' | 'OBC' | 'SC' | 'ST';
 export type Gender = 'male' | 'female' | 'other';
-export interface Profile { dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec }
+export interface Profile { dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec; /** true once the user picked education on this page themselves */ eduSet?: boolean }
 export interface Exam {
   id: string; name: string; body: string; group: 'UPSC' | 'SSC' | 'Banking' | 'Railways' | 'Defence' | 'Courts' | 'PSU / Research' | 'Postal';
   minAge: number; maxAge: number; asOn: string; // age reckoning date in the notification used

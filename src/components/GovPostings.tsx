@@ -4,7 +4,7 @@ import { Badge, Button, Card, Input, Label, Select } from './ui';
 import { usePersisted } from '../lib/persist';
 import { downloadText } from '../lib/exportResult';
 import { filterPostings } from '../lib/gov/filter';
-import { BADGE_TEXT, eligibilityBadge, profileFit, rankScore } from '../lib/gov/rank';
+import { BADGE_TEXT, eligibilityBadge, profileFit, profileOverlap, rankScore } from '../lib/gov/rank';
 import type { Profile } from '../lib/govJobs';
 
 /** Live government job POSTINGS (not just exams): last date, state, pay, vacancies, official notice. Akash Sync Agent. */
@@ -13,7 +13,7 @@ interface Feed { postings: GovPosting[]; checkedAt: string; warnings: string[]; 
 const daysLeft = (d: string) => Math.ceil((Date.parse(d) - Date.parse(new Date().toISOString().slice(0, 10))) / 864e5);
 const fmt = (d: string) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '');
 
-export function GovPostings({ homeState, profile }: { homeState?: string; profile?: Profile | null }) {
+export function GovPostings({ homeState, profile, keywords = [] }: { homeState?: string; profile?: Profile | null; keywords?: string[] }) {
   const [feed, setFeed] = useState<Feed | null>(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const [ack, setAck] = usePersisted<string>('jaos_gov_postings_ack', '');
   const [f, setF] = usePersisted('jaos_gov_postings_filter', { q: '', state: '', lesser: false, official: false, soon: false, sort: 'rank', deputation: false });
@@ -21,7 +21,7 @@ export function GovPostings({ homeState, profile }: { homeState?: string; profil
   useEffect(() => { load(); }, []);
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
   const list = filterPostings(feed?.postings || [], f)
-    .map((p) => { const fit = profileFit(p, profile); return { p, fit, score: rankScore(p, f.q.split(/[\s,]+/)) + fit.pts }; })
+    .map((p) => { const fit = profileFit(p, profile); return { p, fit, score: rankScore(p, f.q.split(/[\s,]+/)) + fit.pts + (fit.subjects ? 0 : profileOverlap(p, keywords).pts) }; })
     .sort((a, b) => (f.sort === 'rank' ? b.score - a.score : 0) || a.p.lastDate.localeCompare(b.p.lastDate)).filter((x) => f.sort !== 'rank' || !x.fit.belowLevel).map((x) => x.p);
   const hidden = f.sort === 'rank' ? (feed?.postings || []).filter((p) => profileFit(p, profile).belowLevel).length : 0;
   const csv = () => downloadText('gov-postings.csv', ['title,org,state,location,last_date,pay,vacancies,notice'].concat(list.map((p) => [p.title, p.org, p.state, p.location, p.lastDate, p.pay, p.vacancies, p.noticeUrl].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','))).join('\n'), 'text/csv');
@@ -58,6 +58,7 @@ export function GovPostings({ homeState, profile }: { homeState?: string; profil
         <li key={p.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-posting">
           <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="font-medium">{p.title}</div><div className="text-sm text-muted-foreground">{p.org}{p.location ? ` · ${p.location}` : ''}</div></div>
             <div className="flex flex-wrap gap-1">{p.lesserKnown && <Badge tone="primary">Lesser-known</Badge>}{p.level && <Badge tone="muted">{p.level}</Badge>}{p.employmentType && p.employmentType !== 'permanent' && <Badge tone="gold">{p.employmentType}</Badge>}<Badge tone={left <= 3 ? 'danger' : 'muted'}>{left <= 0 ? 'Closes today' : `${left} day${left === 1 ? '' : 's'} left`}</Badge></div></div>
+          {(() => { const o = profileOverlap(p, keywords); return o.hits.length ? <p className="mt-1 text-xs text-muted-foreground" data-testid="gp-match">Matches your profile: {o.hits.join(', ')}</p> : null; })()}
           {(() => { const e = eligibilityBadge(p, profile || null); return <p className="mt-2 text-sm" data-testid="gp-elig"><Badge tone={e.badge === 'likely' ? 'primary' : e.badge === 'maynot' ? 'danger' : 'muted'}>{BADGE_TEXT[e.badge]}</Badge> <span className="text-xs text-muted-foreground">{e.why.join(' ')}</span></p>; })()}
           <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
             <div><dt className="inline text-muted-foreground">Last date: </dt><dd className="inline font-medium" data-testid="gp-last">{fmt(p.lastDate)}</dd></div>

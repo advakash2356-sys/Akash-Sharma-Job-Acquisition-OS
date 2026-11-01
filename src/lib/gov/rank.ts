@@ -85,3 +85,11 @@ export function subjectFit(eligibility: string, spec?: string): { named: string[
   if (!named.length || !spec || !SPEC_SUBJ[spec]) return { named, fits: null };
   return { named, fits: named.some((n) => SPEC_SUBJ[spec].includes(n)) };
 }
+
+/** Overlap between the shared JAOS profile (roles, headline, skills) and a posting's title + eligibility (never org). 0-30 pts. */
+export function profileOverlap(p: Pick<RankInput, 'title' | 'eligibility'>, kws: string[]): { pts: number; hits: string[] } {
+  if (!kws.length) return { pts: 0, hits: [] }; const hay = ` ${p.title} ${p.eligibility} `.toLowerCase();
+  const hits = kws.filter((k) => new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(hay));
+  const titleHits = kws.filter((k) => p.title.toLowerCase().includes(k)).length;
+  return { pts: Math.min(30, hits.length * 8 + titleHits * 6), hits: hits.slice(0, 4) };
+}
