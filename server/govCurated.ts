@@ -1,6 +1,6 @@
 // Curated lesser-known official postings (t329u). Each row was read from the recruiting body's notice or a summary of it on 2 Nov 2026;
 // noticeUrl is the body's own site. Rows drop off automatically after their last date. Verify on the official notice before applying. Akash Sync Agent.
-import type { GovPosting } from "./govPostings";
+import type { GovPosting } from "./govPostings.js";
 type Row = Pick<GovPosting, "title" | "org" | "state" | "location" | "lastDate" | "pay" | "vacancies" | "eligibility" | "noticeUrl">;
 export const CURATED_CHECKED = "2026-11-02";
 export const CURATED: Row[] = [

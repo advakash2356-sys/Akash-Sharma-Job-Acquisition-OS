@@ -1,4 +1,4 @@
-import { CURATED_CHECKED, curatedPostings } from "./govCurated";
+import { CURATED_CHECKED, curatedPostings } from "./govCurated.js";
 /**
  * Government job POSTINGS feed (public, read-only). Akash Sync Agent.
  * Sources, read on the server only (the browser talks to our own /api/gov/postings, so CSP gains no new origin):
