@@ -19,3 +19,11 @@ test('BA+LLB+9y: junior posts hidden and never above legal/officer posts', () =>
 });
 test('fresher still sees entry posts at the top, nothing hidden', () => { const r = rank(fresher); assert.ok(r.every((x) => !x.hide)); assert.ok(['Gramin Dak Sevak (GDS)', 'Multi Tasking Staff (MTS)', 'Lower Division Clerk'].includes(r[0].t)); });
 test('no profile: unchanged behaviour', () => assert.equal(profileFit(posts[0], null).pts, 0));
+test('NO-GO 1: WDRA Under Secretary (Technical) needing Bio/Agri is not a law match', () => {
+  const w = P('Under Secretary (Technical)', { org: 'Warehousing Development and Regulatory Authority (WDRA)', eligibility: 'Masters in Biology / Agriculture with experience', eduTags: ['PG'] });
+  assert.equal(profileFit(w, lawyer).field, false); assert.ok(!eligibilityBadge(w, lawyer).why.some((x) => /law background/.test(x)));
+});
+test('NO-GO 2: RRB Group C manager/supervisor titles are not senior', () => {
+  for (const t of ['Goods Train Manager', 'Chief Commercial cum Ticket Supervisor']) { const p = P(t, { org: 'RRB', pay: 'Rs 29,200 - 35,400 (Level 5/6)' }); assert.notEqual(tierOf(p), 'senior', t); assert.ok(profileFit(p, lawyer).pts <= 0, t); }
+  assert.equal(tierOf(P('Manager', { pay: 'Rs 35,400' })), 'mid'); assert.equal(tierOf(P('Assistant Manager', { pay: 'Level 10 of pay matrix' })), 'senior'); assert.equal(tierOf(P('Officer', { pay: 'Rs 56,100 - 1,77,500' })), 'senior');
+});

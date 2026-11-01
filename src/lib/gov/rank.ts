@@ -41,18 +41,30 @@ export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new
 // ---- Profile fit (t326u): experience, degree and career level drive "Best match". Uses only the posting's own text. ----
 export type Tier = 'junior' | 'mid' | 'senior';
 const JUNIOR = /\b(group\s*[cd]|multi[- ]?tasking|mts|gds|gramin dak|dak sevak|constable|peon|sweeper|safai|chowkidar|watchman|helper|attendant|driver|cook|mali|apprentice|trainee clerk|clerk|lower division|ldc|udc|typist|data entry|deo|stenographer|steno|junior assistant|office assistant|record keeper|process server|bailiff|chaprasi|orderly|daftary|home guard|agniveer|tradesman|khalasi|track maintainer|lab attendant)\b|10th pass|12th pass|matric|ssc\s*\(?10|level[- ]?[1-3]\b/i;
-const SENIOR = /\b(group\s*a|gazetted|officer|manager|director|deputy|assistant (?:director|commissioner|professor|registrar|legal adviser|public prosecutor)|registrar|judge|judicial|magistrate|civil judge|public prosecutor|prosecutor|counsel|advocate|legal (?:advisor|adviser|officer|consultant|manager|assistant|associate)|law officer|standing counsel|consultant|specialist|scientist|engineer|professor|lecturer|member|commissioner|controller|superintendent|executive|head|chief|lateral)\b|level[- ]?(?:1[0-8]|[7-9])\b|post[- ]?qualification experience|years?(?:'|’)? (?:of )?experience/i;
-const SPEC_RE: Record<string, RegExp> = { law: /\b(law|legal|llb|ll\.b|llm|advocate|judicial|judge|judiciary|court|tribunal|prosecutor|counsel|bar council|registrar|magistrate|notary|regulatory|compliance)\b/i, engineering: /\b(engineer|engineering|b\.?e\b|b\.?tech|technical|gate)\b/i, medical: /\b(medical|mbbs|doctor|nurse|pharmac|health|dental|ayush)\b/i, finance: /\b(accounts?|finance|chartered accountant|\bca\b|cma|icwa|company secretary|audit|treasury)\b/i, other: /$^/ };
+const SENIOR_TITLE = /\b(gazetted|judge|judicial|magistrate|public prosecutor|prosecutor|counsel|legal (?:advisor|adviser|officer|consultant|manager)|law officer|scientist|professor|director|deputy|commissioner|registrar|under secretary|secretary|controller|superintendent of police|lateral)\b/i;
+const NOT_SENIOR = /\b(junior|clerk|mts|gds|constable|peon|stenographer|typist|trainee|train manager|guard|ticket|commercial cum|station master|loco pilot|goods)\b|group\s*[cd]\b/i;
+const LAW_RE = /\b(law|legal|llb|ll\.b|llm|advocate|judicial|judge|judiciary|court|tribunal|prosecutor|counsel|bar council|magistrate|notary)\b/i;
+const SPEC_RE: Record<string, RegExp> = { law: LAW_RE, engineering: /\b(engineer|engineering|b\.?e\b|b\.?tech|technical|gate)\b/i, medical: /\b(medical|mbbs|doctor|nurse|pharmac|health|dental|ayush)\b/i, finance: /\b(accounts?|finance|chartered accountant|\bca\b|cma|icwa|company secretary|audit|treasury)\b/i, other: /$^/ };
+/** Pay level and lowest basic stated in the pay text, if any. */
+export function payFacts(pay: string): { level?: number; basic?: number } {
+  const l = pay.match(/level[- ]?(\d{1,2})\b/i); const n = (pay.match(/\d{1,3}(?:,\d{2,3})+|\d{5,6}/g) || []).map((x) => Number(x.replace(/,/g, ''))).filter((x) => x >= 5000);
+  return { level: l ? Number(l[1]) : undefined, basic: n.length ? Math.min(...n) : undefined };
+}
+/** Senior = Group A/B, Gazetted, Level 10+ or basic >= Rs 56,100 when pay is known; otherwise only clear officer-grade titles. "Manager"/"supervisor" alone is not enough. */
 export function tierOf(p: Pick<RankInput, 'title' | 'org' | 'eligibility' | 'pay'> & { eduTags?: string[] }): Tier {
   const t = `${p.title} ${p.eligibility} ${p.pay}`;
-  const jr = JUNIOR.test(t) || (!!p.eduTags?.length && p.eduTags.every((x) => ['10TH', '12TH', 'ITI'].includes(x)));
-  if (SENIOR.test(`${p.title} ${p.pay}`) && !/\b(junior|clerk|mts|gds|constable|peon|stenographer|typist|trainee)\b/i.test(p.title)) return 'senior';
+  const jr = JUNIOR.test(t) || NOT_SENIOR.test(p.title) && /group\s*[cd]\b/i.test(t) || (!!p.eduTags?.length && p.eduTags.every((x) => ['10TH', '12TH', 'ITI'].includes(x)));
+  if (NOT_SENIOR.test(p.title) || /group\s*[cd]\b/i.test(t)) return jr ? 'junior' : 'mid';
+  if (/group\s*[ab]\b|gazetted/i.test(t)) return 'senior';
+  const { level, basic } = payFacts(p.pay);
+  if (level !== undefined || basic !== undefined) return (level ?? 0) >= 10 || (basic ?? 0) >= 56100 ? 'senior' : jr ? 'junior' : 'mid';
+  if (SENIOR_TITLE.test(p.title)) return 'senior';
   return jr ? 'junior' : 'mid';
 }
 export const isExperienced = (prof?: Profile | null) => !!prof && (prof.expYears ?? 0) >= 5 && (EDU_RANK[prof.edu] || 0) >= 3;
 /** Points added to rankScore and a reason. Experienced graduates: junior posts sink hard, senior/field-matched posts rise. Juniors/freshers: entry posts stay. */
 export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; tier: Tier; field: boolean; belowLevel: boolean } {
-  const tier = tierOf(p); const field = !!prof?.spec && !!SPEC_RE[prof.spec]?.test(`${p.title} ${p.org} ${p.eligibility}`);
+  const tier = tierOf(p); const field = !!prof?.spec && !!SPEC_RE[prof.spec]?.test(`${p.title} ${p.eligibility}`); // org name never counts (t326u NO-GO)
   if (!prof) return { pts: 0, tier, field, belowLevel: false };
   const exp = prof.expYears ?? 0, senior = isExperienced(prof);
   let pts = field ? 25 : 0;
