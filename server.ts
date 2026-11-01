@@ -1,3 +1,4 @@
+import { govPostings } from "./server/govPostings.js";
 import { requireUser } from "./server/requireUser.js";
 import { publicBanner } from "./server/admin.js";
 import { adminCheck, adminData, adminOp, adminSaveConfig, adminWhoami } from "./server/admin.js";
@@ -21,6 +22,7 @@ async function startServer() {
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+  app.get("/api/gov/postings", async (_req, res) => { try { res.json(await govPostings()); } catch (e: any) { res.status(502).json({ error: e.message }); } });
   app.get("/api/status", async (_req, res) => res.json({ serverKey: serverKeyConfigured(), googleClientId: googleClientId() || null, banner: await publicBanner() }));
   app.post("/api/auth/google", async (req, res) => {
     try {
