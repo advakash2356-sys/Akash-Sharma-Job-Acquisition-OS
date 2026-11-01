@@ -180,3 +180,13 @@ test('gov rank + eligibility badge: urgency, lesser-known, three states only', (
   const prof: any = { dob: '1995-01-01', edu: 'grad', cat: 'OBC', pwbd: false, state: 'Delhi' }; assert.equal(relaxation(prof), 3);
   assert.equal(eligibilityBadge(p, prof, '2026-11-01').badge, 'likely'); assert.equal(eligibilityBadge({ ...p, maxAge: 25 }, prof).badge, 'maynot');
   assert.equal(eligibilityBadge({ ...p, maxAge: undefined, eduTags: [] }, prof).badge, 'verify'); assert.equal(eligibilityBadge({ ...p, employmentType: 'deputation' }, prof).badge, 'maynot'); });
+import { filterPostings } from '../src/lib/gov/filter';
+test('gov fixtures: deputation hidden by default and shown when toggled; scam postings dropped', () => {
+  const base = { title: 'Stenographer', org: 'Ministry X', location: 'Delhi', eligibility: '', state: 'Delhi', lesserKnown: false, official: true, lastDate: '2026-12-01' };
+  const list = [{ ...base, employmentType: 'deputation' }, { ...base, title: 'Clerk', employmentType: 'permanent' }];
+  const f = { q: '', state: '', lesser: false, official: false, soon: false, deputation: false };
+  assert.deepEqual(filterPostings(list, f).map((p) => p.title), ['Clerk']); assert.equal(filterPostings(list, { ...f, deputation: true }).length, 2);
+  const raw = (extra: string) => ({ public_slug: 's', title: 'MTS', company: 'Office Y', location: 'Delhi', description: `Last Date: 05.12.2026<br>Notification: https://y.gov.in/n.pdf<br>${extra}` });
+  const keep = fromFreeHire(raw('Graduate'), '2026-11-01'); assert.ok(keep && enrich(keep, 'Graduate'));
+  for (const bad of ['Pay fee to jobs@ybl', 'WhatsApp number 9xxxxxxxxx for joining', 'Security deposit Rs 2000', 'Confirmed sarkari job without exam']) assert.equal(enrich(fromFreeHire(raw(bad), '2026-11-01')!, bad), null, bad);
+  assert.equal(enrich(fromFreeHire(raw('Applications on deputation basis'), '2026-11-01')!, 'Applications on deputation basis')!.employmentType, 'deputation'); });

@@ -3,6 +3,7 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, Select } from './ui';
 import { usePersisted } from '../lib/persist';
 import { downloadText } from '../lib/exportResult';
+import { filterPostings } from '../lib/gov/filter';
 import { BADGE_TEXT, eligibilityBadge, rankScore } from '../lib/gov/rank';
 import type { Profile } from '../lib/govJobs';
 
@@ -19,9 +20,7 @@ export function GovPostings({ homeState, profile }: { homeState?: string; profil
   const load = async () => { setBusy(true); setErr(''); try { const r = await fetch('/api/gov/postings', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); setFeed(j); } catch (e: any) { setErr(`The official government portals and feeds are temporarily slow or under maintenance (${e.message}). Servers are busiest near closing hours (5 pm to midnight IST); try again in the morning. The eligibility checker below still works.`); } finally { setBusy(false); } };
   useEffect(() => { load(); }, []);
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
-  const list = (feed?.postings || []).filter((p) => (!f.state || p.state === f.state || (f.state && p.state === 'All India')) && (!f.lesser || p.lesserKnown) && (!f.official || p.official) && (!f.soon || daysLeft(p.lastDate) <= 7)
-    && (f.deputation || p.employmentType !== 'deputation')
-    && (!f.q || `${p.title} ${p.org} ${p.location} ${p.eligibility}`.toLowerCase().includes(f.q.toLowerCase())))
+  const list = filterPostings(feed?.postings || [], f)
     .map((p) => ({ p, score: rankScore(p, f.q.split(/[\s,]+/)) }))
     .sort((a, b) => (f.sort === 'rank' ? b.score - a.score : 0) || a.p.lastDate.localeCompare(b.p.lastDate)).map((x) => x.p);
   const csv = () => downloadText('gov-postings.csv', ['title,org,state,location,last_date,pay,vacancies,notice'].concat(list.map((p) => [p.title, p.org, p.state, p.location, p.lastDate, p.pay, p.vacancies, p.noticeUrl].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','))).join('\n'), 'text/csv');
@@ -49,6 +48,7 @@ export function GovPostings({ homeState, profile }: { homeState?: string; profil
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.deputation} onChange={(e) => setF({ ...f, deputation: e.target.checked })} data-testid="gp-deputation" /> Show deputation-only posts</label></div>
         <div className="min-w-0"><Label htmlFor="gpo">Sort</Label><Select id="gpo" value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value })} data-testid="gp-sort"><option value="rank">Best match (closing soon, lesser-known, clear pay)</option><option value="date">Last date first</option></Select></div>
       </div>
+      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the eligibility hint:</b> it uses your <b>date of birth</b>, <b>education</b>, <b>category</b> (and PwBD) and <b>state</b> from "Your details" below, saved only in this browser. "Likely eligible" appears only when the posting states both an age limit and a qualification level and you meet them (with standard OBC +3, SC/ST +5, PwBD +10 years). If either is missing from the notice text you see "Needs verification"; deputation-only posts and posts you seem to miss show "May not qualify". It is a hint, not legal advice.</p>
       {err && <p className="text-sm text-danger" role="alert">{err}</p>}
       {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
       {!feed && !err && <div className="h-40 animate-pulse rounded-lg bg-muted" aria-label="Loading postings" />}
