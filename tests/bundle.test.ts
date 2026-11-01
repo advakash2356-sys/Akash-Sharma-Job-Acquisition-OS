@@ -143,3 +143,19 @@ test('extension field map: never fills fields about other people', async () => {
   for (const d of ['reference name', 'referee email', 'emergency contact phone', 'emergency contact name', "father's name", 'mother name', 'guardian mobile', 'spouse name', 'nominee name', 'manager name', 'supervisor email', 'next of kin phone'])
     assert.equal(M.match(d), null, d);
   assert.equal(M.match('full name'), 'fullName'); assert.equal(M.match('phone number'), 'phone'); });
+import { anyDate, fromFreeHire, fromRss, noContacts, payOf, stateOf } from '../server/govPostings';
+test('gov postings: dates, pay, state, official link, no contacts, closed dropped', () => {
+  assert.equal(anyDate('Application Last Date: 05.10.2026'), '2026-10-05'); assert.equal(anyDate('till 14 October 2026'), '2026-10-14'); assert.equal(anyDate('31.02.2026'), '');
+  assert.match(payOf('SPA – 8th Level of Pay Matrix, 7th CPC'), /8th Level/); assert.equal(payOf('Salary: achhi milegi.'), '');
+  assert.equal(stateOf('UKSSSC PA'), 'Uttarakhand'); assert.equal(noContacts('mail a.b@x.gov.in or 9876543210'), 'mail [email removed] or [phone removed]');
+  const raw = { public_slug: 's', title: 'Personal Assistant', company: 'High Court of Delhi', location: 'New Delhi', posted_at: '2026-10-01T00:00:00Z', description: 'Total Vacancies: 33<br>PA – 7th Level of Pay Matrix, 7th CPC<br>Who Can Apply: graduates<br>Application Last Date: 05.12.2026<br>Notification: https://www.delhihighcourt.nic.in/x.pdf<br>' };
+  const p = fromFreeHire(raw, '2026-11-01')!; assert.equal(p.lastDate, '2026-12-05'); assert.ok(p.official && p.lesserKnown); assert.equal(p.state, 'Delhi'); assert.match(p.pay, /7th Level/);
+  assert.equal(fromFreeHire({ ...raw, description: raw.description.replace('05.12.2026', '05.10.2026') }, '2026-11-01'), null, 'closed posting dropped');
+  assert.equal(fromFreeHire({ ...raw, description: 'Last Date: 05.12.2026 apply at example.com' }, '2026-11-01'), null, 'no official link dropped');
+  const rss = '<item><title><![CDATA[NIT Calicut Project Associate Recruitment 2026]]></title><link>https://sarkarimap.org/job/x</link><pubDate>Sat, 31 Oct 2026 06:49:55 GMT</pubDate><description><![CDATA[1 vacancy. Apply 11 November 2026 tak.]]></description></item>';
+  const r = fromRss(rss, '2026-11-01'); assert.equal(r.length, 1); assert.equal(r[0].lastDate, '2026-11-11'); assert.ok(r[0].lesserKnown && !r[0].official); assert.equal(r[0].state, 'Kerala'); });
+import { postingsLimit } from '../api/gov/postings';
+test('gov postings limiter: 12/min per IP then 429 with postings wording', () => {
+  for (let i = 0; i < 12; i++) postingsLimit('1.2.3.4', 1000 + i);
+  assert.throws(() => postingsLimit('1.2.3.4', 2000), (e: any) => e.status === 429 && /government postings/.test(e.message));
+  postingsLimit('5.6.7.8', 2000); postingsLimit('1.2.3.4', 1000 + 61_000); });

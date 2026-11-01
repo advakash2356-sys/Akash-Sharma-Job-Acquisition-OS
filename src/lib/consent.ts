@@ -3,9 +3,9 @@
 export type ConsentKind = 'sms' | 'cv';
 export const CONSENT_TEXT: Record<ConsentKind, string> = {
   sms: 'By checking this box, I consent to receive transactional and marketing text messages regarding employment opportunities.',
-  cv: '*By checking this box, I consent to the storage of my CV for six months to allow employers to assess my suitability for future job opportunities.',
+  cv: '*By checking this box, I consent to the storage of my CV in this browser for six months so that I can share it with employers I choose to assess my suitability for future job opportunities. Job Acquisition OS does not send it to employers.',
 };
-export const CONSENT_VERSION = '2026-11-01c';
+export const CONSENT_VERSION = '2026-11-01d';
 export interface LogEntry { kind: ConsentKind; action: 'given' | 'withdrawn' | 'expired' | 'default-on'; at: string; where: string; text: string; version: string; until?: string }
 export interface ConsentState { sms: { given: boolean; at?: string }; cv: { given: boolean; at?: string; until?: string }; log: LogEntry[] }
 export const NO_CONSENT: ConsentState = { sms: { given: false }, cv: { given: false }, log: [] };
