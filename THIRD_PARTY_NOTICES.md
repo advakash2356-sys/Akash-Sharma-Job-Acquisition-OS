@@ -449,3 +449,6 @@ The common-word list in src/lib/commonWords.ts was written for this project (no 
 
 ## Government job postings feed (server/govPostings.ts, /api/gov/postings)
 No third-party code reused. Data is read on our server from: FreeHire public API (https://github.com/strelov1/freehire, MIT, keyless; Telegram-sourced Indian notices, kept only with an official .gov.in/.nic.in link and a future last date) and the SarkariMap public RSS feed (documented as free for feed readers in https://github.com/suryadev-sm/sarkari-jobs-api; aggregator pages, labelled as such). Only job facts are kept; emails and phone numbers are removed. Searched GitHub for permissive Indian government-vacancy datasets (Nov 2026): none current under MIT/Apache/BSD/ISC/CC0.
+
+## Government Jobs country providers (src/lib/gov/*)
+No new dependencies. Source directory, India rules summary, ranking idea and AU/IT/US portal notes come from the "National Government Job Search Engine Playbook" supplied by Akash (1 Nov 2026); links re-checked from our server the same day. Code written for this project (MIT).

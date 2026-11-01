@@ -1,3 +1,5 @@
+import { CountryComingSoon, SourceDirectory } from '../components/GovCountry';
+import { COUNTRIES, PROVIDERS, type CountryCode } from '../lib/gov/providers';
 import { GovPostings } from '../components/GovPostings';
 import { ConsentBoxes } from '../components/ConsentBoxes';
 import { useMemo, useState } from 'react';
@@ -13,6 +15,7 @@ const STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisga
 
 export default function GovJobs() {
   const [p, setP] = usePersisted<Profile>('jaos_gov_profile', { dob: '', edu: 'grad', stream12: 'other', cat: 'GEN', pwbd: false, esm: false, gender: 'male', state: '' });
+  const [country, setCountry] = usePersisted<CountryCode>('jaos_gov_country', 'IN'); const prov = PROVIDERS[country] || PROVIDERS.IN;
   const [lesserOnly, setLesserOnly] = useState(false); const [fresh, setFresh] = useState('');
   const freshRun = async () => { setFresh('Checking…'); try { const r = await fetch('/data/gov-jobs-version.json', { cache: 'no-store' }); const j = await r.json(); if (j.verified > VERIFIED) { setFresh(`Newer data (${j.verified}) is available. Reloading…`); setTimeout(() => location.reload(), 800); } else setFresh(`Fresh run done ${new Date().toLocaleString('en-IN')}. You have the latest data on this site (verified ${VERIFIED}). Check each official notice for updates after that date.`); } catch { setFresh('Could not check for newer data. Your results use the data verified ' + VERIFIED + '.'); } }; const [showAll, setShowAll] = useState(false);
   const set = (k: keyof Profile) => (e: any) => setP({ ...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
@@ -21,10 +24,13 @@ export default function GovJobs() {
   const n = res.filter((m) => m.ok).length, nl = res.filter((m) => m.ok && m.exam.lesser).length;
   return (
     <>
-      <PageHeader eyebrow="Free · runs in your browser" title="Government Jobs: live postings and eligibility" subtitle="Open government vacancies with last date, state, pay and the official notice, including lesser-known posts people miss. Below, check which exams you are eligible for." />
+      <PageHeader eyebrow="Free · runs in your browser" title="Government Jobs" subtitle={prov.live ? prov.headline : 'Choose a country. India is live; more countries are being added.'} />
+      <div className="mb-5 flex flex-wrap items-end gap-3" data-testid="gov-country"><div className="min-w-0"><Label htmlFor="gc">Country</Label><Select id="gc" value={country} onChange={(e) => setCountry(e.target.value as CountryCode)} data-testid="gov-country-select">{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.flag} {c.name}{c.live ? '' : ' (coming soon)'}</option>)}</Select></div>{prov.live && <p className="min-w-0 flex-1 text-sm text-muted-foreground">{prov.sub}</p>}</div>
+      {!prov.live ? <><CountryComingSoon p={prov} /><p className="text-xs text-muted-foreground">{CREDIT}</p></> : <>
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="gov-disclaimer"><b>Check the official notification before you apply.</b> {DISCLAIMER}</p>
-      <GovPostings homeState={p.state} />
-      <LocalNote onClear={() => { clearPersisted('jaos_gov_profile', 'jaos_gov_postings_filter', 'jaos_gov_postings_ack'); location.reload(); }} />
+      <GovPostings homeState={p.state} profile={p} />
+      <SourceDirectory p={prov} />
+      <LocalNote onClear={() => { clearPersisted('jaos_gov_profile', 'jaos_gov_postings_filter', 'jaos_gov_postings_ack', 'jaos_gov_country'); location.reload(); }} />
       <div className="mb-5"><ConsentBoxes where="gov-jobs" /></div>
       <Steps id="gov" title="Find your government jobs in 4 steps" steps={[{ title: 'Enter your profile below', body: 'Date of birth, education, category, gender and state. Then it is saved in this browser.' }, { title: 'Review your matches', body: 'Check the age pass/fail badge, qualification and pay for each exam. Then use the Lesser-known filter.' }, { title: 'Press Fresh run', body: 'Then open the official notification of each exam you like and check for updates.' }, { title: 'Save or share your shortlist', body: 'Note the exams you will apply for and their official links, then share this page with a friend.' }]} />
       <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-form"><h2 className="text-xl font-medium">Your details</h2>
@@ -73,6 +79,7 @@ export default function GovJobs() {
       <Card className="grid min-w-0 gap-2"><h2 className="text-xl font-medium">How this works</h2>
         <p className="text-sm">Age limits and qualifications are copied by hand from each body's latest notification (checked {VERIFIED}). Age is worked out on the date that notification uses, so the next cycle may differ. Relaxation shown: OBC 3, SC/ST 5, PwBD 10 years where the notice allows it. State PSC exams{p.state ? ` for ${p.state}` : ''} are not listed yet because we only add exams we have verified; check your state Public Service Commission's site.</p>
         <p className="text-xs text-muted-foreground">{CREDIT}.</p></Card>
+      </>}
     </>
   );
 }

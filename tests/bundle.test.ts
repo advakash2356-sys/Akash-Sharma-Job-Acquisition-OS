@@ -159,3 +159,24 @@ test('gov postings limiter: 12/min per IP then 429 with postings wording', () =>
   for (let i = 0; i < 12; i++) postingsLimit('1.2.3.4', 1000 + i);
   assert.throws(() => postingsLimit('1.2.3.4', 2000), (e: any) => e.status === 429 && /government postings/.test(e.message));
   postingsLimit('5.6.7.8', 2000); postingsLimit('1.2.3.4', 1000 + 61_000); });
+import { PROVIDERS, inDomain } from '../src/lib/gov/providers';
+import { IN_SOURCES } from '../src/lib/gov/sources';
+import { rankScore, eligibilityBadge, relaxation } from '../src/lib/gov/rank';
+import { levelOf, empTypeOf, agesOf, eduTagsOf, SCAM, enrich } from '../server/govPostings';
+test('gov providers: India live, AU/IT/US stubs with official sources and no jobs; domain trust', () => {
+  assert.ok(PROVIDERS.IN.live); for (const c of ['AU', 'IT', 'US'] as const) { assert.equal(PROVIDERS[c].live, false); assert.ok(PROVIDERS[c].sources.length >= 2); }
+  assert.ok(IN_SOURCES.length >= 30 && IN_SOURCES.filter((s) => s.lesser).length >= 15 && IN_SOURCES.every((s) => s.url.startsWith('https://') && !s.url.includes('google.com')));
+  assert.equal(inDomain('https://ssc.gov.in/x.pdf').tier, 'GOV_TLD'); assert.equal(inDomain('https://www.sbi.co.in/web/careers').tier, 'WHITELIST_PSU'); assert.equal(inDomain('https://railwayrecruitmentcell.org/').tier, 'UNTRUSTED'); assert.equal(inDomain('https://evilgov.in.example.com/').tier, 'UNTRUSTED');
+  assert.equal(PROVIDERS.US.verifyOfficialDomain('https://www.usajobs.gov/').trusted, true); });
+test('gov postings enrich: level, employment type, ages, education, scam drop', () => {
+  assert.equal(levelOf('High Court of Delhi'), 'judiciary'); assert.equal(levelOf('DSSSB Delhi District Courts'), 'judiciary'); assert.equal(levelOf('Indian Coast Guard'), 'defence'); assert.equal(levelOf('SEBI'), 'regulator');
+  assert.equal(empTypeOf('6 posts on deputation basis'), 'deputation'); assert.equal(empTypeOf('Walk-in interview'), 'contractual');
+  assert.deepEqual(agesOf('Age 18 to 27 years'), { minAge: 18, maxAge: 27 }); assert.deepEqual(eduTagsOf('B.Tech or MCA'), ['ENGINEERING', 'PG']);
+  assert.ok(SCAM.test('pay fee to abc@ybl')); const base: any = { title: 'Clerk', org: 'X', noticeUrl: 'https://x.gov.in/a.pdf', official: true, eligibility: '' };
+  assert.equal(enrich(base, 'Security deposit of Rs 5000 required'), null); assert.equal(enrich(base, 'Graduate. Age 21-30 years')!.maxAge, 30); });
+test('gov rank + eligibility badge: urgency, lesser-known, three states only', () => {
+  const p: any = { lastDate: '2026-11-05', lesserKnown: true, pay: 'Level 7', vacancies: '10', official: true, title: 'Assistant', org: 'SEBI', eligibility: '', state: 'Delhi', maxAge: 30, eduTags: ['GRADUATE'] };
+  assert.ok(rankScore(p, [], '2026-11-01') > rankScore({ ...p, lesserKnown: false, lastDate: '2026-12-30' }, [], '2026-11-01'));
+  const prof: any = { dob: '1995-01-01', edu: 'grad', cat: 'OBC', pwbd: false, state: 'Delhi' }; assert.equal(relaxation(prof), 3);
+  assert.equal(eligibilityBadge(p, prof, '2026-11-01').badge, 'likely'); assert.equal(eligibilityBadge({ ...p, maxAge: 25 }, prof).badge, 'maynot');
+  assert.equal(eligibilityBadge({ ...p, maxAge: undefined, eduTags: [] }, prof).badge, 'verify'); assert.equal(eligibilityBadge({ ...p, employmentType: 'deputation' }, prof).badge, 'maynot'); });
