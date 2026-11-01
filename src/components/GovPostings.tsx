@@ -27,7 +27,8 @@ export function GovPostings({ homeState }: { homeState?: string }) {
       <p className="text-sm text-muted-foreground">Open vacancies with a last date that has not passed, read from public notice feeds on our server (your browser only talks to this site). <b>Always verify on the official notice before applying. Not legal advice.</b> Lesser-known = PSUs, courts, research labs, institutes, regulators and similar roles people often miss.</p>
       <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm" data-testid="gov-declaration" role="note"><b>Before you use this list</b>
         <ul className="ml-5 mt-1 list-disc">
-          <li>These postings come from public government and aggregator feeds. Job Acquisition OS does not collect your personal data for this feed.</li>
+          <li><b>This is not an official government website.</b> These postings are automatically collected (scraped and aggregated) from public government notices and aggregator feeds. Job Acquisition OS does not collect your personal data for this feed.</li>
+          <li>Government hiring is slow: from notice to exam to joining can take months. Needing time and patience is normal.</li>
           <li>To protect the service we limit how often the feed can be requested and keep a copy for about 30 minutes, so a new notice can take a while to appear. Heavy automated misuse could still add hosting costs for us.</li>
           <li><b>Always verify on the official notice before applying.</b> Dates, pay and eligibility can change. Not legal advice.</li>
         </ul>
