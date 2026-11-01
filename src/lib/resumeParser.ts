@@ -30,7 +30,7 @@ async function pdfText(buf: ArrayBuffer): Promise<string> {
 }
 
 async function docxText(buf: ArrayBuffer): Promise<string> {
-  const mammoth: any = (await import('mammoth/mammoth.browser')).default;
+  const mammoth: any = (await import('mammoth')).default ?? (await import('mammoth'));
   try { return (await mammoth.extractRawText({ arrayBuffer: buf })).value; }
   catch { throw new ParseError('This Word file could not be read. Re-save it as .docx or PDF and try again.'); }
 }

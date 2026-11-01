@@ -1,5 +1,3 @@
-import { jsPDF } from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, Footer, HeadingLevel } from 'docx';
 import type { Job, Profile } from '../types';
 import { AI_LABEL, CREDIT, SITE_URL, exportCreditOn } from './brand';
 import { track } from './analytics';
@@ -24,7 +22,8 @@ function save(blob: Blob, name: string) {
 
 const clean = (t: string) => t.replace(/\*\*(.*?)\*\*/g, '$1').replace(/^#{1,6}\s*/gm, '').replace(/^\s*[*-]\s+/gm, '• ');
 
-export function exportPdf(text: string, title: string, base: string) {
+export async function exportPdf(text: string, title: string, base: string) {
+  const { jsPDF } = await import('jspdf');
   const name = `${base}.pdf`;
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight(), m = 56;
@@ -45,6 +44,7 @@ export function exportPdf(text: string, title: string, base: string) {
 }
 
 export async function exportDocx(text: string, title: string, base: string) {
+  const { Document, Packer, Paragraph, TextRun, Footer, HeadingLevel } = await import('docx');
   const name = `${base}.docx`;
   const doc = new Document({
     sections: [{
