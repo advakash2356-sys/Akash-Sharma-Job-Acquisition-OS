@@ -8,7 +8,8 @@ import { checkOrigin, clientIp } from "../../server/guard.js";
  *  1) Vercel Firewall rule "Rate limit gov postings API": 12 requests / 60 s per IP on /api/gov/postings, enforced at the
  *     edge across all instances and regions (shared counter, returns 429 before this function runs). Free, project config.
  *  2) This in-memory per-instance limiter (same limit) as a backstop for local dev and if the rule is ever disabled.
- *  3) Upstream cost is capped by the 30-minute server cache in govPostings() and the CDN cache below.
+ *  3) Upstream cost is capped by the 30-minute server cache in govPostings(). No CDN caching, because CDN cache hits
+ *     were served without being counted by the firewall rule.
  * Query strings are rejected so they can't be used to bust the cache. Vary: Origin keeps the CDN from serving a cached
  * response to a request whose Origin would have been refused.
  */
@@ -25,7 +26,7 @@ export default async function handler(req: any, res: any) {
   try {
     if (String(req.url || "").includes("?")) throw new ApiError(400, "This endpoint takes no query parameters.", "BAD_QUERY");
     checkOrigin(req.headers); postingsLimit(clientIp(req.headers, req.socket?.remoteAddress));
-    res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=3600");
+    res.setHeader("Cache-Control", "private, no-store"); // no CDN cache: every request passes the firewall limit; upstream is still cached 30 min in govPostings()
     res.status(200).json(await govPostings());
   } catch (e: any) { res.setHeader("Cache-Control", "no-store"); res.status(e instanceof ApiError ? e.status : 502).json({ error: e.message || "Failed" }); }
 }
