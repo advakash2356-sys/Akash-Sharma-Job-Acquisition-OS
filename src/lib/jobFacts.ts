@@ -5,6 +5,7 @@ const NUM = String.raw`\d[\d,]*(?:\.\d+)?\s*(?:k|lpa|lakhs?|lacs?|crore|cr|l)?`;
 export function parseSalary(text: string): string {
   const t = text.replace(/\s+/g, ' ');
   const pats = [
+  // Safe: CUR and NUM are fixed constant patterns defined in this file, never user input (semgrep regex-from-var reviewed).
     new RegExp(String.raw`${CUR}\s?${NUM}\s*(?:-|–|to)\s*${CUR}?\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'),
     new RegExp(String.raw`\b${NUM}\s*(?:-|–|to)\s*${NUM}\s*(?:lpa|lakhs? per annum|lakhs?|ctc)\b`, 'i'),
     new RegExp(String.raw`(?:salary|ctc|compensation|pay)[^.]{0,25}?${CUR}\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'),

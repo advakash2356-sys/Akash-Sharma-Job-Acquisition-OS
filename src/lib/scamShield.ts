@@ -1,3 +1,4 @@
+import { reEscape } from './reEscape';
 /** Scam Shield: browser-only warning-sign checks on a recruiter message. Rules only, no AI, nothing sent anywhere.
  *  Built by Akash Sync Agent. Free-mail list: subset of Kikobeats/free-email-domains (MIT). */
 import { FREE_MAIL } from './freeMailDomains';
@@ -34,7 +35,7 @@ export function scanMessage(input: ScamInput): ScamResult {
   const task = m(TASK, t); if (task) signs.push({ level: 'red', title: 'Paid "task" job', detail: 'Liking videos or writing reviews for money is a common task-fraud pattern that later asks for a deposit.', match: task });
   const emails = [input.email || '', ...emailsIn(t)].filter(Boolean);
   const claimed = `${input.company || ''} ${t}`.toLowerCase();
-  const brand = BRANDS.find((b) => new RegExp(`\\b${b}\\b`).test(claimed));
+  const brand = BRANDS.find((b) => new RegExp(`\\b${reEscape(b)}\\b`).test(claimed));
   for (const e of emails) {
     const d = domainOf(e); if (!d) continue;
     if (brand && OFFICIAL[brand] && !OFFICIAL[brand].some((o) => d === o || d.endsWith('.' + o))) {

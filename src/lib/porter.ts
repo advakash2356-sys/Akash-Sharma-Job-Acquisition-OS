@@ -54,7 +54,7 @@ function endsWithDoublCons (token) {
 function attemptReplace (token, pattern, replacement, callback) {
   let result = null
 
-  if ((typeof pattern === 'string') && token.substr(0 - pattern.length) === pattern) { result = token.replace(new RegExp(pattern + '$'), replacement) } else if ((pattern instanceof RegExp) && token.match(pattern)) { result = token.replace(pattern, replacement) }
+  if ((typeof pattern === 'string') && token.substr(0 - pattern.length) === pattern) { result = token.replace(new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), replacement) } else if ((pattern instanceof RegExp) && token.match(pattern)) { result = token.replace(pattern, replacement) }
 
   if (result && callback) { return callback(result) } else { return result }
 }

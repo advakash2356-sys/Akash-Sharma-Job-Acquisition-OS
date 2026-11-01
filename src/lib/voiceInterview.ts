@@ -1,3 +1,4 @@
+import { reEscape } from './reEscape';
 import { COMMON } from './commonWords';
 // Voice interview practice: rule-based scoring of content and delivery, all in the browser. Akash Sync Agent.
 export type Round = 'hr' | 'technical' | 'behavioural';
@@ -25,7 +26,7 @@ const SLANG = ['gonna', 'wanna', 'gotta', 'yeah', 'dude', 'bro', 'cool', 'stuff'
 const STIFF = ['herewith', 'kindly', 'do the needful', 'hereby', 'aforementioned', 'revert back', 'pursuant'];
 const HEDGE = ['i think maybe', 'i guess', 'not sure', 'probably', 'i hope', 'sorry'];
 const STAR = { situation: /\b(when|situation|at my (last|previous)|while i was|once)\b/i, task: /\b(task|goal|needed to|had to|responsib)/i, action: /\b(i (decided|built|led|called|created|set up|spoke|changed|wrote|fixed|organi[sz]ed|trained|analy[sz]ed))\b/i, result: /\b(result|so that|which (led|meant)|increased|reduced|saved|improved|\d+ ?%|percent)\b/i };
-const count = (t: string, w: string) => (t.match(new RegExp(`\\b${w.replace(/ /g, '\\s+')}\\b`, 'gi')) || []).length;
+const count = (t: string, w: string) => (t.match(new RegExp(`\\b${reEscape(w).replace(/ /g, '\\s+')}\\b`, 'gi')) || []).length;
 export interface Analysis { words: number; wpm: number | null; fillers: { w: string; n: number }[]; fillerRate: number; slang: string[]; stiff: string[]; hedges: string[]; star: Record<keyof typeof STAR, boolean>; relevance: number; content: number; delivery: number; score: number; tips: string[]; rewrite: string; noAnswer: boolean; tooShort: boolean; commonRatio: number }
 export function analyze(text: string, seconds: number | null, keys: string[], round: Round): Analysis {
   const t = (text || '').trim(), lower = t.toLowerCase(), words = t ? t.split(/\s+/).length : 0;
@@ -62,7 +63,7 @@ export function analyze(text: string, seconds: number | null, keys: string[], ro
 /** "Say it more naturally": removes fillers, swaps slang and stiff phrases. Uses only your own words. */
 export function naturalize(t: string) {
   let s = ' ' + t + ' ';
-  for (const w of [...FILLERS].sort((a, b) => b.length - a.length)) s = s.replace(new RegExp(`[,\\s]*\\b${w.replace(/ /g, '\\s+')}\\b[,]?`, 'gi'), ' ');
+  for (const w of [...FILLERS].sort((a, b) => b.length - a.length)) s = s.replace(new RegExp(`[,\\s]*\\b${reEscape(w).replace(/ /g, '\\s+')}\\b[,]?`, 'gi'), ' ');
   const swap: [RegExp, string][] = [[/\bgonna\b/gi, 'going to'], [/\bwanna\b/gi, 'want to'], [/\bgotta\b/gi, 'have to'], [/\bkinda\b/gi, 'somewhat'], [/\byeah\b/gi, 'yes'], [/\bstuff\b/gi, 'work'], [/\bdo the needful\b/gi, 'take care of it'], [/\brevert back\b/gi, 'reply'], [/\bkindly\b/gi, 'please'], [/\bherewith\b/gi, '']];
   for (const [re, r] of swap) s = s.replace(re, r);
   return s.replace(/\s+/g, ' ').replace(/\s([,.?!])/g, '$1').trim().replace(/^./, (c) => c.toUpperCase());
