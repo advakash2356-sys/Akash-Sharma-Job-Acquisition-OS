@@ -33,8 +33,9 @@ export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new
   if (p.minAge && age < p.minAge) { bad = true; why.push(`Minimum age ${p.minAge}.`); }
   if (p.eduTags?.length) { known++; const need = Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3)); const have = EDU_RANK[prof.edu] || 0; if (have < need) { bad = true; why.push('The notice seems to need a higher qualification than yours.'); } else why.push('Your education level looks enough.'); }
   if (stateMismatch) why.push(`State post in ${p.state}: reserved-category relaxation usually needs that state's domicile.`);
+  if (fit?.subjects?.length) why.push(`Check the required subject: ${fit.subjects.join(' / ')}. Your degree does not seem to match.`);
   if (fit?.field) why.push(`Matches your ${prof!.spec} background.`);
-  if (fit && isExperienced(prof) && fit.tier === 'senior') why.push('Officer / specialist level post: suits your experience. Check the experience clause in the notice.');
+  if (fit && !fit.subjects && isExperienced(prof) && fit.tier === 'senior') why.push('Officer / specialist level post: suits your experience. Check the experience clause in the notice.');
   if (bad) return { badge: 'maynot', why };
   return known >= 2 ? { badge: 'likely', why } : { badge: 'verify', why: why.length ? why : ['Age or qualification not stated in the feed text.'] };
 }
@@ -63,12 +64,24 @@ export function tierOf(p: Pick<RankInput, 'title' | 'org' | 'eligibility' | 'pay
 }
 export const isExperienced = (prof?: Profile | null) => !!prof && (prof.expYears ?? 0) >= 5 && (EDU_RANK[prof.edu] || 0) >= 3;
 /** Points added to rankScore and a reason. Experienced graduates: junior posts sink hard, senior/field-matched posts rise. Juniors/freshers: entry posts stay. */
-export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; tier: Tier; field: boolean; belowLevel: boolean } {
+export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; tier: Tier; field: boolean; belowLevel: boolean; subjects?: string[] } {
   const tier = tierOf(p); const field = !!prof?.spec && !!SPEC_RE[prof.spec]?.test(`${p.title} ${p.eligibility}`); // org name never counts (t326u NO-GO)
   if (!prof) return { pts: 0, tier, field, belowLevel: false };
   const exp = prof.expYears ?? 0, senior = isExperienced(prof);
+  const subj = subjectFit(p.eligibility, prof.spec); if (subj.fits === false) return { pts: -30, tier, field: false, belowLevel: false, subjects: subj.named };
   let pts = field ? 25 : 0;
   if (senior) pts += tier === 'senior' ? 30 + Math.min(10, exp) : tier === 'mid' ? 0 : -80;
   else if (exp <= 2) pts += tier === 'junior' ? 10 : tier === 'senior' && !field ? -5 : 0;
   return { pts, tier, field, belowLevel: senior && tier === 'junior' };
+}
+
+// ---- Required-subject check (t329u): officer boost needs subject fit when the notice names subjects. ----
+const SUBJECTS: [string, RegExp][] = [['Law', /\b(law|llb|ll\.b|llm|legal)\b/i], ['Engineering', /\b(engineering|b\.?e\b|b\.?tech|gate)\b/i], ['Medical', /\b(mbbs|md\b|medical|nursing|pharma\w*|dental)\b/i], ['Commerce / Finance', /\b(commerce|b\.?com|accounts?|chartered accountant|cma|icwa|finance|economics)\b/i],
+  ['Biological Sciences', /\b(biolog\w*|bio[- ]?science|zoology|botany|microbiology|biotechnology)\b/i], ['Agriculture', /\b(agricultur\w*|agri|horticulture|forestry)\b/i], ['Science', /\b(chemistry|physics|phd in science|environmental sciences?|ecology)\b/i], ['Computer Science', /\b(computer science|mca|information technology)\b/i]];
+const SPEC_SUBJ: Record<string, string[]> = { law: ['Law'], engineering: ['Engineering', 'Computer Science', 'Science'], medical: ['Medical', 'Biological Sciences', 'Science'], finance: ['Commerce / Finance'] };
+/** Subjects named in the eligibility text, and whether the user's professional degree is among them (null = unknown). */
+export function subjectFit(eligibility: string, spec?: string): { named: string[]; fits: boolean | null } {
+  const named = SUBJECTS.filter(([, re]) => re.test(eligibility)).map(([n]) => n);
+  if (!named.length || !spec || !SPEC_SUBJ[spec]) return { named, fits: null };
+  return { named, fits: named.some((n) => SPEC_SUBJ[spec].includes(n)) };
 }

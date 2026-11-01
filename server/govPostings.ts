@@ -1,3 +1,4 @@
+import { CURATED_CHECKED, curatedPostings } from "./govCurated.js";
 /**
  * Government job POSTINGS feed (public, read-only). Akash Sync Agent.
  * Sources, read on the server only (the browser talks to our own /api/gov/postings, so CSP gains no new origin):
@@ -17,8 +18,8 @@ let cache: { at: number; out: GovFeed } | null = null;
 
 export interface GovPosting {
   id: string; title: string; org: string; state: string; location: string; lastDate: string; startDate?: string;
-  pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; applyUrl?: string;
-  postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS"; lesserKnown: boolean; verifiedAt: string;
+  pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; /** "site" = link is the body's careers/listing page, not the advert itself. */ linkKind?: "notice" | "site"; applyUrl?: string;
+  postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS" | "JAOS curated (official notice)"; lesserKnown: boolean; verifiedAt: string;
   /** Playbook §5 fields (best effort from the notice text; empty when not stated). */
   level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; minAge?: number; maxAge?: number; eduTags?: string[];
 }
@@ -38,7 +39,7 @@ export function empTypeOf(t: string): EmpType {
   if (/deputation|absorption/i.test(t)) return "deputation";
   if (/apprentice/i.test(t)) return "apprenticeship";
   if (/\b(JRF|SRF|fellow(ship)?|young professional)\b/i.test(t)) return "fellowship";
-  if (/contract|contractual|project (associate|assistant|scientist)|walk-?in|consultant|tenure/i.test(t)) return "contractual";
+  if (/contract basis|on contract\b|contractual|fixed[- ]term|project (associate|assistant|scientist)|walk-?in|consultant|tenure/i.test(t)) return "contractual";
   return "permanent";
 }
 export function agesOf(t: string): { minAge?: number; maxAge?: number } {
@@ -150,6 +151,7 @@ export async function govPostings(now = Date.now()): Promise<GovFeed> {
   fh.forEach((r, i) => { if (r.status === "rejected") { warnings.push(`FreeHire "${qs[i]}": ${r.reason?.message}`); return; } fhOk = true; for (const raw of (r.value as any)?.data || []) { const p = fromFreeHire(raw, today); const e = p && enrich(p, strip(String(raw?.description || ""))); if (e) out.push(e); } });
   if (fhOk) sources.push("FreeHire public API (Telegram-sourced Indian notices with official links)");
   try { for (const p of fromRss(await (await get(RSS, "application/rss+xml")).text(), today)) { const e = enrich(p, p.eligibility); if (e) out.push(e); } sources.push("SarkariMap public RSS (aggregator)"); } catch (e: any) { warnings.push(`SarkariMap RSS: ${e.message}`); }
+  { const cur = curatedPostings(today); for (const p of cur) { const e = enrich(p, p.eligibility); if (e) out.push(e); } if (cur.length) sources.push(`JAOS curated lesser-known official notices (checked ${CURATED_CHECKED})`); }
   const seen = new Set<string>(); const postings = out.filter((p) => { const k = `${p.title}|${p.org}|${p.lastDate}`.toLowerCase(); if (seen.has(k) || seen.has(p.id)) return false; seen.add(k); seen.add(p.id); return true; })
     .sort((a, b) => a.lastDate.localeCompare(b.lastDate) || Number(b.official) - Number(a.official)).slice(0, 300);
   const res = { postings, checkedAt: new Date(now).toISOString(), warnings, sources };
