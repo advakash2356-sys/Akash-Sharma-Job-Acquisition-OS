@@ -8,9 +8,9 @@ Install for testing: `chrome://extensions` → Developer mode → Load unpacked 
 2. In the extension popup, "Import profile file".
 3. On an application form, "Fill this page". Filled fields get a yellow outline.
 
-Fields it can fill (only when you saved them in JAOS): first/last/full name, email, phone, city/location, current title, skills, summary, expected CTC, notice period, highest qualification (first line under "Education" in your resume), LinkedIn, GitHub, website. Works on Workday, Greenhouse, Lever, iCIMS, Taleo, SuccessFactors, Naukri, and on other sites by reading each field's label. It skips passwords, OTP, captcha, ID numbers (Aadhaar, PAN, passport, SSN), date of birth, gender, EEO and consent questions, and never touches other people's data.
+Fields it can fill (only when you saved them in JAOS): first/last/full name, email, phone, city/location, current title, skills, summary (filled from the experience text in your JAOS profile), expected CTC, notice period, highest qualification (first line under "Education" in your resume), LinkedIn, GitHub, website. Works on Workday, Greenhouse, Lever, iCIMS, Taleo, SuccessFactors, Naukri, and on other sites by reading each field's label. It skips passwords, OTP, captcha, ID numbers (Aadhaar, PAN, passport, SSN), date of birth, gender, EEO and consent questions, and fields about other people (references, referees, emergency contacts, parents, guardian, spouse, nominee, manager or supervisor), so your own details are never put in someone else's field.
 
 Privacy: permissions are `activeTab`, `scripting`, `storage` only. It runs on a page only when you click, stores the profile in `chrome.storage.local`, and sends nothing anywhere.
-Limits: fields inside cross-origin iframes (some Greenhouse embeds, iCIMS) are not filled; open the form in its own tab. Dropdowns, file uploads, and screening, EEO and consent questions are left for you.
+Limits: fields inside cross-origin iframes (some Greenhouse embeds, iCIMS) are not filled; open the form in its own tab. Dropdowns are filled only when one option clearly matches your saved value (for example highest qualification or location); others, file uploads, and screening, EEO and consent questions are left for you.
 
 Built with Akash Sync Agent. Original code, MIT.

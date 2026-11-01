@@ -137,3 +137,9 @@ test('extension field map: common fields matched, sensitive fields skipped', asy
   await import('../extension/fieldmap.js'); const M = (globalThis as any).JAOS_MAP;
   assert.equal(M.match('highest qualification'), 'education'); assert.equal(M.match('notice period'), 'noticePeriod'); assert.equal(M.match('email address'), 'email');
   assert.equal(M.match('mobile number'), 'phone'); assert.equal(M.match('first name'), 'firstName'); assert.equal(M.match('date of birth'), null); assert.equal(M.match('aadhaar number'), null); assert.equal(M.match('password'), null); });
+
+test('extension field map: never fills fields about other people', async () => {
+  await import('../extension/fieldmap.js'); const M = (globalThis as any).JAOS_MAP;
+  for (const d of ['reference name', 'referee email', 'emergency contact phone', 'emergency contact name', "father's name", 'mother name', 'guardian mobile', 'spouse name', 'nominee name', 'manager name', 'supervisor email', 'next of kin phone'])
+    assert.equal(M.match(d), null, d);
+  assert.equal(M.match('full name'), 'fullName'); assert.equal(M.match('phone number'), 'phone'); });
