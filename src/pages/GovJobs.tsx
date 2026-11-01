@@ -2,7 +2,9 @@ import { CountryComingSoon, SourceDirectory } from '../components/GovCountry';
 import { COUNTRIES, PROVIDERS, type CountryCode } from '../lib/gov/providers';
 import { GovPostings } from '../components/GovPostings';
 import { ConsentBoxes } from '../components/ConsentBoxes';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useApp } from '../lib/state';
+import { prefillGov, profileKeywords } from '../lib/gov/shared';
 import { RefreshCw } from 'lucide-react';
 import { LocalNote } from '../components/LocalNote';
 import { Steps } from '../components/Steps';
@@ -15,6 +17,9 @@ const STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisga
 
 export default function GovJobs() {
   const [p, setP] = usePersisted<Profile>('jaos_gov_profile', { dob: '', edu: 'grad', stream12: 'other', cat: 'GEN', pwbd: false, esm: false, gender: 'male', state: '' });
+  const app = useApp()?.profile; // main JAOS job-search profile (same browser storage)
+  useEffect(() => { if (app) setP((g) => prefillGov(g, app, STATES)); }, [app?.resumeText, app?.experience, app?.headline, app?.location, app?.skills]); // eslint-disable-line react-hooks/exhaustive-deps
+  const kws = useMemo(() => profileKeywords(app || {}), [app?.targetRoles, app?.headline, app?.skills]); // eslint-disable-line react-hooks/exhaustive-deps
   const [country, setCountry] = usePersisted<CountryCode>('jaos_gov_country', 'IN'); const prov = PROVIDERS[country] || PROVIDERS.IN;
   const [lesserOnly, setLesserOnly] = useState(false); const [fresh, setFresh] = useState('');
   const freshRun = async () => { setFresh('Checking…'); try { const r = await fetch('/data/gov-jobs-version.json', { cache: 'no-store' }); const j = await r.json(); if (j.verified > VERIFIED) { setFresh(`Newer data (${j.verified}) is available. Reloading…`); setTimeout(() => location.reload(), 800); } else setFresh(`Fresh run done ${new Date().toLocaleString('en-IN')}. You have the latest data on this site (verified ${VERIFIED}). Check each official notice for updates after that date.`); } catch { setFresh('Could not check for newer data. Your results use the data verified ' + VERIFIED + '.'); } }; const [showAll, setShowAll] = useState(false);
@@ -28,7 +33,8 @@ export default function GovJobs() {
       <div className="mb-5 flex flex-wrap items-end gap-3" data-testid="gov-country"><div className="min-w-0"><Label htmlFor="gcountry">Country</Label><Select id="gcountry" value={country} onChange={(e) => setCountry(e.target.value as CountryCode)} data-testid="gov-country-select">{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.flag} {c.name}{c.live ? '' : ' (coming soon)'}</option>)}</Select></div>{prov.live && <p className="min-w-0 flex-1 text-sm text-muted-foreground">{prov.sub}</p>}</div>
       {!prov.live ? <><CountryComingSoon p={prov} /><p className="text-xs text-muted-foreground">{CREDIT}</p></> : <>
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="gov-disclaimer"><b>Check the official notification before you apply.</b> {DISCLAIMER}</p>
-      <GovPostings homeState={p.state} profile={p} />
+      {app && (app.targetRoles || app.skills || app.headline) && <p className="mb-2 text-xs text-muted-foreground" data-testid="gov-shared">Using your JAOS job-search profile{app.targetRoles ? <> (roles: <b>{app.targetRoles.slice(0, 80)}</b>)</> : null} to rank these postings, the same as your other job suggestions. Experience, degree and state below were filled from it where empty; change them any time. Saved only in your browser.</p>}
+      <GovPostings homeState={p.state} profile={p} keywords={kws} />
       <SourceDirectory p={prov} />
       <LocalNote onClear={() => { clearPersisted('jaos_gov_profile', 'jaos_gov_postings_filter', 'jaos_gov_postings_ack', 'jaos_gov_country'); location.reload(); }} />
       <div className="mb-5"><ConsentBoxes where="gov-jobs" /></div>
@@ -36,7 +42,7 @@ export default function GovJobs() {
       <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-form"><h2 className="text-xl font-medium">Your details</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="min-w-0"><Label htmlFor="gd">Date of birth</Label><Input id="gd" type="date" value={p.dob} onChange={set('dob')} /></div>
-          <div className="min-w-0"><Label htmlFor="ge">Highest education</Label><Select id="ge" className="w-full" value={p.edu} onChange={set('edu')}>
+          <div className="min-w-0"><Label htmlFor="ge">Highest education</Label><Select id="ge" className="w-full" value={p.edu} onChange={(e) => setP({ ...p, edu: e.target.value as Edu, eduSet: true })}>
             {([['10','Class 10'],['12','Class 12'],['iti','ITI'],['diploma','Diploma (engineering)'],['grad','Graduate (any)'],['eng','Engineering graduate (BE/BTech)'],['pg','Postgraduate']] as [Edu,string][]).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</Select></div>
           <div className="min-w-0"><Label htmlFor="gs" hint="Class 12">Stream</Label><Select id="gs" className="w-full" value={p.stream12} onChange={set('stream12')}><option value="pcm">Science with Physics & Maths</option><option value="other">Other</option></Select></div>
           <div className="min-w-0"><Label htmlFor="gc">Category</Label><Select id="gc" className="w-full" value={p.cat} onChange={set('cat')}>{(['GEN','EWS','OBC','SC','ST'] as Cat[]).map((c) => <option key={c} value={c}>{c === 'GEN' ? 'General' : c === 'OBC' ? 'OBC (non-creamy layer)' : c}</option>)}</Select></div>
