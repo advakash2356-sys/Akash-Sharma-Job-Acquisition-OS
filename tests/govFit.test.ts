@@ -27,3 +27,17 @@ test('NO-GO 2: RRB Group C manager/supervisor titles are not senior', () => {
   for (const t of ['Goods Train Manager', 'Chief Commercial cum Ticket Supervisor']) { const p = P(t, { org: 'RRB', pay: 'Rs 29,200 - 35,400 (Level 5/6)' }); assert.notEqual(tierOf(p), 'senior', t); assert.ok(profileFit(p, lawyer).pts <= 0, t); }
   assert.equal(tierOf(P('Manager', { pay: 'Rs 35,400' })), 'mid'); assert.equal(tierOf(P('Assistant Manager', { pay: 'Level 10 of pay matrix' })), 'senior'); assert.equal(tierOf(P('Officer', { pay: 'Rs 56,100 - 1,77,500' })), 'senior');
 });
+test('t329u subject hint: WDRA Bio/Agri post gets no officer boost for LLB and shows the subject', () => {
+  const w = P('Under Secretary (Technical)', { org: 'WDRA', pay: 'Level 11 of pay matrix', eligibility: 'Masters in Biological Sciences / Agriculture with 5 years experience' });
+  const legal = P('Legal Officer', { eligibility: 'LLB with 7 years experience', eduTags: ['LAW'] });
+  assert.ok(profileFit(w, lawyer).pts < 0); assert.ok(profileFit(legal, lawyer).pts > profileFit(w, lawyer).pts + 40);
+  const why = eligibilityBadge(w, lawyer).why.join(' '); assert.match(why, /Check the required subject: Biological Sciences \/ Agriculture/); assert.doesNotMatch(why, /Officer \/ specialist/);
+  assert.equal(profileFit(w, { ...lawyer, spec: '' }).subjects, undefined); // unknown degree: no penalty
+});
+test('t329u curated niche rows: official links, future-dated filter, law rows rank for lawyer, GATE rows not', async () => {
+  const { CURATED, curatedPostings } = await import('../server/govCurated');
+  assert.ok(CURATED.length >= 10); for (const r of CURATED) { assert.match(r.noticeUrl, /^https:\/\//); assert.match(r.lastDate, /^\d{4}-\d{2}-\d{2}$/); }
+  assert.equal(curatedPostings('2026-12-31').length, 0); const live = curatedPostings('2026-11-02'); assert.ok(live.every((p) => p.lesserKnown && p.official));
+  const gsl = live.find((p) => /Goa Shipyard/.test(p.org))!, cil = live.find((p) => /Coal India/.test(p.org))!;
+  assert.ok(profileFit({ ...gsl, eduTags: ['LAW'] }, lawyer).pts > 0); assert.ok(profileFit(cil, lawyer).pts < 0);
+});
