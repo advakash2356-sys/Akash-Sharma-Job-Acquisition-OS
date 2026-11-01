@@ -3,7 +3,7 @@ import { Mic, Square, Phone, Volume2 } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, Select, Textarea } from './ui';
 import { Steps } from './Steps';
 import { usePersisted } from '../lib/persist';
-import { QUESTIONS, ROUNDS, analyze, highlight, type Analysis, type Round } from '../lib/voiceInterview';
+import { QUESTIONS, ROUNDS, analyze, keysFrom, highlight, type Analysis, type Round } from '../lib/voiceInterview';
 import { CREDIT } from '../lib/brand';
 
 interface Turn { q: string; answer: string; secs: number | null; a: Analysis }
@@ -28,7 +28,7 @@ export function VoiceInterview({ onTurn }: { onTurn?: (a: Analysis, q: string) =
     s.onend = () => setRec(false); r.current = s; t0.current = Date.now(); setSecs(0); clearInterval(timer.current); timer.current = setInterval(() => setSecs(Math.round((Date.now() - t0.current) / 1000)), 500); s.start(); setRec(true);
   };
   const stop = () => { r.current?.stop(); clearInterval(timer.current); setRec(false); };
-  const submit = () => { stop(); if (!cur) return; const a = analyze(text, SR && secs ? secs : null, cur.keys, cfg.round); setTurns([...turns, { q: qText, answer: text, secs: SR && secs ? secs : null, a }]); onTurn?.(a, qText);
+  const submit = () => { stop(); if (!cur) return; const a = analyze(text, SR && secs ? secs : null, follow ? keysFrom(cur.follow) : cur.keys, cfg.round); setTurns([...turns, { q: qText, answer: text, secs: SR && secs ? secs : null, a }]); onTurn?.(a, qText);
     if (!follow) ask(idx, true); else if (idx + 1 < qs.length) ask(idx + 1, false); else { setIdx(qs.length); speak('Thank you. That is the end of this practice call.'); } };
   const overall = turns.length ? Math.round(turns.reduce((s, x) => s + x.a.score, 0) / turns.length) : null;
   const replay = () => { let i = 0; const next = () => { if (i < turns.length) { speak(turns[i].q); i++; } }; next(); return next; };

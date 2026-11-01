@@ -6,6 +6,7 @@ import PrivacyToggles from '../components/PrivacyToggles';
 import AccountCard from '../components/AccountCard';
 import { useApp } from '../lib/state';
 import DeleteDataButton from '../components/DeleteDataButton';
+import { ConsentBoxes } from '../components/ConsentBoxes';
 
 export default function SettingsPage() {
   const { profile, setProfile, user } = useApp();
@@ -16,9 +17,10 @@ export default function SettingsPage() {
         <Card id="delete"><h2 className="mb-2 text-3xl">Delete my data</h2><p className="mb-3 text-sm text-muted-foreground">Removes everything this app saved in this browser: resumes, jobs, API keys and preferences, for every account. You will be asked to confirm.</p><DeleteDataButton /></Card>
         <ApiKeyCard prominent />
         <Card data-testid="extension-export"><h2 className="mb-2 text-3xl">Autofill extension (beta)</h2>
+          <div className="mb-3"><ConsentBoxes where="extension-export" /></div>
           <p className="mb-3 text-sm text-muted-foreground">Download your details as a file, then import it in the Job Acquisition OS Chrome extension. It fills forms on Workday, Greenhouse, Lever, iCIMS, Taleo, SuccessFactors and Naukri. You check every field and press Submit yourself; it never submits. Your API key is not included.</p>
           <button className="inline-flex min-h-11 items-center rounded-lg border border-border px-4 text-sm cursor-pointer hover:bg-muted" onClick={() => { const [first, ...rest] = (profile.name || '').trim().split(/\s+/); const links = profile.links || ''; const pick = (re: RegExp) => (links.match(re) || [''])[0];
-            const data = { app: 'jaos-autofill', v: 1, firstName: first || '', lastName: rest.join(' '), fullName: profile.name, email: profile.email, phone: profile.phone, location: profile.location, headline: profile.headline, linkedin: pick(/https?:\/\/[^\s,]*linkedin\.com[^\s,]*/i), github: pick(/https?:\/\/[^\s,]*github\.com[^\s,]*/i), website: pick(/https?:\/\/(?![^\s,]*(linkedin|github)\.com)[^\s,]+/i), skills: profile.skills || '', summary: profile.experience || '', expectedCtc: profile.minCtc || '' };
+            const data = { app: 'jaos-autofill', v: 1, consent: (() => { try { const c = JSON.parse(localStorage.getItem('jaos_consent_v1') || '{}'); return { sms: c.sms || { given: false }, cv: c.cv || { given: false } }; } catch { return null; } })(), firstName: first || '', lastName: rest.join(' '), fullName: profile.name, email: profile.email, phone: profile.phone, location: profile.location, headline: profile.headline, linkedin: pick(/https?:\/\/[^\s,]*linkedin\.com[^\s,]*/i), github: pick(/https?:\/\/[^\s,]*github\.com[^\s,]*/i), website: pick(/https?:\/\/(?![^\s,]*(linkedin|github)\.com)[^\s,]+/i), skills: profile.skills || '', summary: profile.experience || '', expectedCtc: profile.minCtc || '' };
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); a.download = 'jaos-autofill-profile.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }}>Download profile for the extension</button>
         </Card>
         <AccountCard user={user} />

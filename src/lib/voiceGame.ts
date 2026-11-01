@@ -38,9 +38,11 @@ export function addAnswer(g: Game, a: Analysis, today = new Date().toISOString()
 export const practisedToday = (g: Game, today = new Date().toISOString().slice(0, 10)) => g.lastDay === today;
 export function inQuiet(h: number, from: number, to: number) { return from === to ? false : from < to ? h >= from && h < to : h >= from || h < to; }
 /** Daily calendar reminder (.ics) the user imports into their own calendar. */
-export function reminderIcs(hour: number, url: string) {
-  const d = new Date(); d.setDate(d.getDate() + 1); const ymd = d.toISOString().slice(0, 10).replace(/-/g, ''), hh = String(hour).padStart(2, '0');
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Akash Sync Agent//JAOS voice practice//EN', 'BEGIN:VEVENT', `UID:jaos-voice-${ymd}@local`, `DTSTAMP:${ymd}T000000`, `DTSTART:${ymd}T${hh}0000`, `DTEND:${ymd}T${hh}1500`, 'RRULE:FREQ=DAILY', 'SUMMARY:Hi, practise your interview today (10 min)', `DESCRIPTION:Open ${url} and answer 2 questions out loud.`, `URL:${url}`, 'BEGIN:VALARM', 'TRIGGER:PT0M', 'ACTION:DISPLAY', 'DESCRIPTION:Hi, you forgot to practise today', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+export function reminderIcs(hour: number, url: string, now = new Date()) {
+  // Next occurrence of `hour` in the user's local time, written in UTC (Z) so every calendar app places it correctly.
+  const start = new Date(now); start.setHours(hour, 0, 0, 0); if (start <= now) start.setDate(start.getDate() + 1);
+  const z = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); const end = new Date(start.getTime() + 15 * 60_000);
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Akash Sync Agent//JAOS voice practice//EN', 'BEGIN:VEVENT', `UID:jaos-voice-${z(start)}@local`, `DTSTAMP:${z(now)}`, `DTSTART:${z(start)}`, `DTEND:${z(end)}`, 'RRULE:FREQ=DAILY', 'SUMMARY:Hi, practise your interview today (10 min)', `DESCRIPTION:Open ${url} and answer 2 questions out loud.`, `URL:${url}`, 'BEGIN:VALARM', 'TRIGGER:PT0M', 'ACTION:DISPLAY', 'DESCRIPTION:Hi, you forgot to practise today', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
 }
 /** "Prepare for any designation": question templates for any job title plus how to answer. Templates, not facts about the job. */
 export function designationPack(title: string) {

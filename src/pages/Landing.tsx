@@ -1,14 +1,10 @@
 import EarlyAccessNote from '../components/EarlyAccessNote';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, FileText, Gauge, Lock, Mail, Route, ScanSearch, Sun, Moon, TrendingUp, Download } from 'lucide-react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Lenis from 'lenis';
 
 import { COPYRIGHT, CREDIT, PROOF, SITE_URL } from '../lib/brand';
 import { track } from '../lib/analytics';
 
-gsap.registerPlugin(ScrollTrigger);
 
 /** Share link for a friend: native share sheet where available, otherwise copy. ?ref=share lets the owner see shares in referrers. */
 function ShareButton({ className }: { className: string }) {
@@ -43,8 +39,12 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', onScroll, { passive: true });
+    // Animations (gsap + Lenis) are kept on every screen; they load just after first paint so the main content shows immediately.
+    // Only visitors who ask for reduced motion get the static page.
     if (reduce) return () => window.removeEventListener('scroll', onScroll);
-
+    let cleanup = () => {}; let dead = false;
+    Promise.all([import('gsap'), import('gsap/ScrollTrigger'), import('lenis')]).then(([{ default: gsap }, { ScrollTrigger }, { default: Lenis }]) => {
+    if (dead) return; gsap.registerPlugin(ScrollTrigger);
     const lenis = new Lenis({ lerp: 0.1 });
     lenis.on('scroll', ScrollTrigger.update);
     const tick = (t: number) => lenis.raf(t * 1000);
@@ -71,7 +71,9 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
       });
     }, root);
 
-    return () => { ctx.revert(); gsap.ticker.remove(tick); lenis.destroy(); window.removeEventListener('scroll', onScroll); };
+    cleanup = () => { ctx.revert(); gsap.ticker.remove(tick); lenis.destroy(); };
+    });
+    return () => { dead = true; cleanup(); window.removeEventListener('scroll', onScroll); };
   }, []);
 
   const nav = (
@@ -195,6 +197,10 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="display text-xl text-foreground">Job Acquisition OS</span>
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-5">
+            <a href="/voice-practice" className="label inline-flex min-h-11 items-center hover:text-primary" data-testid="nav-voice">Voice interview practice</a>
+            <a href="/gov-jobs" className="label inline-flex min-h-11 items-center hover:text-primary">Government jobs</a>
+            <a href="/scam-shield" className="label inline-flex min-h-11 items-center hover:text-primary">Scam Shield</a>
+            <a href="/offer-shield" className="label inline-flex min-h-11 items-center hover:text-primary">Offer Shield</a>
             <a href="/feedback" className="label inline-flex min-h-11 items-center hover:text-primary">Share feedback</a>
             <a href="/feedback#comments" className="label inline-flex min-h-11 items-center hover:text-primary">Comments</a>
             <ShareButton className="label inline-flex min-h-11 items-center cursor-pointer hover:text-primary" />

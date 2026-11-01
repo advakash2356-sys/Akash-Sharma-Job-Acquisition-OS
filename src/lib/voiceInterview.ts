@@ -74,3 +74,10 @@ export function highlight(t: string): { text: string; filler: boolean }[] {
   if (last < t.length) out.push({ text: t.slice(last), filler: false });
   return out;
 }
+
+const STOP = new Set(['what', 'when', 'where', 'which', 'would', 'could', 'should', 'your', 'you', 'that', 'this', 'with', 'from', 'about', 'have', 'does', 'make', 'tell', 'time', 'there', 'their', 'them', 'they', 'were', 'will', 'into', 'than', 'then', 'thing', 'things', 'most', 'more', 'like', 'just', 'some']);
+/** Topic keywords taken from a question itself (used for follow-ups), plus a few universal answer markers. */
+export function keysFrom(q: string): string[] {
+  const k = (q.toLowerCase().match(/[a-z]+/g) || []).filter((w) => w.length >= 4 && !STOP.has(w)).map((w) => w.slice(0, 5));
+  return [...new Set([...k, 'because', 'example', 'learn', 'result'])];
+}

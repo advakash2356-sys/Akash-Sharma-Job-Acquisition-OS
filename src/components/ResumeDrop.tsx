@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { FileUp, Loader2 } from 'lucide-react';
 import { ACCEPT, ParseError, parseResumeFile } from '../lib/resumeParser';
 import { cn } from '../lib/utils';
+import { ConsentBoxes } from './ConsentBoxes';
 
 /** Drag-and-drop / choose-file area. Files are parsed in this browser only. */
 export default function ResumeDrop({ hasText, onText }: { hasText: boolean; onText: (t: string, name: string) => void }) {
@@ -40,6 +41,7 @@ export default function ResumeDrop({ hasText, onText }: { hasText: boolean; onTe
       {fileName && !busy && hasText && <p className="mt-2 text-sm" data-testid="uploaded-file">Loaded: <b>{fileName}</b></p>}
       {err && <p role="alert" className="mt-3 rounded-lg bg-muted p-3 text-sm text-danger">{err}</p>}
       <p data-testid="free-tier-warning" className="mt-3 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-sm">Before AI reads your resume: on Google's free Gemini tier, Google may use what you send to improve its products, and people at Google may review it. Use a paid (billing-enabled) key, or remove sensitive details (ID numbers, health, family, exact address) first. <a className="underline text-primary" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Google's terms</a></p>
-    </div>
+    <div className="mt-3"><ConsentBoxes where="cv-upload" /></div>
+      </div>
   );
 }
