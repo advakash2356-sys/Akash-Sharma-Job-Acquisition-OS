@@ -13,13 +13,14 @@
     ['expectedCtc', /expected (ctc|salary|compensation)|desired (salary|pay)|salary expectation/],
     ['currentCtc', /current (ctc|salary|compensation)/],
     ['noticePeriod', /notice period/],
+    ['education', /highest (qualification|education|degree)|\beducation\b|\bdegree\b|qualification/],
     ['experienceYears', /(total )?(years of )?experience( in years)?$|total experience/],
     ['headline', /headline|current (title|designation|role)|job title/],
     ['skills', /key ?skills|\bskills\b/],
     ['summary', /summary|about (you|yourself)|profile summary/],
     ['fullName', /full ?name|^name$|your name|candidate name|\bname\b/]
   ];
-  var SKIP = /password|otp|captcha|ssn|social security|aadhaar|\bpan\b|passport|date of birth|\bdob\b|gender|race|ethnic|veteran|disability|sexual|religion|consent|agree|terms|signature|search|referr?al code|coupon/;
+  var SKIP = /referen(ce|ces)|referee|emergency|guardian|father|mother|parent|spouse|husband|wife|nominee|next of kin|kin\b|relative|manager|supervisor|reporting to|recruiter|hiring contact|password|otp|captcha|ssn|social security|aadhaar|\bpan\b|passport|date of birth|\bdob\b|gender|race|ethnic|veteran|disability|sexual|religion|consent|agree|terms|signature|search|referr?al code|coupon/;
   // Per-portal places where the visible question text lives.
   var ADAPTERS = [
     { name: 'Workday', host: /myworkdayjobs\.com|workday\.com/, label: '[data-automation-id="formField"] label, [data-automation-id*="formLabel"]', field: '[data-automation-id="formField"]' },

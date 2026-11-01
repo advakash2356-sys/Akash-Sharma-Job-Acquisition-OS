@@ -133,6 +133,16 @@ test('consent: optional and unticked by default, tick records, untick persists a
   const w = setBoth(r, false, 'gov-jobs'); assert.equal(w.cv.given, false); assert.equal(w.log.at(-1)!.action, 'withdrawn');
   const j = JSON.parse(exportJson(w)); assert.equal(j.current.sms.given, false); assert.equal(j.log.length, 4); assert.ok(j.version);
   delete (globalThis as any).localStorage; delete (globalThis as any).window; });
+test('extension field map: common fields matched, sensitive fields skipped', async () => {
+  await import('../extension/fieldmap.js'); const M = (globalThis as any).JAOS_MAP;
+  assert.equal(M.match('highest qualification'), 'education'); assert.equal(M.match('notice period'), 'noticePeriod'); assert.equal(M.match('email address'), 'email');
+  assert.equal(M.match('mobile number'), 'phone'); assert.equal(M.match('first name'), 'firstName'); assert.equal(M.match('date of birth'), null); assert.equal(M.match('aadhaar number'), null); assert.equal(M.match('password'), null); });
+
+test('extension field map: never fills fields about other people', async () => {
+  await import('../extension/fieldmap.js'); const M = (globalThis as any).JAOS_MAP;
+  for (const d of ['reference name', 'referee email', 'emergency contact phone', 'emergency contact name', "father's name", 'mother name', 'guardian mobile', 'spouse name', 'nominee name', 'manager name', 'supervisor email', 'next of kin phone'])
+    assert.equal(M.match(d), null, d);
+  assert.equal(M.match('full name'), 'fullName'); assert.equal(M.match('phone number'), 'phone'); });
 import { anyDate, fromFreeHire, fromRss, noContacts, payOf, stateOf } from '../server/govPostings';
 test('gov postings: dates, pay, state, official link, no contacts, closed dropped', () => {
   assert.equal(anyDate('Application Last Date: 05.10.2026'), '2026-10-05'); assert.equal(anyDate('till 14 October 2026'), '2026-10-14'); assert.equal(anyDate('31.02.2026'), '');
