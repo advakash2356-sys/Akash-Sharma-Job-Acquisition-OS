@@ -13,6 +13,7 @@
     ['expectedCtc', /expected (ctc|salary|compensation)|desired (salary|pay)|salary expectation/],
     ['currentCtc', /current (ctc|salary|compensation)/],
     ['noticePeriod', /notice period/],
+    ['education', /highest (qualification|education|degree)|\beducation\b|\bdegree\b|qualification/],
     ['experienceYears', /(total )?(years of )?experience( in years)?$|total experience/],
     ['headline', /headline|current (title|designation|role)|job title/],
     ['skills', /key ?skills|\bskills\b/],

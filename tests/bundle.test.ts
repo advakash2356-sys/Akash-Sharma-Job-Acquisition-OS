@@ -133,3 +133,7 @@ test('consent: optional and unticked by default, tick records, untick persists a
   const w = setBoth(r, false, 'gov-jobs'); assert.equal(w.cv.given, false); assert.equal(w.log.at(-1)!.action, 'withdrawn');
   const j = JSON.parse(exportJson(w)); assert.equal(j.current.sms.given, false); assert.equal(j.log.length, 4); assert.ok(j.version);
   delete (globalThis as any).localStorage; delete (globalThis as any).window; });
+test('extension field map: common fields matched, sensitive fields skipped', async () => {
+  await import('../extension/fieldmap.js'); const M = (globalThis as any).JAOS_MAP;
+  assert.equal(M.match('highest qualification'), 'education'); assert.equal(M.match('notice period'), 'noticePeriod'); assert.equal(M.match('email address'), 'email');
+  assert.equal(M.match('mobile number'), 'phone'); assert.equal(M.match('first name'), 'firstName'); assert.equal(M.match('date of birth'), null); assert.equal(M.match('aadhaar number'), null); assert.equal(M.match('password'), null); });
