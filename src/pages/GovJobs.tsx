@@ -8,7 +8,7 @@ import { LocalNote } from '../components/LocalNote';
 import { Steps } from '../components/Steps';
 import { usePersisted, clearPersisted } from '../lib/persist';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '../components/ui';
-import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile } from '../lib/govJobs';
+import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile , type Spec} from '../lib/govJobs';
 import { CREDIT } from '../lib/brand';
 
 const STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu & Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Other UT'];
@@ -41,6 +41,8 @@ export default function GovJobs() {
           <div className="min-w-0"><Label htmlFor="gs" hint="Class 12">Stream</Label><Select id="gs" className="w-full" value={p.stream12} onChange={set('stream12')}><option value="pcm">Science with Physics & Maths</option><option value="other">Other</option></Select></div>
           <div className="min-w-0"><Label htmlFor="gc">Category</Label><Select id="gc" className="w-full" value={p.cat} onChange={set('cat')}>{(['GEN','EWS','OBC','SC','ST'] as Cat[]).map((c) => <option key={c} value={c}>{c === 'GEN' ? 'General' : c === 'OBC' ? 'OBC (non-creamy layer)' : c}</option>)}</Select></div>
           <div className="min-w-0"><Label htmlFor="gg">Gender</Label><Select id="gg" className="w-full" value={p.gender} onChange={set('gender')}>{(['male','female','other'] as Gender[]).map((g) => <option key={g} value={g}>{g === 'other' ? 'Transgender / other' : g[0].toUpperCase() + g.slice(1)}</option>)}</Select></div>
+          <div className="min-w-0"><Label htmlFor="gx" hint="total, all jobs">Years of experience</Label><Input id="gx" type="number" min={0} max={45} value={p.expYears ?? ''} onChange={(e) => setP({ ...p, expYears: e.target.value === '' ? undefined : Math.max(0, Math.min(45, Number(e.target.value))) })} data-testid="gov-exp" /></div>
+          <div className="min-w-0"><Label htmlFor="gsp" hint="e.g. LLB = Law">Professional degree</Label><Select id="gsp" className="w-full" value={p.spec || ''} onChange={(e) => setP({ ...p, spec: e.target.value as Spec })} data-testid="gov-spec"><option value="">None</option><option value="law">Law (LLB / LLM)</option><option value="engineering">Engineering / Tech</option><option value="medical">Medical / Health</option><option value="finance">CA / CS / CMA / Finance</option><option value="other">Other professional</option></Select></div>
           <div className="min-w-0"><Label htmlFor="gst">State</Label><Select id="gst" className="w-full" value={p.state} onChange={set('state')}><option value="">Choose</option>{STATES.map((s) => <option key={s}>{s}</option>)}</Select></div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
