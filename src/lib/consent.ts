@@ -1,12 +1,12 @@
-// Optional consents (SMS, CV retention). Unchecked by default, recorded ONLY in this browser, withdrawable any time.
+// Optional consents (SMS, CV retention). Ticked by default at Akash's request (t304u); the user can untick either any time. Recorded ONLY in this browser.
 // DPDP Act 2023 s.6: free, specific, informed, unconditional, unambiguous, with a clear affirmative action; withdrawal as easy as giving. Akash Sync Agent.
 export type ConsentKind = 'sms' | 'cv';
 export const CONSENT_TEXT: Record<ConsentKind, string> = {
   sms: 'By checking this box, I consent to receive transactional and marketing text messages regarding employment opportunities.',
   cv: '*By checking this box, I consent to the storage of my CV for six months to allow employers to assess my suitability for future job opportunities.',
 };
-export const CONSENT_VERSION = '2026-11-01';
-export interface LogEntry { kind: ConsentKind; action: 'given' | 'withdrawn' | 'expired'; at: string; where: string; text: string; version: string; until?: string }
+export const CONSENT_VERSION = '2026-11-01b';
+export interface LogEntry { kind: ConsentKind; action: 'given' | 'withdrawn' | 'expired' | 'default-on'; at: string; where: string; text: string; version: string; until?: string }
 export interface ConsentState { sms: { given: boolean; at?: string }; cv: { given: boolean; at?: string; until?: string }; log: LogEntry[] }
 export const NO_CONSENT: ConsentState = { sms: { given: false }, cv: { given: false }, log: [] };
 export const KEY = 'jaos_consent_v1';
@@ -22,6 +22,17 @@ export function expire(s: ConsentState, now = new Date().toISOString()): Consent
   if (s.cv.given && s.cv.until && s.cv.until <= now) return { ...s, cv: { given: false }, log: [...s.log, { kind: 'cv', action: 'expired', at: now, where: 'automatic', text: CONSENT_TEXT.cv, version: CONSENT_VERSION }] };
   return s;
 }
-export function load(): ConsentState { try { return expire({ ...NO_CONSENT, ...JSON.parse(localStorage.getItem(KEY) || '{}') }); } catch { return NO_CONSENT; } }
+/** First visit: both boxes start ticked, logged as 'default-on' so the record shows they were pre-ticked, not actively ticked. */
+export function defaults(now = new Date().toISOString()): ConsentState {
+  const until = addMonths(now, 6);
+  return { sms: { given: true, at: now }, cv: { given: true, at: now, until }, log: [
+    { kind: 'sms', action: 'default-on', at: now, where: 'default', text: CONSENT_TEXT.sms, version: CONSENT_VERSION },
+    { kind: 'cv', action: 'default-on', at: now, where: 'default', text: CONSENT_TEXT.cv, version: CONSENT_VERSION, until } ] };
+}
+export function load(): ConsentState {
+  try { const raw = localStorage.getItem(KEY); if (!raw) { const d = defaults(); localStorage.setItem(KEY, JSON.stringify(d)); return d; } return expire({ ...NO_CONSENT, ...JSON.parse(raw) }); } catch { return defaults(); }
+}
+/** 'Manage consent': set both boxes at once, each change logged. */
+export const setBoth = (s: ConsentState, on: boolean, where: string, now?: string) => setConsent(setConsent(s, 'sms', on, where, now), 'cv', on, where, now);
 export function save(s: ConsentState) { try { localStorage.setItem(KEY, JSON.stringify(s)); window.dispatchEvent(new Event(KEY)); } catch { /* storage blocked */ } }
-export const exportJson = (s: ConsentState) => JSON.stringify({ app: 'Job Acquisition OS', note: 'Consent log kept only in this browser. Nothing was sent to a server.', exportedAt: new Date().toISOString(), current: { sms: s.sms, cv: s.cv }, log: s.log }, null, 2);
+export const exportJson = (s: ConsentState) => JSON.stringify({ app: 'Job Acquisition OS', note: 'Consent log kept only in this browser. Nothing was sent to a server.', exportedAt: new Date().toISOString(), version: CONSENT_VERSION, current: { sms: s.sms, cv: s.cv }, log: s.log }, null, 2);

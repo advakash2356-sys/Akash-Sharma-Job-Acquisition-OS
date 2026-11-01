@@ -1,3 +1,4 @@
+import { ConsentBoxes } from '../components/ConsentBoxes';
 import { useMemo, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, PageHeader } from '../components/ui';
@@ -23,6 +24,7 @@ export default function H1bSprint() {
       <PageHeader eyebrow="Free · runs in your browser" title="H-1B 60-day sprint" subtitle="Lost an H-1B job? Count down the up to 60-day grace period from both possible end dates, work through a checklist with official USCIS links, and find employers that file LCAs for your role." />
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="h1b-disclaimer"><b>Confirm with an immigration attorney. Information only.</b> {DISCLAIMER}</p>
       <LocalNote onClear={() => { clearPersisted('jaos_h1b_dates', 'jaos_steps_h1b'); location.reload(); }} />
+      <div className="mb-5"><ConsentBoxes where="h1b-sprint" /></div>
       <Card className="mb-5 grid min-w-0 gap-3" data-testid="h1b-countdown"><h2 className="text-xl font-medium">Countdown</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="min-w-0"><Label htmlFor="hl">Last day you worked</Label><Input id="hl" type="date" value={lw} onChange={(e) => setLw(e.target.value)} /></div>

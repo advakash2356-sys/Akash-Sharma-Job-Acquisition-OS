@@ -1,3 +1,4 @@
+import { ConsentBoxes } from '../components/ConsentBoxes';
 import { useEffect, useState } from 'react';
 import { Bell, CalendarPlus, FileDown, Presentation, Trophy } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, PageHeader } from '../components/ui';
@@ -50,6 +51,7 @@ export default function VoicePractice() {
   return (<>
     <PageHeader eyebrow="Free · beta · runs in your browser" title="Voice interview practice" subtitle="Interviews often happen on a call. Hear each question, answer out loud, and level up from 1 to 10. Growth is slow on purpose: real answers only, small steps, a daily cap." />
     <LocalNote onClear={() => { clearPersisted('jaos_voice_cfg', 'jaos_voice_turns', 'jaos_steps_voice', 'jaos_voice_game', 'jaos_voice_reminder', 'jaos_voice_designation'); location.reload(); }} />
+    <div className="mb-5"><ConsentBoxes where="voice-practice" /></div>
     <Card className="mb-5 grid min-w-0 gap-3" data-testid="game-panel">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs text-muted-foreground">Your level</div><div className="font-mono text-5xl" data-testid="game-level">{g.level ?? '–'}<span className="text-xl text-muted-foreground">/10</span></div>
         <div className="text-sm text-muted-foreground">{g.baseline != null ? `Started at ${g.baseline} · ${g.level! >= g.baseline ? '+' : ''}${Math.round((g.level! - g.baseline) * 10) / 10} since` : 'Answer a question to get your starting level.'}</div></div>

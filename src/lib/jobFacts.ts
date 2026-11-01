@@ -6,10 +6,10 @@ export function parseSalary(text: string): string {
   const t = text.replace(/\s+/g, ' ');
   const pats = [
   // Safe: CUR and NUM are fixed constant patterns defined in this file, never user input (semgrep regex-from-var reviewed).
-    new RegExp(String.raw`${CUR}\s?${NUM}\s*(?:-|–|to)\s*${CUR}?\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'),
-    new RegExp(String.raw`\b${NUM}\s*(?:-|–|to)\s*${NUM}\s*(?:lpa|lakhs? per annum|lakhs?|ctc)\b`, 'i'),
-    new RegExp(String.raw`(?:salary|ctc|compensation|pay)[^.]{0,25}?${CUR}\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'),
-    new RegExp(String.raw`\b${NUM}\s*lpa\b`, 'i'),
+    new RegExp(String.raw`${CUR}\s?${NUM}\s*(?:-|–|to)\s*${CUR}?\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
+    new RegExp(String.raw`\b${NUM}\s*(?:-|–|to)\s*${NUM}\s*(?:lpa|lakhs? per annum|lakhs?|ctc)\b`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
+    new RegExp(String.raw`(?:salary|ctc|compensation|pay)[^.]{0,25}?${CUR}\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
+    new RegExp(String.raw`\b${NUM}\s*lpa\b`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
   ];
   for (const p of pats) { const m = t.match(p); if (m && /\d{2,}|\d\s*(?:k|lpa|l\b|lakh)/i.test(m[0])) return m[0].replace(/^(?:salary|ctc|compensation|pay)[^₹$€£\d]*/i, '').trim(); }
   return 'Not disclosed';

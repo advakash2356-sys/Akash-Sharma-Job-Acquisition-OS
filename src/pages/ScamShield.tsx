@@ -1,3 +1,4 @@
+import { ConsentBoxes } from '../components/ConsentBoxes';
 import { useState } from 'react';
 import { ShieldAlert, Share2, Download, Trash2 } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
@@ -47,6 +48,7 @@ export default function ScamShield() {
     <>
       <PageHeader eyebrow="Free · runs in your browser" title="Scam Shield: check a recruiter's message" subtitle="Paste a job offer, call notes or email. It looks for warning signs such as fees, look-alike emails, pressure and chat-only contact, in English, Hindi and Hinglish. Nothing you paste leaves this device." />
       <LocalNote onClear={() => { clearPersisted('jaos_scam_inputs', 'jaos_steps_scam', KEY); location.reload(); }} />
+      <div className="mb-5"><ConsentBoxes where="scam-shield" /></div>
       <Steps id="scam" title="Check an offer in 4 steps" steps={[{ title: 'Paste the message, or upload the PDF / screenshot', body: 'Then press "Check for warning signs".' }, { title: 'Read the verdict, then save or email it', body: 'Download the report, then attach it in your own email app, or use "Email it".' }, { title: 'Going abroad? Check the agent fee (Agent Check below)', body: 'Then look the agent up on eMigrate.' }, { title: 'Check the company is real (Employer Reality Check below)', body: 'Then compare the CIN/GSTIN with the official registers.' }]} />
       <Card className="mb-5 grid gap-3" data-testid="scam-form">
         <div className="flex flex-wrap items-center gap-2"><label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border px-4 text-sm hover:bg-muted"><Upload size={15} /> Upload PDF or image (multi-page PDF OK)<input type="file" hidden accept={OFFER_ACCEPT} data-testid="scam-file" onChange={(e) => openFile(e.target.files?.[0])} /></label>{fileMsg && <span className="text-sm text-muted-foreground" role="status">{fileMsg}</span>}</div>

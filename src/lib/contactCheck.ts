@@ -5,7 +5,7 @@ const lev = (a: string, b: string) => { const d = Array.from({ length: b.length 
 export function contactCheck(text: string, p: { name?: string; email?: string; phone?: string; links?: string }): ContactIssue[] {
   const out: ContactIssue[] = []; const t = text || '';
   for (const part of (p.name || '').split(/\s+/).filter((w) => w.length >= 4)) {
-    const re = new RegExp(`\\b${reEscape(part[0])}[a-z]{${part.length - 2},${part.length}}\\b`, 'gi');
+    const re = new RegExp(`\\b${reEscape(part[0])}[a-z]{${part.length - 2},${part.length}}\\b`, 'gi'); // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
     for (const w of t.match(re) || []) if (w.toLowerCase() !== part.toLowerCase() && lev(w.toLowerCase(), part.toLowerCase()) === 1) out.push({ kind: 'name', found: w, expected: part });
   }
   if (p.email) for (const e of t.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) || []) if (e.toLowerCase() !== p.email.toLowerCase() && lev(e.toLowerCase(), p.email.toLowerCase()) <= 3) out.push({ kind: 'email', found: e, expected: p.email });
