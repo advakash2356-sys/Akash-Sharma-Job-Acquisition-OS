@@ -446,3 +446,6 @@ mammoth's prebuilt browser file (mammoth/mammoth.browser) bundled its own JSZip 
 ## pptxgenjs 3.12.0 (MIT) — https://github.com/gitbrent/PptxGenJS
 Used in /voice-practice to build the preparation slides in the browser. Copyright (c) 2015-present Brent Ely. MIT License.
 The common-word list in src/lib/commonWords.ts was written for this project (no third-party list).
+
+## Government job postings feed (server/govPostings.ts, /api/gov/postings)
+No third-party code reused. Data is read on our server from: FreeHire public API (https://github.com/strelov1/freehire, MIT, keyless; Telegram-sourced Indian notices, kept only with an official .gov.in/.nic.in link and a future last date) and the SarkariMap public RSS feed (documented as free for feed readers in https://github.com/suryadev-sm/sarkari-jobs-api; aggregator pages, labelled as such). Only job facts are kept; emails and phone numbers are removed. Searched GitHub for permissive Indian government-vacancy datasets (Nov 2026): none current under MIT/Apache/BSD/ISC/CC0.

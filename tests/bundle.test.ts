@@ -133,3 +133,14 @@ test('consent: optional and unticked by default, tick records, untick persists a
   const w = setBoth(r, false, 'gov-jobs'); assert.equal(w.cv.given, false); assert.equal(w.log.at(-1)!.action, 'withdrawn');
   const j = JSON.parse(exportJson(w)); assert.equal(j.current.sms.given, false); assert.equal(j.log.length, 4); assert.ok(j.version);
   delete (globalThis as any).localStorage; delete (globalThis as any).window; });
+import { anyDate, fromFreeHire, fromRss, noContacts, payOf, stateOf } from '../server/govPostings';
+test('gov postings: dates, pay, state, official link, no contacts, closed dropped', () => {
+  assert.equal(anyDate('Application Last Date: 05.10.2026'), '2026-10-05'); assert.equal(anyDate('till 14 October 2026'), '2026-10-14'); assert.equal(anyDate('31.02.2026'), '');
+  assert.match(payOf('SPA – 8th Level of Pay Matrix, 7th CPC'), /8th Level/); assert.equal(payOf('Salary: achhi milegi.'), '');
+  assert.equal(stateOf('UKSSSC PA'), 'Uttarakhand'); assert.equal(noContacts('mail a.b@x.gov.in or 9876543210'), 'mail [email removed] or [phone removed]');
+  const raw = { public_slug: 's', title: 'Personal Assistant', company: 'High Court of Delhi', location: 'New Delhi', posted_at: '2026-10-01T00:00:00Z', description: 'Total Vacancies: 33<br>PA – 7th Level of Pay Matrix, 7th CPC<br>Who Can Apply: graduates<br>Application Last Date: 05.12.2026<br>Notification: https://www.delhihighcourt.nic.in/x.pdf<br>' };
+  const p = fromFreeHire(raw, '2026-11-01')!; assert.equal(p.lastDate, '2026-12-05'); assert.ok(p.official && p.lesserKnown); assert.equal(p.state, 'Delhi'); assert.match(p.pay, /7th Level/);
+  assert.equal(fromFreeHire({ ...raw, description: raw.description.replace('05.12.2026', '05.10.2026') }, '2026-11-01'), null, 'closed posting dropped');
+  assert.equal(fromFreeHire({ ...raw, description: 'Last Date: 05.12.2026 apply at example.com' }, '2026-11-01'), null, 'no official link dropped');
+  const rss = '<item><title><![CDATA[NIT Calicut Project Associate Recruitment 2026]]></title><link>https://sarkarimap.org/job/x</link><pubDate>Sat, 31 Oct 2026 06:49:55 GMT</pubDate><description><![CDATA[1 vacancy. Apply 11 November 2026 tak.]]></description></item>';
+  const r = fromRss(rss, '2026-11-01'); assert.equal(r.length, 1); assert.equal(r[0].lastDate, '2026-11-11'); assert.ok(r[0].lesserKnown && !r[0].official); assert.equal(r[0].state, 'Kerala'); });
