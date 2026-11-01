@@ -12,6 +12,7 @@ const fmt = (d: string) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('e
 
 export function GovPostings({ homeState }: { homeState?: string }) {
   const [feed, setFeed] = useState<Feed | null>(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const [ack, setAck] = usePersisted<string>('jaos_gov_postings_ack', '');
   const [f, setF] = usePersisted('jaos_gov_postings_filter', { q: '', state: '', lesser: false, official: false, soon: false });
   const load = async () => { setBusy(true); setErr(''); try { const r = await fetch('/api/gov/postings', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); setFeed(j); } catch (e: any) { setErr(`Could not load live postings right now (${e.message}). The eligibility checker below still works.`); } finally { setBusy(false); } };
   useEffect(() => { load(); }, []);
@@ -24,6 +25,14 @@ export function GovPostings({ homeState }: { homeState?: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-medium">Live government job postings</h2>
         <div className="flex gap-2"><Button variant="outline" onClick={load} disabled={busy} data-testid="gov-postings-refresh"><RefreshCw size={15} /> {busy ? 'Checking…' : 'Refresh'}</Button>{list.length > 0 && <Button variant="outline" onClick={csv}>Download CSV</Button>}</div></div>
       <p className="text-sm text-muted-foreground">Open vacancies with a last date that has not passed, read from public notice feeds on our server (your browser only talks to this site). <b>Always verify on the official notice before applying. Not legal advice.</b> Lesser-known = PSUs, courts, research labs, institutes, regulators and similar roles people often miss.</p>
+      <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm" data-testid="gov-declaration" role="note"><b>Before you use this list</b>
+        <ul className="ml-5 mt-1 list-disc">
+          <li>These postings come from public government and aggregator feeds. Job Acquisition OS does not collect your personal data for this feed.</li>
+          <li>To protect the service we limit how often the feed can be requested and keep a copy for about 30 minutes, so a new notice can take a while to appear. Heavy automated misuse could still add hosting costs for us.</li>
+          <li><b>Always verify on the official notice before applying.</b> Dates, pay and eligibility can change. Not legal advice.</li>
+        </ul>
+        <label className="mt-2 flex items-start gap-2"><input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={!!ack} onChange={(e) => setAck(e.target.checked ? new Date().toISOString() : '')} data-testid="gov-ack" /> <span>I have read this (optional; saved only in this browser{ack ? `, ${new Date(ack).toLocaleString('en-IN')}` : ''}). You can browse the postings either way.</span></label>
+        <p className="mt-1 text-xs text-muted-foreground">Akash Sync Agent</p></div>
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="min-w-0 sm:col-span-2"><Label htmlFor="gpq">Search title, organisation or place</Label><Input id="gpq" value={f.q} placeholder="e.g. clerk, court, engineer, Kerala" onChange={(e) => setF({ ...f, q: e.target.value })} /></div>
         <div className="min-w-0"><Label htmlFor="gps">State</Label><Select id="gps" value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })}><option value="">All states</option>{homeState && !states.includes(homeState) && <option value={homeState}>{homeState}</option>}{states.map((s) => <option key={s}>{s}</option>)}</Select></div>

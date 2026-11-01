@@ -24,7 +24,7 @@ export default function GovJobs() {
       <PageHeader eyebrow="Free · runs in your browser" title="Government Jobs: live postings and eligibility" subtitle="Open government vacancies with last date, state, pay and the official notice, including lesser-known posts people miss. Below, check which exams you are eligible for." />
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="gov-disclaimer"><b>Check the official notification before you apply.</b> {DISCLAIMER}</p>
       <GovPostings homeState={p.state} />
-      <LocalNote onClear={() => { clearPersisted('jaos_gov_profile', 'jaos_gov_postings_filter'); location.reload(); }} />
+      <LocalNote onClear={() => { clearPersisted('jaos_gov_profile', 'jaos_gov_postings_filter', 'jaos_gov_postings_ack'); location.reload(); }} />
       <div className="mb-5"><ConsentBoxes where="gov-jobs" /></div>
       <Steps id="gov" title="Find your government jobs in 4 steps" steps={[{ title: 'Enter your profile below', body: 'Date of birth, education, category, gender and state. Then it is saved in this browser.' }, { title: 'Review your matches', body: 'Check the age pass/fail badge, qualification and pay for each exam. Then use the Lesser-known filter.' }, { title: 'Press Fresh run', body: 'Then open the official notification of each exam you like and check for updates.' }, { title: 'Save or share your shortlist', body: 'Note the exams you will apply for and their official links, then share this page with a friend.' }]} />
       <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-form"><h2 className="text-xl font-medium">Your details</h2>
