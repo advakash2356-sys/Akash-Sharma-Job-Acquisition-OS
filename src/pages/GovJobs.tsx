@@ -25,7 +25,7 @@ export default function GovJobs() {
   return (
     <>
       <PageHeader eyebrow="Free · runs in your browser" title="Government Jobs" subtitle={prov.live ? prov.headline : 'Choose a country. India is live; more countries are being added.'} />
-      <div className="mb-5 flex flex-wrap items-end gap-3" data-testid="gov-country"><div className="min-w-0"><Label htmlFor="gc">Country</Label><Select id="gc" value={country} onChange={(e) => setCountry(e.target.value as CountryCode)} data-testid="gov-country-select">{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.flag} {c.name}{c.live ? '' : ' (coming soon)'}</option>)}</Select></div>{prov.live && <p className="min-w-0 flex-1 text-sm text-muted-foreground">{prov.sub}</p>}</div>
+      <div className="mb-5 flex flex-wrap items-end gap-3" data-testid="gov-country"><div className="min-w-0"><Label htmlFor="gcountry">Country</Label><Select id="gcountry" value={country} onChange={(e) => setCountry(e.target.value as CountryCode)} data-testid="gov-country-select">{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.flag} {c.name}{c.live ? '' : ' (coming soon)'}</option>)}</Select></div>{prov.live && <p className="min-w-0 flex-1 text-sm text-muted-foreground">{prov.sub}</p>}</div>
       {!prov.live ? <><CountryComingSoon p={prov} /><p className="text-xs text-muted-foreground">{CREDIT}</p></> : <>
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="gov-disclaimer"><b>Check the official notification before you apply.</b> {DISCLAIMER}</p>
       <GovPostings homeState={p.state} profile={p} />
