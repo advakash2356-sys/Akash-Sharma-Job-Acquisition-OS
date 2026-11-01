@@ -190,3 +190,7 @@ test('gov fixtures: deputation hidden by default and shown when toggled; scam po
   const keep = fromFreeHire(raw('Graduate'), '2026-11-01'); assert.ok(keep && enrich(keep, 'Graduate'));
   for (const bad of ['Pay fee to jobs@ybl', 'WhatsApp number 9xxxxxxxxx for joining', 'Security deposit Rs 2000', 'Confirmed sarkari job without exam']) assert.equal(enrich(fromFreeHire(raw(bad), '2026-11-01')!, bad), null, bad);
   assert.equal(enrich(fromFreeHire(raw('Applications on deputation basis'), '2026-11-01')!, 'Applications on deputation basis')!.employmentType, 'deputation'); });
+test('GovJobs: every element id in the page source is unique', async () => {
+  const { readFileSync } = await import('node:fs'); const src = readFileSync('src/pages/GovJobs.tsx', 'utf8');
+  const ids = [...src.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]); assert.equal(new Set(ids).size, ids.length, ids.join(','));
+  for (const m of src.matchAll(/htmlFor="([^"]+)"/g)) assert.ok(ids.includes(m[1]), `label for ${m[1]}`); });
