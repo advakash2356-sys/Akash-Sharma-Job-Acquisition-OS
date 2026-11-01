@@ -1,3 +1,4 @@
+import { ConsentBoxes } from '../components/ConsentBoxes';
 import { useState } from 'react';
 import { FileSearch, Upload } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
@@ -34,6 +35,7 @@ export default function OfferShield() {
       <PageHeader eyebrow="Free · runs in your browser" title="Offer Shield: read an offer letter before you sign" subtitle="Upload a PDF, Word file, scan or photo of an offer. It flags bonds, non-competes, long notice, clawbacks and held documents, and estimates your monthly in-hand pay. Compare two offers side by side. Nothing leaves this device." />
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="offer-disclaimer">{DISCLAIMER}</p>
       <LocalNote onClear={() => { clearPersisted('jaos_offer_onestop', 'jaos_steps_offer'); location.reload(); }} />
+      <div className="mb-5"><ConsentBoxes where="offer-shield" /></div>
       <Steps id="offer" title="Check your offer in 4 steps" steps={[{ title: 'Upload or paste the offer letter', body: 'PDF, Word, scan or photo.' }, { title: 'Upload or paste the email it came with', body: "Add the sender's address and the company name too." }, { title: 'Press "Check both together"', body: 'Then read the red flags for each document and the overall verdict.' }, { title: 'Save or email the report', body: 'Download it, then attach it in your own email app.' }]} />
       <Card className="mb-5 grid min-w-0 gap-3" data-testid="offer-onestop"><h2 className="text-xl font-medium">One-stop check: offer letter + email</h2>
         <div className="grid gap-3 lg:grid-cols-2">

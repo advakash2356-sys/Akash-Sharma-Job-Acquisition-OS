@@ -53,7 +53,7 @@ const ALIAS = COUNTRY.flatMap(([c, , al]) => al.map((a) => [a, c] as [string, st
 export function countriesIn(text: string): string[] {
   const out = new Set<string>(); let t = ` ${text || ''} `;
   for (const [a, c] of ALIAS) {
-    const re = a.length <= 3 ? new RegExp(`(?<![A-Za-z])${esc(a.toUpperCase())}(?![A-Za-z])`, 'g') : new RegExp(`\\b${esc(a)}\\b`, 'gi');
+    const re = a.length <= 3 ? new RegExp(`(?<![A-Za-z])${esc(a.toUpperCase())}(?![A-Za-z])`, 'g') : new RegExp(`\\b${esc(a)}\\b`, 'gi'); // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
     if (re.test(t)) { out.add(c); t = t.replace(re, ' '); }
   }
   return [...out];
@@ -132,7 +132,7 @@ export function extractEligibility(j: { location?: string; description?: string;
   }
   const only = [...all.matchAll(/\b([A-Z][A-Za-z.]+(?: [A-Z][a-z]+)?)[- ](?:only|based only)\b|\b(?:must|need to|should|required to) (?:be )?(?:currently )?(?:based|located|living|reside|residing|resident) (?:in|within) (?:the )?([A-Z][A-Za-z. ]{1,30}?)(?=[.,;:)]| or | and |$)|\b(?:open|available) (?:only )?to (?:candidates|applicants|residents|people) (?:based |located |residing )?in (?:the )?([A-Z][A-Za-z. ]{1,30}?)(?=[.,;:)]| or | and |$)/g)];
   for (const m of only) { const txt = m[1] || m[2] || m[3] || ''; const cs = countriesIn(txt); const rg = REGION_RE.filter(([re]) => re.test(txt)).map(([, r]) => r); if (cs.length || rg.length) { cs.forEach((c) => countries.add(c)); rg.forEach((r) => regions.add(r)); ev.push(`"${m[0].trim().slice(0, 70)}"`); worldwide = false; } }
-  if (j.mode !== 'onsite') for (const [re, r] of REGION_RE) { const m = `${loc} ${d.slice(0, 1500)}`.match(re); if (m && new RegExp(`(remote|based|located|candidates|within|across|from)[^.]{0,40}${esc(m[0])}|${esc(m[0])}[^.]{0,20}(only|time ?zones?|hours|based|remote)`, 'i').test(`${loc} ${d}`)) { regions.add(r); ev.push(`region: ${m[0]}`); } }
+  if (j.mode !== 'onsite') for (const [re, r] of REGION_RE) { const m = `${loc} ${d.slice(0, 1500)}`.match(re); if (m && new RegExp(`(remote|based|located|candidates|within|across|from)[^.]{0,40}${esc(m[0])}|${esc(m[0])}[^.]{0,20}(only|time ?zones?|hours|based|remote)`, 'i').test(`${loc} ${d}`)) { regions.add(r); ev.push(`region: ${m[0]}`); } } // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
   const auth = [...all.matchAll(/\b(?:legally )?(?:authori[sz]ed|eligible|permitted|right) to work (?:in|for) (?:the )?([A-Z][A-Za-z. ]{1,30}?)(?=[.,;:)]| without| on | or | and |$)/g)];
   const authRequired = [...new Set(auth.flatMap((m) => countriesIn(m[1])))];
   if (authRequired.length) ev.push(`requires work authorisation in ${authRequired.join(', ')}`);

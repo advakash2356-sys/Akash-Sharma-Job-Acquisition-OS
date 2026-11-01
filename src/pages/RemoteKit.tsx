@@ -1,3 +1,4 @@
+import { ConsentBoxes } from '../components/ConsentBoxes';
 
 import { FileDown } from 'lucide-react';
 import { Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
@@ -34,6 +35,7 @@ export default function RemoteKit() {
       <PageHeader eyebrow="Free · for Indians paid by foreign clients" title="Remote-Ready India kit" subtitle="A checklist for LUT and FIRA, a section 44ADA tax estimate, and an export invoice PDF. Everything stays in your browser." />
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="remote-disclaimer">{DISCLAIMER}</p>
       <LocalNote onClear={() => { clearPersisted('jaos_remote_receipts', 'jaos_remote_invoice', 'jaos_steps_remote'); location.reload(); }} />
+      <div className="mb-5"><ConsentBoxes where="remote-kit" /></div>
       <div data-testid="remote-checklist"><Steps id="remote" title="Get remote-ready, step by step" steps={[...CHECKLIST.map((c) => ({ title: c.step, body: <>Then: {c.detail}</> })), { title: 'Estimate your tax (Section 44ADA, below)', body: 'Enter this year\'s receipts. Then set aside the monthly amount shown.' }, { title: 'Make your export invoice (below)', body: 'Fill in your details, then download the PDF and send it to your client from your own email.' }]} /></div>
       <Card className="mb-5 grid gap-3" data-testid="remote-44ada"><h2 className="text-xl font-medium">Section 44ADA estimate</h2>
         <div className="max-w-xs"><Label htmlFor="rr">Gross receipts this year (₹)</Label><Input id="rr" inputMode="numeric" value={rec} onChange={(ev) => setRec(ev.target.value.replace(/\D/g, ''))} /></div>

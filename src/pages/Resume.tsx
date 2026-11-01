@@ -11,6 +11,7 @@ import { emptyProfile, type Profile } from '../types';
 import { callAi } from '../lib/api';
 import { useAiReady } from '../lib/aiReady';
 import { Sparkles, Loader2 } from 'lucide-react';
+import { ConsentBoxes } from '../components/ConsentBoxes';
 
 export default function ResumePage() {
   const { profile, setProfile, jobs, setJobs, hasResume } = useApp();
@@ -78,6 +79,7 @@ export default function ResumePage() {
           <div><Label htmlFor="t" hint="optional">Target roles</Label><Input id="t" value={profile.targetRoles} onChange={set('targetRoles')} placeholder="e.g. Product Manager, Ops Lead" /></div>
           <div><Label htmlFor="c" hint="optional">Minimum pay</Label><Input id="c" value={profile.minCtc} onChange={set('minCtc')} placeholder="e.g. 18 LPA" /></div>
           <div><Label htmlFor="np" hint="optional">Notice period</Label><Input id="np" value={profile.noticePeriod || ''} onChange={(e) => setProfile((p) => ({ ...p, noticePeriod: e.target.value }))} placeholder="e.g. 30 days, or none" /></div>
+          <div className="sm:col-span-2"><ConsentBoxes where="profile" /></div>
           <div><Label htmlFor="af" hint="optional">Available from</Label><Input id="af" value={profile.availableFrom || ''} onChange={(e) => setProfile((p) => ({ ...p, availableFrom: e.target.value }))} placeholder="e.g. 1 Dec 2026, or immediately" /></div>
         </Card>
 

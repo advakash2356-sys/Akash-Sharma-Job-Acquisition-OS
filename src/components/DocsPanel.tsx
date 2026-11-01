@@ -11,6 +11,7 @@ import { ACCENTS, TEMPLATES, TEMPLATE_INFO, defaultSpec, specLabel, type Accent,
 import { exportDocx, exportEml, exportPdf, fileBase, gmailComposeUrl } from '../lib/exporters';
 import type { Job } from '../types';
 import { asText, normaliseJob } from '../lib/docShape';
+import { ConsentBoxes } from './ConsentBoxes';
 
 /** Per-document boundary: if a preview or fact check fails, show the raw text instead of crashing the page. */
 class PanelBoundary extends React.Component<{ raw: string; children: React.ReactNode }, { error: Error | null }> {
@@ -126,6 +127,7 @@ export default function DocsPanel({ job: job0 }: { job: Job }) {
 
   return (
     <Card id="pack" className="grid scroll-mt-44 gap-4">
+      <ConsentBoxes where="application-pack" />
       <div>
         <div className="label mb-1 text-primary">Steps 4 and 5 · Your application pack</div>
         <h2 className="text-3xl">Documents for {label}</h2>

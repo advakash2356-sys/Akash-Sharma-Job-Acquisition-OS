@@ -1,3 +1,5 @@
+import { reEscape } from './reEscape';
+import { COMMON } from './commonWords';
 // Voice interview practice: rule-based scoring of content and delivery, all in the browser. Akash Sync Agent.
 export type Round = 'hr' | 'technical' | 'behavioural';
 export const ROUNDS: Record<Round, string> = { hr: 'HR', technical: 'Technical', behavioural: 'Behavioural' };
@@ -24,8 +26,8 @@ const SLANG = ['gonna', 'wanna', 'gotta', 'yeah', 'dude', 'bro', 'cool', 'stuff'
 const STIFF = ['herewith', 'kindly', 'do the needful', 'hereby', 'aforementioned', 'revert back', 'pursuant'];
 const HEDGE = ['i think maybe', 'i guess', 'not sure', 'probably', 'i hope', 'sorry'];
 const STAR = { situation: /\b(when|situation|at my (last|previous)|while i was|once)\b/i, task: /\b(task|goal|needed to|had to|responsib)/i, action: /\b(i (decided|built|led|called|created|set up|spoke|changed|wrote|fixed|organi[sz]ed|trained|analy[sz]ed))\b/i, result: /\b(result|so that|which (led|meant)|increased|reduced|saved|improved|\d+ ?%|percent)\b/i };
-const count = (t: string, w: string) => (t.match(new RegExp(`\\b${w.replace(/ /g, '\\s+')}\\b`, 'gi')) || []).length;
-export interface Analysis { words: number; wpm: number | null; fillers: { w: string; n: number }[]; fillerRate: number; slang: string[]; stiff: string[]; hedges: string[]; star: Record<keyof typeof STAR, boolean>; relevance: number; content: number; delivery: number; score: number; tips: string[]; rewrite: string; noAnswer: boolean }
+const count = (t: string, w: string) => (t.match(new RegExp(`\\b${reEscape(w).replace(/ /g, '\\s+')}\\b`, 'gi')) || []).length; // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
+export interface Analysis { words: number; wpm: number | null; fillers: { w: string; n: number }[]; fillerRate: number; slang: string[]; stiff: string[]; hedges: string[]; star: Record<keyof typeof STAR, boolean>; relevance: number; content: number; delivery: number; score: number; tips: string[]; rewrite: string; noAnswer: boolean; tooShort: boolean; commonRatio: number }
 export function analyze(text: string, seconds: number | null, keys: string[], round: Round): Analysis {
   const t = (text || '').trim(), lower = t.toLowerCase(), words = t ? t.split(/\s+/).length : 0;
   const wpm = seconds && seconds > 3 ? Math.round(words / (seconds / 60)) : null;
@@ -50,22 +52,33 @@ export function analyze(text: string, seconds: number | null, keys: string[], ro
   delivery = Math.max(0, delivery);
   const fset = new Set(FILLERS.flatMap((f) => f.split(' ')));
   const real = (lower.match(/[a-z\u0900-\u097f']+/g) || []).filter((w) => !fset.has(w) && (/[aeiouy]/.test(w) || /[\u0900-\u097f]/.test(w)) && !/(.)\1{2,}/.test(w));
-  const noAnswer = real.length < 5 || real.length / Math.max(1, words) < 0.5;
-  if (noAnswer) return { words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance: 0, content: 0, delivery: Math.min(delivery, 10), score: Math.min(5, Math.round(real.length)), tips: ['No real answer detected. Answer the question in full sentences: what you did, how, and the result.', ...tips], rewrite: '', noAnswer: true };
-  return { noAnswer: false, words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance, content, delivery, score: Math.round(0.55 * content + 0.45 * delivery), tips, rewrite: naturalize(t) };
+  const toks = lower.match(/[a-z']+/g) || [], commonRatio = toks.length ? toks.filter((w) => COMMON.has(w.replace(/'s$/, ''))).length / toks.length : 0;
+  const nonsense = real.length / Math.max(1, words) < 0.5 || (toks.length >= 3 && commonRatio < 0.25);
+  const tooShort = !nonsense && real.length > 0 && real.length < 5;
+  const noAnswer = nonsense || real.length === 0;
+  if (tooShort) return { words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance: 0, content: 0, delivery: Math.min(delivery, 20), score: Math.min(10, real.length * 2), tips: ['Answer too short. Add what you did, how you did it, and the result.'], rewrite: naturalize(t), noAnswer: false, tooShort: true, commonRatio };
+  if (noAnswer) return { tooShort: false, commonRatio, words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance: 0, content: 0, delivery: Math.min(delivery, 10), score: Math.min(5, Math.round(real.length)), tips: ['No real answer detected. Answer the question in full sentences: what you did, how, and the result.', ...tips], rewrite: '', noAnswer: true };
+  return { noAnswer: false, tooShort: false, commonRatio, words, wpm, fillers, fillerRate, slang, stiff, hedges, star, relevance, content, delivery, score: Math.round(0.55 * content + 0.45 * delivery), tips, rewrite: naturalize(t) };
 }
 /** "Say it more naturally": removes fillers, swaps slang and stiff phrases. Uses only your own words. */
 export function naturalize(t: string) {
   let s = ' ' + t + ' ';
-  for (const w of [...FILLERS].sort((a, b) => b.length - a.length)) s = s.replace(new RegExp(`[,\\s]*\\b${w.replace(/ /g, '\\s+')}\\b[,]?`, 'gi'), ' ');
+  for (const w of [...FILLERS].sort((a, b) => b.length - a.length)) s = s.replace(new RegExp(`[,\\s]*\\b${reEscape(w).replace(/ /g, '\\s+')}\\b[,]?`, 'gi'), ' '); // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
   const swap: [RegExp, string][] = [[/\bgonna\b/gi, 'going to'], [/\bwanna\b/gi, 'want to'], [/\bgotta\b/gi, 'have to'], [/\bkinda\b/gi, 'somewhat'], [/\byeah\b/gi, 'yes'], [/\bstuff\b/gi, 'work'], [/\bdo the needful\b/gi, 'take care of it'], [/\brevert back\b/gi, 'reply'], [/\bkindly\b/gi, 'please'], [/\bherewith\b/gi, '']];
   for (const [re, r] of swap) s = s.replace(re, r);
   return s.replace(/\s+/g, ' ').replace(/\s([,.?!])/g, '$1').trim().replace(/^./, (c) => c.toUpperCase());
 }
 export function highlight(t: string): { text: string; filler: boolean }[] {
-  const re = new RegExp(`\\b(${[...FILLERS].sort((a, b) => b.length - a.length).map((w) => w.replace(/ /g, '\\s+')).join('|')})\\b`, 'gi');
+  const re = new RegExp(`\\b(${[...FILLERS].sort((a, b) => b.length - a.length).map((w) => w.replace(/ /g, '\\s+')).join('|')})\\b`, 'gi'); // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
   const out: { text: string; filler: boolean }[] = []; let last = 0;
   for (const m of t.matchAll(re)) { if (m.index! > last) out.push({ text: t.slice(last, m.index), filler: false }); out.push({ text: m[0], filler: true }); last = m.index! + m[0].length; }
   if (last < t.length) out.push({ text: t.slice(last), filler: false });
   return out;
+}
+
+const STOP = new Set(['what', 'when', 'where', 'which', 'would', 'could', 'should', 'your', 'you', 'that', 'this', 'with', 'from', 'about', 'have', 'does', 'make', 'tell', 'time', 'there', 'their', 'them', 'they', 'were', 'will', 'into', 'than', 'then', 'thing', 'things', 'most', 'more', 'like', 'just', 'some']);
+/** Topic keywords taken from a question itself (used for follow-ups), plus a few universal answer markers. */
+export function keysFrom(q: string): string[] {
+  const k = (q.toLowerCase().match(/[a-z]+/g) || []).filter((w) => w.length >= 4 && !STOP.has(w)).map((w) => w.slice(0, 5));
+  return [...new Set([...k, 'because', 'example', 'learn', 'result'])];
 }

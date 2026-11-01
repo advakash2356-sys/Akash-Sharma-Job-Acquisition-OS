@@ -443,3 +443,6 @@ No third-party code or data reused. Searched GitHub (Oct 2026): candidate datase
 
 ## jszip (MIT or GPL-3.0, used under MIT) — zip-slip advisory GHSA-36fh-84j7-cv5h
 mammoth's prebuilt browser file (mammoth/mammoth.browser) bundled its own JSZip 3.7.1, which is affected by the zip-slip advisory (fixed in 3.8.0). We now import mammoth's normal entry, so the single shared JSZip 3.10.2 (not affected) is used, and package.json pins jszip ^3.10.2 via overrides. Files are only read in memory in the browser; nothing is extracted to disk.
+## pptxgenjs 3.12.0 (MIT) — https://github.com/gitbrent/PptxGenJS
+Used in /voice-practice to build the preparation slides in the browser. Copyright (c) 2015-present Brent Ely. MIT License.
+The common-word list in src/lib/commonWords.ts was written for this project (no third-party list).
