@@ -1,9 +1,11 @@
 // Government Jobs eligibility finder (India). Hand-curated from official notifications; every entry carries
 // its source and the date it was last checked. Information only, not legal advice. Akash Sync Agent.
+/** Professional field of the degree (e.g. LLB = law). Used only to rank live postings. */
+export type Spec = '' | 'law' | 'engineering' | 'medical' | 'finance' | 'other';
 export type Edu = '10' | '12' | 'iti' | 'diploma' | 'grad' | 'eng' | 'pg';
 export type Cat = 'GEN' | 'EWS' | 'OBC' | 'SC' | 'ST';
 export type Gender = 'male' | 'female' | 'other';
-export interface Profile { dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string }
+export interface Profile { dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec }
 export interface Exam {
   id: string; name: string; body: string; group: 'UPSC' | 'SSC' | 'Banking' | 'Railways' | 'Defence' | 'Courts' | 'PSU / Research' | 'Postal';
   minAge: number; maxAge: number; asOn: string; // age reckoning date in the notification used

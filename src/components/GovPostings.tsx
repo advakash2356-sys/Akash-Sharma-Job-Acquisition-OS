@@ -4,7 +4,7 @@ import { Badge, Button, Card, Input, Label, Select } from './ui';
 import { usePersisted } from '../lib/persist';
 import { downloadText } from '../lib/exportResult';
 import { filterPostings } from '../lib/gov/filter';
-import { BADGE_TEXT, eligibilityBadge, rankScore } from '../lib/gov/rank';
+import { BADGE_TEXT, eligibilityBadge, profileFit, rankScore } from '../lib/gov/rank';
 import type { Profile } from '../lib/govJobs';
 
 /** Live government job POSTINGS (not just exams): last date, state, pay, vacancies, official notice. Akash Sync Agent. */
@@ -21,8 +21,9 @@ export function GovPostings({ homeState, profile }: { homeState?: string; profil
   useEffect(() => { load(); }, []);
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
   const list = filterPostings(feed?.postings || [], f)
-    .map((p) => ({ p, score: rankScore(p, f.q.split(/[\s,]+/)) }))
-    .sort((a, b) => (f.sort === 'rank' ? b.score - a.score : 0) || a.p.lastDate.localeCompare(b.p.lastDate)).map((x) => x.p);
+    .map((p) => { const fit = profileFit(p, profile); return { p, fit, score: rankScore(p, f.q.split(/[\s,]+/)) + fit.pts }; })
+    .sort((a, b) => (f.sort === 'rank' ? b.score - a.score : 0) || a.p.lastDate.localeCompare(b.p.lastDate)).filter((x) => f.sort !== 'rank' || !x.fit.belowLevel).map((x) => x.p);
+  const hidden = f.sort === 'rank' ? (feed?.postings || []).filter((p) => profileFit(p, profile).belowLevel).length : 0;
   const csv = () => downloadText('gov-postings.csv', ['title,org,state,location,last_date,pay,vacancies,notice'].concat(list.map((p) => [p.title, p.org, p.state, p.location, p.lastDate, p.pay, p.vacancies, p.noticeUrl].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','))).join('\n'), 'text/csv');
   return (
     <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-postings">
@@ -48,7 +49,8 @@ export function GovPostings({ homeState, profile }: { homeState?: string; profil
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.deputation} onChange={(e) => setF({ ...f, deputation: e.target.checked })} data-testid="gp-deputation" /> Show deputation-only posts</label></div>
         <div className="min-w-0"><Label htmlFor="gpo">Sort</Label><Select id="gpo" value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value })} data-testid="gp-sort"><option value="rank">Best match (closing soon, lesser-known, clear pay)</option><option value="date">Last date first</option></Select></div>
       </div>
-      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the eligibility hint:</b> it uses your <b>date of birth</b>, <b>education</b>, <b>category</b> (and PwBD) and <b>state</b> from "Your details" below, saved only in this browser. "Likely eligible" appears only when the posting states both an age limit and a qualification level and you meet them (with standard OBC +3, SC/ST +5, PwBD +10 years). If either is missing from the notice text you see "Needs verification"; deputation-only posts and posts you seem to miss show "May not qualify". It is a hint, not legal advice.</p>
+      {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} junior / entry-level posts are hidden from Best match because they are below your experience. Switch Sort to "Last date first" to see everything.</p>}
+      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the eligibility hint:</b> it uses your <b>date of birth</b>, <b>education</b>, <b>category</b> (and PwBD) <b>state</b>, <b>years of experience</b> and <b>professional degree</b> from "Your details" below, saved only in this browser. "Likely eligible" appears only when the posting states both an age limit and a qualification level and you meet them (with standard OBC +3, SC/ST +5, PwBD +10 years). If either is missing from the notice text you see "Needs verification"; deputation-only posts and posts you seem to miss show "May not qualify". It is a hint, not legal advice.</p>
       {err && <p className="text-sm text-danger" role="alert">{err}</p>}
       {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
       {!feed && !err && <div className="h-40 animate-pulse rounded-lg bg-muted" aria-label="Loading postings" />}
