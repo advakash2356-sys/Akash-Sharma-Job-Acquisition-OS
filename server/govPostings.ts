@@ -8,6 +8,7 @@
  * emails and phone numbers are stripped from snippets. Nothing is invented: a missing field is shown as "see notice".
  */
 import { dmy } from "./govtFeed.js";
+import { inDomain } from "../src/lib/gov/domain.js";
 
 const FH = "https://freehire.me/api/v1/jobs/search";
 const RSS = "https://sarkarimap.org/rss.xml";
@@ -18,6 +19,44 @@ export interface GovPosting {
   id: string; title: string; org: string; state: string; location: string; lastDate: string; startDate?: string;
   pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; applyUrl?: string;
   postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS"; lesserKnown: boolean; verifiedAt: string;
+  /** Playbook §5 fields (best effort from the notice text; empty when not stated). */
+  level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; minAge?: number; maxAge?: number; eduTags?: string[];
+}
+export type Level = "central" | "state" | "psu" | "autonomous" | "judiciary" | "defence" | "regulator" | "local";
+export type EmpType = "permanent" | "contractual" | "deputation" | "apprenticeship" | "fellowship";
+export function levelOf(t: string): Level {
+  if (/high court|supreme court|district court|tribunal|judicial/i.test(t)) return "judiciary";
+  if (/\b(RBI|SEBI|IRDAI|PFRDA|NABARD|SIDBI|TRAI|CCI)\b/.test(t)) return "regulator";
+  if (/\b(army|navy|air force|coast guard|territorial army|agniveer|BSF|CRPF|CISF|ITBP|SSB|assam rifles|ordnance)\b/i.test(t)) return "defence";
+  if (/\b(limited|ltd|corporation|NTPC|ONGC|BHEL|IOCL|GAIL|SAIL|HAL|BEL|ECIL|NHPC|POWERGRID|BECIL|EdCIL|NPCC|bank)\b/i.test(t)) return "psu";
+  if (/municipal|nagar|panchayat|zila|district/i.test(t)) return "local";
+  if (/\b(CSIR|ICAR|ICMR|DRDO|ISRO|BARC|AIIMS|IIT|NIT|IIIT|IISER|IISc|IIM|ISI|university|institute|laboratory|KVS|NVS)\b/i.test(t)) return "autonomous";
+  if (/\b(UPSC|SSC|RRB|railway|ministry|department of|central|government of india|EPFO|ESIC|India Post)\b/i.test(t)) return "central";
+  return "state";
+}
+export function empTypeOf(t: string): EmpType {
+  if (/deputation|absorption/i.test(t)) return "deputation";
+  if (/apprentice/i.test(t)) return "apprenticeship";
+  if (/\b(JRF|SRF|fellow(ship)?|young professional)\b/i.test(t)) return "fellowship";
+  if (/contract|contractual|project (associate|assistant|scientist)|walk-?in|consultant|tenure/i.test(t)) return "contractual";
+  return "permanent";
+}
+export function agesOf(t: string): { minAge?: number; maxAge?: number } {
+  const r = t.match(/(\d{2})\s*(?:-|to|–)\s*(\d{2})\s*(?:years|yrs)/i); if (r && +r[1] >= 14 && +r[2] <= 65 && +r[1] < +r[2]) return { minAge: +r[1], maxAge: +r[2] };
+  const m = t.match(/(?:max(?:imum)?\.?\s*age(?:\s*limit)?|upper age(?:\s*limit)?|age limit)[^\d]{0,20}(\d{2})/i) || t.match(/(\d{2})\s*(?:saal|years)\s*(?:hai|max|maximum)/i);
+  return m && +m[1] >= 18 && +m[1] <= 65 ? { maxAge: +m[1] } : {};
+}
+export function eduTagsOf(t: string): string[] {
+  const tags: [string, RegExp][] = [["10TH", /\b10th|matric|SSLC\b/i], ["12TH", /\b12th|intermediate|HSC\b/i], ["ITI", /\bITI\b/], ["DIPLOMA", /diploma/i], ["GRADUATE", /graduat|bachelor|degree\b/i], ["ENGINEERING", /B\.?\s?E\b|B\.?\s?Tech|engineering|GATE/i], ["LAW", /LL\.?B|\blaw\b|legal/i], ["MEDICAL", /MBBS|nursing|medical|B\.?Sc nursing|pharm/i], ["PG", /post ?graduat|master'?s|M\.?Sc|M\.?A\b|MBA|M\.?Tech|MCA/i], ["PHD", /Ph\.?\s?D/i]];
+  return tags.filter(([, re]) => re.test(t)).map(([k]) => k);
+}
+/** Playbook §7 scam heuristics: personal UPI/WhatsApp payment or fee-disguise wording. */
+export const SCAM = /@(okaxis|ybl|paytm|oksbi|okhdfcbank|okicici|upi)\b|whats ?app\s*(no|number|pe)|security deposit|training kit charge|laptop charge|confirmed (sarkari )?job without exam|joining fee/i;
+export function enrich(p: GovPosting, text: string): GovPosting | null {
+  const all = `${p.title} ${p.org} ${text}`;
+  if (SCAM.test(all)) return null;
+  const tr = inDomain(p.noticeUrl).tier;
+  return { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
 }
 export interface GovFeed { postings: GovPosting[]; checkedAt: string; warnings: string[]; sources: string[] }
 
@@ -108,9 +147,9 @@ export async function govPostings(now = Date.now()): Promise<GovFeed> {
   const qs = ["Recruitment 2026", "Last Date", "Apply Online notification", "Vacancy", "Posts", "Notification"];
   const fh = await Promise.allSettled(qs.map((q) => get(`${FH}?${new URLSearchParams({ q, source: "telegram", countries: "IN", sort: "posted_at", limit: "100" })}`, "application/json").then((r) => r.json())));
   let fhOk = false;
-  fh.forEach((r, i) => { if (r.status === "rejected") { warnings.push(`FreeHire "${qs[i]}": ${r.reason?.message}`); return; } fhOk = true; for (const raw of (r.value as any)?.data || []) { const p = fromFreeHire(raw, today); if (p) out.push(p); } });
+  fh.forEach((r, i) => { if (r.status === "rejected") { warnings.push(`FreeHire "${qs[i]}": ${r.reason?.message}`); return; } fhOk = true; for (const raw of (r.value as any)?.data || []) { const p = fromFreeHire(raw, today); const e = p && enrich(p, strip(String(raw?.description || ""))); if (e) out.push(e); } });
   if (fhOk) sources.push("FreeHire public API (Telegram-sourced Indian notices with official links)");
-  try { out.push(...fromRss(await (await get(RSS, "application/rss+xml")).text(), today)); sources.push("SarkariMap public RSS (aggregator)"); } catch (e: any) { warnings.push(`SarkariMap RSS: ${e.message}`); }
+  try { for (const p of fromRss(await (await get(RSS, "application/rss+xml")).text(), today)) { const e = enrich(p, p.eligibility); if (e) out.push(e); } sources.push("SarkariMap public RSS (aggregator)"); } catch (e: any) { warnings.push(`SarkariMap RSS: ${e.message}`); }
   const seen = new Set<string>(); const postings = out.filter((p) => { const k = `${p.title}|${p.org}|${p.lastDate}`.toLowerCase(); if (seen.has(k) || seen.has(p.id)) return false; seen.add(k); seen.add(p.id); return true; })
     .sort((a, b) => a.lastDate.localeCompare(b.lastDate) || Number(b.official) - Number(a.official)).slice(0, 300);
   const res = { postings, checkedAt: new Date(now).toISOString(), warnings, sources };
