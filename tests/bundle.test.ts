@@ -144,3 +144,8 @@ test('gov postings: dates, pay, state, official link, no contacts, closed droppe
   assert.equal(fromFreeHire({ ...raw, description: 'Last Date: 05.12.2026 apply at example.com' }, '2026-11-01'), null, 'no official link dropped');
   const rss = '<item><title><![CDATA[NIT Calicut Project Associate Recruitment 2026]]></title><link>https://sarkarimap.org/job/x</link><pubDate>Sat, 31 Oct 2026 06:49:55 GMT</pubDate><description><![CDATA[1 vacancy. Apply 11 November 2026 tak.]]></description></item>';
   const r = fromRss(rss, '2026-11-01'); assert.equal(r.length, 1); assert.equal(r[0].lastDate, '2026-11-11'); assert.ok(r[0].lesserKnown && !r[0].official); assert.equal(r[0].state, 'Kerala'); });
+import { postingsLimit } from '../api/gov/postings';
+test('gov postings limiter: 12/min per IP then 429 with postings wording', () => {
+  for (let i = 0; i < 12; i++) postingsLimit('1.2.3.4', 1000 + i);
+  assert.throws(() => postingsLimit('1.2.3.4', 2000), (e: any) => e.status === 429 && /government postings/.test(e.message));
+  postingsLimit('5.6.7.8', 2000); postingsLimit('1.2.3.4', 1000 + 61_000); });
