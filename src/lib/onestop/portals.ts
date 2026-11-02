@@ -11,7 +11,6 @@ export const PORTALS: Portal[] = [
   { name: 'Glassdoor', group: 'Global', url: (q) => `https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword=${e(q.role)}&locKeyword=${e(q.loc)}` },
   { name: 'Instahyre', group: 'India', url: (q) => `https://www.instahyre.com/search-jobs/?designation=${e(q.role)}&location=${e(q.loc)}` },
   { name: 'Cutshort', group: 'Startups', url: (q) => `https://cutshort.io/jobs/${slug(q.role)}-jobs` },
-  { name: 'Wellfound', group: 'Startups', url: (q) => `https://wellfound.com/role/${slug(q.role)}` },
   { name: 'Hirect', group: 'Startups', url: () => `https://hirect.in/` },
   { name: 'Apna', group: 'India', url: (q) => `https://apna.co/jobs?search=true&text=${e(q.role)}${q.loc ? `&location_name=${e(q.loc)}` : ''}` },
   { name: 'iimjobs', group: 'India', url: (q) => `https://www.iimjobs.com/search/${slug(q.role)}-jobs` },

@@ -6,7 +6,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   consulting: 'Consulting',
   corporate: 'Corporate / Private',
   remote: 'Remote Global',
-  international: 'International (visa)',
+  international: 'International',
 };
 export const CATEGORY_ORDER: Category[] = ['corporate', 'consulting', 'remote', 'international', 'gov-lateral', 'gov-cadre'];
 

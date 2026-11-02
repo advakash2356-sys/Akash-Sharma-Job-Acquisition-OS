@@ -47,7 +47,7 @@ test('rankJobs orders best first with MiniSearch BM25', () => {
 test('portal deep links: ~50, prefilled, LinkedIn/Naukri/Indeed included', () => {
   assert.ok(PORTALS.length >= 45);
   const l = portalLinks('Data Analyst', 'Delhi', 3);
-  for (const n of ['LinkedIn', 'Naukri', 'Indeed India', 'Foundit (Monster)', 'Shine', 'Glassdoor', 'Instahyre', 'Cutshort', 'Wellfound', 'Apna', 'iimjobs', 'hirist.tech', 'TimesJobs']) assert.ok(l.find((x) => x.name === n), n);
+  for (const n of ['LinkedIn', 'Naukri', 'Indeed India', 'Foundit (Monster)', 'Shine', 'Glassdoor', 'Instahyre', 'Cutshort', 'Apna', 'iimjobs', 'hirist.tech', 'TimesJobs']) assert.ok(l.find((x) => x.name === n), n);
   assert.match(l.find((x) => x.name === 'Naukri')!.url, /data-analyst-jobs-in-delhi.*experience=3/);
   for (const x of l) assert.doesNotThrow(() => new URL(x.url));
 });

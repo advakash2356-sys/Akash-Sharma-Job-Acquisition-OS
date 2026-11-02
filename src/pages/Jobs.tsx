@@ -14,7 +14,7 @@ import JobTruth from '../components/JobTruth';
 import { isGhosted } from '../lib/ghost';
 import { todayStr } from '../lib/insights';
 import { daysLeftLabel, findDuplicate, parseNotice } from '../lib/merged';
-import { CATEGORY_LABEL, CATEGORY_ORDER, type Category } from '../lib/onestop/category';
+import { CATEGORY_LABEL, CATEGORY_ORDER, visaHint, type Category } from '../lib/onestop/category';
 import PortalLinks from '../components/PortalLinks';
 
 const Wrap = ({ inline, onClose, title, children }: { inline?: boolean; onClose: () => void; title: string; children: React.ReactNode }) => (inline ? <Card>{children}</Card> : <Dialog open onClose={onClose} title={title} wide>{children}</Dialog>);
@@ -203,6 +203,7 @@ export default function Jobs() {
                 </button>
                 {j.found?.rubric ? <span className="font-mono text-lg text-gold" data-testid="rubric-score" title={`Skills ${j.found.rubric.skills}/35 · Role ${j.found.rubric.role}/30 · Domain ${j.found.rubric.domain}/20 · Location ${j.found.rubric.location}/15${j.found.rubric.penalty ? ` · Penalty ${j.found.rubric.penalty}` : ''}`}>{j.found.rubric.total}/100</span> : (() => { const f = jobFit(j, profile.resumeText); return f && <span className="font-mono text-lg text-gold" title={f.kind === 'ai' ? 'AI fit score' : 'Keyword match %'}>{f.score}{f.kind === 'keyword' ? '%' : ''}</span>; })()}
                 {j.found?.decision && <Badge tone={j.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge" title={j.found.decision.reason}>{j.found.decision.badge}</span></Badge>}
+                {j.found && visaHint(j.description || '') && <Badge tone="primary"><span data-testid="visa-badge">Visa / relocation mentioned</span></Badge>}
                 {j.found && daysOld(j.found.postedAt) > 30 && <Badge tone="danger">Older than 30 days · may be closed</Badge>}
                 {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `${/^(Himalayas|Remote OK|Remotive|Arbeitnow|Workday|Greenhouse|Lever|Ashby|SmartRecruiters|Workable)$/.test(j.found.source) ? '' : 'FreeHire · '}${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
                 <JobTruth job={j} compact />

@@ -104,6 +104,11 @@ const TITLE_RE = /\b(manager|counsel|lead|analyst|engineer|officer|associate|exe
 /** Guess job titles from resume lines, without AI. Looks for short lines that read like a title. */
 export function guessTitles(resume: string): string[] {
   const out: string[] = [];
+  // Tester LOW: a "Target roles:" line wins, then the current role (first title line under Experience).
+  const tgt = resume.match(/^\s*(?:target (?:roles?|positions?|titles?)|desired roles?|objective role)\s*[:\-–]\s*(.+)$/im);
+  if (tgt) { const ts = tgt[1].split(/\s*[,;|/]\s*/).map((x) => x.trim()).filter((x) => x.length >= 3 && x.length <= 50).slice(0, 3); if (ts.length) return ts; }
+  const exp = resume.match(/\n\s*(?:work |professional )?experience\s*:?\s*\n([\s\S]{0,600})/i);
+  if (exp) for (const raw of exp[1].split('\n').slice(0, 6)) { const line = raw.replace(/^[\s•*\-–]+/, '').trim(); const t = line.split(/\s*(?:\bat\b|@|\||,|\(|\s-\s|–|—)\s*/i)[0].trim(); if (t.length >= 4 && t.length <= 50 && TITLE_RE.test(t)) { out.push(t); break; } }
   const flat = !/\n/.test(resume.slice(0, 300));
   for (const raw of flat ? [] : resume.split(/\n|(?<=[a-z])\.\s+/).slice(0, 120)) {
     const line = raw.replace(/^[\s•*\-–]+/, '').trim();

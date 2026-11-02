@@ -78,6 +78,8 @@ export function score(j: RubricJob, p: RubricProfile, bm25 = 0, strict = true): 
     if (!exact && !sameFam && bm25 < 0.35) { penalty -= 30; reasons.push('Penalty: weak title match'); }
     // Wrong seniority, stricter: intern/junior roles for 5+ years, director/VP/head for under 5.
     if (y >= 5 && /\b(intern|internship|trainee|junior|jr\.?|entry level|graduate program)\b/i.test(j.title)) { penalty -= 30; reasons.push('Penalty: below your level'); }
+    // Tester MEDIUM: with 5+ years, individual-contributor junior titles rank below lead/manager roles.
+    else if (y >= 5 && /\b(executive|agent|representative|rep|associate|advisor|officer|specialist)\b/i.test(j.title) && !/\b(lead|leader|manager|head|senior|sr\.?|principal|director|supervisor|counsel|attorney|lawyer)\b/i.test(j.title) && !p.roles.some((r) => /\b(executive|agent|representative|associate|advisor|officer|specialist)\b/i.test(r))) { penalty -= 30; reasons.push('Penalty: junior title for your experience'); }
     else if (y >= 0 && y < 5 && /\b(director|vp|vice president|head of|chief|principal)\b/i.test(j.title)) { penalty -= 30; reasons.push('Penalty: too senior'); }
   } else if (y >= 0 && ((sen && y < 1) || (jun && y > 6))) { penalty -= 30; reasons.push(sen ? 'Penalty: more senior than your experience' : 'Penalty: below your level'); }
   const total = Math.max(0, Math.min(100, skills + role + domain + location + penalty));
