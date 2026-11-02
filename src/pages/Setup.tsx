@@ -11,6 +11,7 @@ import { boardLinks, GOVT_PORTALS } from '../lib/boards';
 import ManualProfile from '../components/ManualProfile';
 import PortalLinks from '../components/PortalLinks';
 import { MIN_SCORE, rankJobs, skillsIn } from '../lib/onestop/rubric';
+const MAYBE_MIN = 30;
 import { classify } from '../lib/onestop/category';
 import { expYearsOf } from '../lib/gov/shared';
 import { eligSummary } from '../components/EligibilityCard';
@@ -41,6 +42,7 @@ export default function Setup() {
   const [added, setAdded] = useState(-1);
   const [summary, setSummary] = useState('');
   const [links, setLinks] = useState<{ label: string; url: string }[]>([]);
+  const [maybe, setMaybe] = useState<{ title: string; company: string; location: string; url: string; source: string; score: number; why: string }[]>([]);
   const [titlesIn, setTitlesIn] = useState('');
   const [locIn, setLocIn] = useState('');
   const [tick, setTick] = useState(0);
@@ -83,7 +85,10 @@ export default function Setup() {
       return;
     }
     set('research', 'done'); set('fill', 'running');
-    const fresh = dedupeAgainst(r.jobs, jobsNow.current);
+    // Tester LOW: one card per role at a company ("Sr" vs "Senior", repeated reqs).
+    const key = (j: { title: string; company: string }) => `${j.title}|${j.company}`.toLowerCase().replace(/\b(sr|senior)\b\.?/g, 'senior').replace(/[^a-z|]/g, '');
+    const seenKey = new Set(jobsNow.current.map((j) => key(j)));
+    const fresh = dedupeAgainst(r.jobs, jobsNow.current).filter((j) => { const k = key(j); if (seenKey.has(k)) return false; seenKey.add(k); return true; });
     if (!fresh.length) {
       set('fill', 'done');
       setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
@@ -110,7 +115,9 @@ export default function Setup() {
     const now = today();
     // Precision (t347u): drop weak matches below MIN_SCORE (government notices are kept; they have their own filter).
     const weak = fresh.filter((j) => !(j.official || j.govtFeed) && !fits.has(j.id) && (ranked.get(j.id)?.total ?? 100) < MIN_SCORE);
-    if (weak.length) msgs.push(`Left out ${weak.length} weak match${weak.length > 1 ? 'es' : ''} (score below ${MIN_SCORE}/100: different field, wrong level or far away).`);
+    const possible = weak.map((j) => ({ title: j.title, company: j.company, location: j.location, url: j.url, source: j.source, score: ranked.get(j.id)!.total, why: ranked.get(j.id)!.reasons.slice(0, 2).join('; ') })).filter((x) => x.score >= MAYBE_MIN).sort((a, b) => b.score - a.score);
+    setMaybe(possible);
+    if (weak.length > possible.length) msgs.push(`Left out ${weak.length - possible.length} weak match${weak.length - possible.length > 1 ? 'es' : ''} (score below ${MAYBE_MIN}/100: different field, wrong level or far away).`);
     const jobs: Job[] = fresh.filter((j) => !weak.includes(j)).map((j: FoundJob, i: number) => {
       const rb = ranked.get(j.id);
       const base = fits.get(j.id) || (rb ? { score: rb.total, kind: 'keyword' as const, summary: rb.reasons.join('. ') || 'Few overlaps with your resume.' } : { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const });
@@ -134,7 +141,7 @@ export default function Setup() {
   async function run(mode0: 'ai' | 'skip' | 'manual') {
     if (running.current) return;
     const mode = profile.manual ? 'manual' : mode0;
-    running.current = true; setAdded(-1); setErr(''); setErrStage(''); setNote(''); setSummary(''); setLinks([]);
+    running.current = true; setMaybe([]); setAdded(-1); setErr(''); setErrStage(''); setNote(''); setSummary(''); setLinks([]);
     const c = new AbortController(); ctl.current = c;
     setSt(mode !== 'ai' ? { parse: 'skipped', research: 'idle', fill: 'idle' } : { ...initial, parse: 'idle' });
     let stage = 'parse'; let titles = splitTitles(titlesIn); let loc = locIn;
@@ -247,6 +254,8 @@ export default function Setup() {
             {allJobs.length > 0 && added !== 0 && (st.fill === 'done' || profile.setupDone) && <Button onClick={() => go('jobs')}>Next: review matched jobs</Button>}
             {st.parse === 'done' && <Button variant="outline" onClick={() => go('resume')}>Review my profile</Button>}
           </div>
+          {maybe.length > 0 && <details className="mt-4 rounded-xl border border-border p-3" data-testid="maybe-matches"><summary className="cursor-pointer text-sm font-medium">More possible matches ({maybe.length}, score {MAYBE_MIN} to {MIN_SCORE - 1})</summary>
+            <ul className="mt-2 grid gap-1 text-sm">{maybe.slice(0, 60).map((m) => <li key={m.url}><a className="text-primary underline" href={m.url} target="_blank" rel="noopener noreferrer">{m.title}</a> · {m.company}{m.location ? ` · ${m.location}` : ''} · <span className="font-mono">{m.score}/100</span> <span className="text-xs text-muted-foreground">via {m.source}{m.why ? ` · ${m.why}` : ''}</span></li>)}</ul></details>}
           <PortalLinks role={splitTitles(titlesIn)[0] || ''} loc={locIn} exp={expYearsOf(profile)} />
         </Card></li>
         <li><details className="rounded-2xl" data-testid="enhance-ai">
