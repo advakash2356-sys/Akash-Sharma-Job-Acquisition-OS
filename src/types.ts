@@ -125,6 +125,10 @@ export interface Job {
     postedAt: string;
     location: string;
     fit?: { score: number; kind: 'ai' | 'keyword'; summary: string };
+    /** No-key 100-point breakdown (t345u): skills 35, role 30, domain 20, location 15, penalties. */
+    rubric?: import('./lib/onestop/rubric').Breakdown;
+    /** One-stop tab. */
+    category?: import('./lib/onestop/category').Category;
     /** Work mode and the eligibility decision for this candidate, with the reason shown as a badge. */
     mode?: import('./lib/eligibility').WorkMode;
     decision?: import('./lib/eligibility').Decision;

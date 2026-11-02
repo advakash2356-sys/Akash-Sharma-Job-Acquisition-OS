@@ -9,6 +9,11 @@ import { useAiReady } from '../lib/aiReady';
 import { callAi } from '../lib/api';
 import { boardLinks, GOVT_PORTALS } from '../lib/boards';
 import ManualProfile from '../components/ManualProfile';
+import PortalLinks from '../components/PortalLinks';
+import { MIN_SCORE, rankJobs, skillsIn } from '../lib/onestop/rubric';
+const MAYBE_MIN = 30;
+import { classify } from '../lib/onestop/category';
+import { expYearsOf } from '../lib/gov/shared';
 import { eligSummary } from '../components/EligibilityCard';
 import { COUNTRY_NAMES, dedupeAgainst, deriveCountries, guessLocation, guessTitles, candidateOf, keywordFit, locationAdjust, manualQuery, placeQuery, searchJobsApi, splitTitles, type FoundJob, type SearchQuery } from '../lib/jobSearch';
 import type { Job } from '../types';
@@ -19,7 +24,7 @@ const LIMIT = { parse: 50000, research: 30000, fit: 45000 };
 const FIT_TOTAL_MS = 70000;
 const STAGES = [
   { id: 'parse', label: 'Reading your resume and filling your profile', done: 'Read your resume and filled your profile', max: LIMIT.parse },
-  { id: 'research', label: 'Searching real postings on FreeHire', done: 'Searched real postings on FreeHire', max: LIMIT.research },
+  { id: 'research', label: 'Searching company career sites (Workday, Greenhouse, Lever, Ashby, SmartRecruiters, Workable), remote boards and FreeHire', done: 'Searched company career sites, remote boards and FreeHire', max: LIMIT.research },
   { id: 'fill', label: 'Scoring fit and adding postings to Jobs', done: 'Scored fit and added postings to Jobs', max: FIT_TOTAL_MS },
 ] as const;
 
@@ -37,6 +42,7 @@ export default function Setup() {
   const [added, setAdded] = useState(-1);
   const [summary, setSummary] = useState('');
   const [links, setLinks] = useState<{ label: string; url: string }[]>([]);
+  const [maybe, setMaybe] = useState<{ title: string; company: string; location: string; url: string; source: string; score: number; why: string }[]>([]);
   const [titlesIn, setTitlesIn] = useState('');
   const [locIn, setLocIn] = useState('');
   const [tick, setTick] = useState(0);
@@ -79,7 +85,10 @@ export default function Setup() {
       return;
     }
     set('research', 'done'); set('fill', 'running');
-    const fresh = dedupeAgainst(r.jobs, jobsNow.current);
+    // Tester LOW: one card per role at a company ("Sr" vs "Senior", repeated reqs).
+    const key = (j: { title: string; company: string; location?: string; found?: { location?: string } }) => `${j.title}|${j.company}|${j.location || j.found?.location || ''}`.toLowerCase().replace(/\b(sr|senior)\b\.?/g, 'senior').replace(/[^a-z|]/g, '');
+    const seenKey = new Set(jobsNow.current.map((j) => key(j)));
+    const fresh = dedupeAgainst(r.jobs, jobsNow.current).filter((j) => { const k = key(j); if (seenKey.has(k)) return false; seenKey.add(k); return true; });
     if (!fresh.length) {
       set('fill', 'done');
       setProfile((cur) => ({ ...cur, setupDone: new Date().toISOString() }));
@@ -101,16 +110,24 @@ export default function Setup() {
       }
     }
     if (aiNote) msgs.push(aiNote);
+    // No-key ranking in the browser (t345u): MiniSearch BM25 + deterministic 100-point rubric. The CV never leaves this device.
+    const ranked = new Map(rankJobs(fresh.map((j) => ({ ...j, description: j.description || '' })), { resume: profile.resumeText, roles: titles, skills: [...(profile.skills || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), ...skillsIn(profile.resumeText)], location: location || profile.location || '', expYears: expYearsOf(profile), age: Number(profile.age) || undefined, remoteOk: q.remote }).map((r) => [r.id, r.rubric]));
     const now = today();
-    const jobs: Job[] = fresh.map((j: FoundJob, i: number) => {
-      const base = fits.get(j.id) || { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const };
+    // Precision (t347u): drop weak matches below MIN_SCORE (government notices are kept; they have their own filter).
+    const weak = fresh.filter((j) => !(j.official || j.govtFeed) && !fits.has(j.id) && (ranked.get(j.id)?.total ?? 100) < MIN_SCORE);
+    const possible = weak.map((j) => ({ title: j.title, company: j.company, location: j.location, url: j.url, source: j.source, score: ranked.get(j.id)!.total, why: ranked.get(j.id)!.reasons.slice(0, 2).join('; ') })).filter((x) => x.score >= MAYBE_MIN).sort((a, b) => b.score - a.score);
+    setMaybe(possible);
+    if (weak.length > possible.length) msgs.push(`Left out ${weak.length - possible.length} weak match${weak.length - possible.length > 1 ? 'es' : ''} (score below ${MAYBE_MIN}/100: different field, wrong level or far away).`);
+    const jobs: Job[] = fresh.filter((j) => !weak.includes(j)).map((j: FoundJob, i: number) => {
+      const rb = ranked.get(j.id);
+      const base = fits.get(j.id) || (rb ? { score: rb.total, kind: 'keyword' as const, summary: rb.reasons.join('. ') || 'Few overlaps with your resume.' } : { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const });
       const la = locationAdjust(j.location, q, j.decision);
       const fit = { ...base, score: base.kind === 'ai' ? Math.max(0, Math.min(100, base.score + la.delta)) : base.score, rank: base.score + la.delta, summary: `${base.summary} Location: ${j.location || 'not stated'} (${la.label}${la.delta ? `, ${la.delta}` : ''}).` };
       return {
         id: `fh-${Date.now()}-${i}`, title: j.title, company: j.company, url: j.url,
         description: j.description || `${j.title} at ${j.company}. ${j.location}`,
         status: 'Saved' as const, createdAt: now, notes: '', interviews: [], source: 'Other',
-        found: { provider: 'freehire' as const, id: j.id, source: j.source, postedAt: j.postedAt, location: j.location, fit, mode: j.mode, decision: j.decision, evidence: j.eligibility?.evidence, ...(j.official || j.govtFeed ? { govt: { lastDate: (j.official?.lastDate || j.govtFeed?.lastDate) as string, official: !!j.official, via: j.official ? 'official notification' : 'SarkariMap (aggregator)' } } : {}) },
+        found: { provider: 'freehire' as const, id: j.id, source: j.source, rubric: rb, category: j.category || classify({ title: j.title, company: j.company, location: j.location, description: j.description, workMode: j.workMode, gov: !!(j.official || j.govtFeed) }), postedAt: j.postedAt, location: j.location, fit, mode: j.mode, decision: j.decision, evidence: j.eligibility?.evidence, ...(j.official || j.govtFeed ? { govt: { lastDate: (j.official?.lastDate || j.govtFeed?.lastDate) as string, official: !!j.official, via: j.official ? 'official notification' : 'SarkariMap (aggregator)' } } : {}) },
       };
     }).sort((a, b) => ((b.found!.fit as any).rank ?? b.found!.fit!.score) - ((a.found!.fit as any).rank ?? a.found!.fit!.score));
     setJobs((js) => [...jobs, ...js]);
@@ -124,7 +141,7 @@ export default function Setup() {
   async function run(mode0: 'ai' | 'skip' | 'manual') {
     if (running.current) return;
     const mode = profile.manual ? 'manual' : mode0;
-    running.current = true; setAdded(-1); setErr(''); setErrStage(''); setNote(''); setSummary(''); setLinks([]);
+    running.current = true; setMaybe([]); setAdded(-1); setErr(''); setErrStage(''); setNote(''); setSummary(''); setLinks([]);
     const c = new AbortController(); ctl.current = c;
     setSt(mode !== 'ai' ? { parse: 'skipped', research: 'idle', fill: 'idle' } : { ...initial, parse: 'idle' });
     let stage = 'parse'; let titles = splitTitles(titlesIn); let loc = locIn;
@@ -179,10 +196,11 @@ export default function Setup() {
 
   // Everything automated: once the resume and key are in, start by itself (once).
   useEffect(() => {
-    if (hasResume && !profile.setupDone && !auto.current && !running.current && (profile.manual || ready)) { auto.current = true; run(profile.manual ? 'manual' : 'ai'); }
+    // No key needed (t345u): start as soon as the resume is in; AI parsing runs only if the optional key was added.
+    if (hasResume && !profile.setupDone && !auto.current && !running.current) { auto.current = true; run(profile.manual ? 'manual' : ready ? 'ai' : 'skip'); }
   }, [hasResume, ready, profile.setupDone, profile.manual]);
 
-  const step1 = hasResume, step2 = ready;
+  const step1 = hasResume, step2 = true; void ready;
   const Dot = ({ done, n }: { done: boolean; n: number }) => (
     <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm ${done ? 'bg-primary text-primary-foreground' : 'border border-border'}`}>{done ? <CheckCircle2 size={16} /> : n}</span>
   );
@@ -203,13 +221,9 @@ export default function Setup() {
             <textarea className="mt-2 h-48 w-full rounded-lg border border-border bg-background p-3 font-mono text-xs" value={profile.resumeText} onChange={(e) => { const t = e.target.value; setProfile((p) => ({ ...p, resumeText: t })); }} /></label>}
           <p className="mt-2 text-xs text-muted-foreground">Read in your browser. It leaves your device only when an AI step runs, and then only to Google's Gemini API.</p>
         </Card></li>
-        <li><div className={step1 ? '' : 'pointer-events-none opacity-50'} inert={!step1} aria-disabled={!step1 || undefined}>
-          <div className="mb-2 flex items-center gap-3"><Dot done={step2} n={2} /><h2 className="text-2xl">Add your free Gemini key</h2></div>
-          <ApiKeyCard prominent={step1 && !step2} />
-        </div></li>
         <li><Card>
-          <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={3} /><h2 className="text-2xl">Find and score matching jobs</h2></div>
-          {!(step1 && step2) && <p className="text-sm text-muted-foreground">{profile.manual ? 'Short form saved. Search runs by itself; a Gemini key (step 2) only adds fit scores.' : 'Starts by itself when steps 1 and 2 are done.'} No key? You can still <button className="underline cursor-pointer" disabled={!step1 || busy} onClick={() => run('skip')}>search jobs without AI</button>.</p>}
+          <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={2} /><h2 className="text-2xl">Find and score matching jobs</h2></div>
+          {!step1 && <p className="text-sm text-muted-foreground">Starts by itself once your resume is in. No Gemini key needed to search: jobs are ranked in your browser with a 100-point score. Add a key later to tailor your résumé and write cover letters.</p>}
           <ul className="grid gap-2 text-sm" aria-live="polite">
             {STAGES.map((s) => (
               <li key={s.id} className="flex items-center gap-2">
@@ -235,12 +249,20 @@ export default function Setup() {
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             {busy && <Button variant="outline" onClick={() => ctl.current?.abort()}><XCircle size={15} /> Cancel</Button>}
-            {step1 && (step2 || profile.manual) && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run('ai')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
-            {step1 && !busy && !profile.manual && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
+            {step1 && (step2 || profile.manual) && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run(ready ? 'ai' : 'skip')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
+            {step1 && ready && !busy && !profile.manual && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
             {allJobs.length > 0 && added !== 0 && (st.fill === 'done' || profile.setupDone) && <Button onClick={() => go('jobs')}>Next: review matched jobs</Button>}
             {st.parse === 'done' && <Button variant="outline" onClick={() => go('resume')}>Review my profile</Button>}
           </div>
+          {maybe.length > 0 && <details className="mt-4 rounded-xl border border-border p-3" data-testid="maybe-matches"><summary className="cursor-pointer text-sm font-medium">More possible matches ({maybe.length}, score {MAYBE_MIN} to {MIN_SCORE - 1})</summary>
+            <ul className="mt-2 grid gap-1 text-sm">{maybe.slice(0, 60).map((m) => <li key={m.url}><a className="text-primary underline" href={m.url} target="_blank" rel="noopener noreferrer">{m.title}</a> · {m.company}{m.location ? ` · ${m.location}` : ''} · <span className="font-mono">{m.score}/100</span> <span className="text-xs text-muted-foreground">via {m.source}{m.why ? ` · ${m.why}` : ''}</span></li>)}</ul></details>}
+          <PortalLinks role={splitTitles(titlesIn)[0] || ''} loc={locIn} exp={expYearsOf(profile)} />
         </Card></li>
+        <li><details className="rounded-2xl" data-testid="enhance-ai">
+          <summary className="cursor-pointer text-lg">Optional: Enhance with AI (add your own free Gemini key)</summary>
+          <p className="mt-2 text-sm text-muted-foreground">Job search and scoring work without a key. <b>Add your own free Gemini key to unlock a custom résumé tailored to each job, cover letters, outreach messages, interview prep, AI fit scores and every other AI feature.</b> The key stays in your browser and is used only for those features.</p>
+          <div className="mt-2"><ApiKeyCard prominent={false} /></div>
+        </details></li>
       </ol>
     </>
   );

@@ -9,3 +9,17 @@ assets are not licensed for reuse. Forks must remove them and must not suggest
 that they are made or endorsed by Akash Sync Agent.
 
 Third-party components keep their own licences (see package.json and the About page).
+
+One-stop job search (t345u), reused open-source code and data:
+- outscal/OpenJobs (MIT) https://github.com/outscal/OpenJobs : ATS adapters (Greenhouse, Lever, Ashby, Workable,
+  SmartRecruiters, Workday, Recruitee, Personio, Teamtailor, BambooHR, Breezy, Jobvite, JOIN) vendored in scripts/collect/vendor/openjobs/, and the company -> ATS board list
+  data/companies_v2.json, fetched at collection time. Copyright (c) 2026 Santiago Fernandez de Valderrama; Outscal.
+- career-ops-hq/career-ops (MIT) https://github.com/career-ops-hq/career-ops : origin of the OpenJobs adapters and the
+  polite scanning model (bounded concurrency, retry/back-off, empty-board suspicion), and the board URLs in
+  scripts/collect/career-ops-boards.txt taken from its templates/portals.example.yml.
+- srbhr/Resume-Matcher (Apache-2.0) https://github.com/srbhr/Resume-Matcher : sub-score pattern (skills coverage,
+  literal title match, keyword match) re-implemented in TypeScript in src/lib/onestop/rubric.ts.
+- lucaong/minisearch (MIT) https://github.com/lucaong/minisearch : in-browser BM25 search (npm dependency).
+- Job data: Himalayas, Remote OK, Remotive, Arbeitnow, Jobicy and Working Nomads public APIs, and the We Work Remotely and
+  NoDesk RSS feeds; every card names the source and links back to it,
+  as their terms require. Workday career sites via their public job-search endpoint (no login, no key).

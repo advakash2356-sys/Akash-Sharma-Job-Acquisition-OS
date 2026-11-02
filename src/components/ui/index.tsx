@@ -42,7 +42,7 @@ export const Label = ({ children, hint, htmlFor }: { children: React.ReactNode; 
 );
 
 export const Badge = ({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 'muted' | 'primary' | 'gold' | 'danger' }) => (
-  <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+  <span className={cn('inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-medium [overflow-wrap:anywhere]',
     tone === 'muted' && 'bg-muted text-muted-foreground',
     tone === 'primary' && 'bg-accent text-primary',
     tone === 'gold' && 'bg-muted text-gold',

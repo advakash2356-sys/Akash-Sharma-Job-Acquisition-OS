@@ -14,6 +14,8 @@ import JobTruth from '../components/JobTruth';
 import { isGhosted } from '../lib/ghost';
 import { todayStr } from '../lib/insights';
 import { daysLeftLabel, findDuplicate, parseNotice } from '../lib/merged';
+import { CATEGORY_LABEL, CATEGORY_ORDER, visaHint, type Category } from '../lib/onestop/category';
+import PortalLinks from '../components/PortalLinks';
 
 const Wrap = ({ inline, onClose, title, children }: { inline?: boolean; onClose: () => void; title: string; children: React.ReactNode }) => (inline ? <Card>{children}</Card> : <Dialog open onClose={onClose} title={title} wide>{children}</Dialog>);
 const num = (v: string) => (v.trim() && !isNaN(Number(v)) ? Number(v) : undefined);
@@ -67,7 +69,7 @@ export function JobDetail({ job, onClose, inline }: { job: Job; onClose: () => v
         <div className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm">
           {job.found.govt
             ? <><b>Government job notice</b> · last date to apply: <b>{job.found.govt.lastDate}</b> ({daysLeftLabel(job.found.govt.lastDate)}). {(() => { const n = parseNotice(job.description); const parts = [n.notificationNo && `Notice no. ${n.notificationNo}`, n.pay && `Pay stated: ${n.pay}`, n.age && `Age: ${n.age}`, n.minYears != null && `Experience: ${n.minYears}+ years`].filter(Boolean); return parts.length ? <>{parts.join(' · ')}. </> : null; })()} {job.found.govt.official ? <>The link opens the <b>official notification</b>.</> : <>The link opens {job.found.govt.via}, a news site that lists notices. Check the official notification there before applying.</>} Found via {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}.</>
-            : <><b>Real posting found via {job.found.source === 'Himalayas' || job.found.source === 'Remote OK' ? job.found.source : 'FreeHire'}</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.</>}
+            : <><b>Real posting found via {/^(Himalayas|Remote OK|Remotive|Arbeitnow|Workday|Greenhouse|Lever|Ashby|SmartRecruiters|Workable)$/.test(job.found.source) ? job.found.source : 'FreeHire'}</b> (source: {job.found.source}{job.found.postedAt ? `, posted ${job.found.postedAt}` : ''}). Listings can go stale, so confirm it is still open on the employer's page before applying.</>}
           {job.found.decision && <p className="mt-1" data-testid="elig-reason"><b>{job.found.decision.badge}.</b> {job.found.decision.reason}</p>}
           {job.found.fit && <p className="mt-1">{job.found.fit.kind === 'ai' ? `AI fit ${job.found.fit.score}/100` : `Keyword match ${gap ? gap.pct : job.found.fit.score}%`}: {job.found.fit.summary}</p>}
         </div>
@@ -153,15 +155,26 @@ export default function Jobs() {
   const [adding, setAdding] = useState(false);
   const [view, setView] = useState<'list' | 'board'>('list');
   const [filter, setFilter] = useState<'All' | JobStatus>('All');
-  const shown = jobs.filter((j) => filter === 'All' || j.status === filter);
+  const [cat, setCat] = useState<'all' | Category>('all');
+  const catOf = (j: Job): Category | undefined => j.found?.category || (j.found?.govt ? 'gov-cadre' : undefined);
+  const shown = jobs.filter((j) => (filter === 'All' || j.status === filter) && (cat === 'all' || catOf(j) === cat))
+    .sort((a, b) => (cat === 'all' ? 0 : (b.found?.rubric?.total ?? -1) - (a.found?.rubric?.total ?? -1)));
 
   return (
     <>
       <PageHeader title="Jobs" subtitle="Every role you are tracking, from saved to offer." action={<Button onClick={() => setAdding(true)}><Plus size={16} /> Add job</Button>} />
+      <PortalLinks role={(profile.targetRoles || '').split(/[,;\n]/)[0].trim()} loc={profile.location || ''} />
       {jobs.length === 0 ? (
         <EmptyState icon={<Briefcase size={32} />} title="No jobs yet" body="Paste a job description to score it against your resume and track it through to an offer." action={<Button onClick={() => setAdding(true)}><Plus size={16} /> Add your first job</Button>} />
       ) : (
         <>
+          <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Filter by category" data-testid="category-tabs" style={{ maxWidth: "100%" }}>
+            {(['all', ...CATEGORY_ORDER] as const).map((c) => { const n = c === 'all' ? jobs.length : jobs.filter((j) => catOf(j) === c).length; return (c === 'all' || n > 0) && (
+              <button key={c} role="tab" aria-selected={cat === c} onClick={() => setCat(c)}
+                className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${cat === c ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
+                {c === 'all' ? 'All categories' : CATEGORY_LABEL[c]} · {n}
+              </button>); })}
+          </div>
           <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Filter by status">
             {(['All', ...JOB_STATUSES] as const).map((st) => (
               <button key={st} role="tab" aria-selected={filter === st} onClick={() => setFilter(st)}
@@ -183,20 +196,22 @@ export default function Jobs() {
           ) : (
           <div className="grid gap-3">
             {shown.map((j) => (
-              <Card key={j.id} className="flex flex-wrap items-center gap-3 p-4">
+              <Card key={j.id} className="flex min-w-0 flex-wrap items-center gap-3 p-4 [overflow-wrap:anywhere]">
                 <button onClick={() => go('job', j.id)} className="min-w-0 flex-1 text-left cursor-pointer">
                   <div className="truncate font-medium">{j.title}</div>
                   <div className="truncate text-sm text-muted-foreground">{j.company} · added {j.createdAt}</div>
                 </button>
-                {(() => { const f = jobFit(j, profile.resumeText); return f && <span className="font-mono text-lg text-gold" title={f.kind === 'ai' ? 'AI fit score' : 'Keyword match %'}>{f.score}{f.kind === 'keyword' ? '%' : ''}</span>; })()}
+                {j.found?.rubric ? <span className="font-mono text-lg text-gold" data-testid="rubric-score" title={`Skills ${j.found.rubric.skills}/35 · Role ${j.found.rubric.role}/30 · Domain ${j.found.rubric.domain}/20 · Location ${j.found.rubric.location}/15${j.found.rubric.penalty ? ` · Penalty ${j.found.rubric.penalty}` : ''}`}>{j.found.rubric.total}/100</span> : (() => { const f = jobFit(j, profile.resumeText); return f && <span className="font-mono text-lg text-gold" title={f.kind === 'ai' ? 'AI fit score' : 'Keyword match %'}>{f.score}{f.kind === 'keyword' ? '%' : ''}</span>; })()}
                 {j.found?.decision && <Badge tone={j.found.decision.kind === 'remote-unclear' ? 'muted' : 'primary'}><span data-testid="elig-badge" title={j.found.decision.reason}>{j.found.decision.badge}</span></Badge>}
+                {j.found && visaHint(j.description || '') && <Badge tone="primary"><span data-testid="visa-badge">Visa / relocation mentioned</span></Badge>}
                 {j.found && daysOld(j.found.postedAt) > 30 && <Badge tone="danger">Older than 30 days · may be closed</Badge>}
-                {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `${j.found.source === 'Himalayas' || j.found.source === 'Remote OK' ? '' : 'FreeHire · '}${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
+                {j.found && <Badge tone="gold">{j.found.govt ? `Govt · last date ${j.found.govt.lastDate}` : `${/^(Himalayas|Remote OK|Remotive|Arbeitnow|Workday|Greenhouse|Lever|Ashby|SmartRecruiters|Workable)$/.test(j.found.source) ? '' : 'FreeHire · '}${j.found.source}${j.found.postedAt ? ` · ${j.found.postedAt}` : ''}`}</Badge>}
                 <JobTruth job={j} compact />
                 {isGhosted(j, todayStr()) && <Badge tone="danger">Ghosted</Badge>}
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
                 {(j.tailoredResume || j.coverLetter || j.outreach) && <Badge tone="primary">{[j.tailoredResume && 'Resume', j.coverLetter && 'Letter', j.outreach && 'Outreach'].filter(Boolean).join(' · ')}</Badge>}
                 <Button size="sm" variant="outline" onClick={() => go('job', j.id)}>Open job</Button>
+                {j.found?.rubric && <div className="min-w-0 basis-full text-xs text-muted-foreground [overflow-wrap:anywhere]" data-testid="rubric-breakdown">Skills {j.found.rubric.skills}/35 · Role {j.found.rubric.role}/30 · Domain {j.found.rubric.domain}/20 · Location {j.found.rubric.location}/15{j.found.rubric.penalty ? ` · Penalty ${j.found.rubric.penalty}` : ''}{j.found.rubric.reasons.length ? ` · ${j.found.rubric.reasons.slice(0, 3).join('; ')}` : ''}</div>}
                 <div className="basis-full"><JobFacts job={j} compact /></div>
               </Card>
             ))}

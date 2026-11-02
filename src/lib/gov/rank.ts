@@ -62,6 +62,8 @@ export function tierOf(p: Pick<RankInput, 'title' | 'org' | 'eligibility' | 'pay
   if (SENIOR_TITLE.test(p.title)) return 'senior';
   return jr ? 'junior' : 'mid';
 }
+/** 1 school/ITI, 2 diploma/12th, 3 graduate, 4 postgraduate/professional/5+ years. */
+export const userLevel = (prof?: Profile | null) => !prof ? 0 : Math.max(EDU_RANK[prof.edu] || 0, (prof.spec && prof.spec !== 'other') || (prof.expYears ?? 0) >= 5 ? 4 : 0);
 export const isExperienced = (prof?: Profile | null) => !!prof && (prof.expYears ?? 0) >= 5 && (EDU_RANK[prof.edu] || 0) >= 3;
 /** Points added to rankScore and a reason. Experienced graduates: junior posts sink hard, senior/field-matched posts rise. Juniors/freshers: entry posts stay. */
 export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; tier: Tier; field: boolean; belowLevel: boolean; subjects?: string[] } {
@@ -72,7 +74,12 @@ export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; 
   let pts = field ? 25 : 0;
   if (senior) pts += tier === 'senior' ? 30 + Math.min(10, exp) : tier === 'mid' ? 0 : -80;
   else if (exp <= 2) pts += tier === 'junior' ? 10 : tier === 'senior' && !field ? -5 : 0;
-  return { pts, tier, field, belowLevel: senior && tier === 'junior' };
+  // t347u qualification-tier filter: postgraduates, professionals (law/medical/finance/engineering) or 5+ years never see
+  // peon / MTS / Group C-D clerical posts unless they opt in to "Show all levels". Officer, specialist and lateral roles in
+  // the user's subject rank higher.
+  const lateral = /\b(consultant|young professional|advis[eo]r|specialist|expert|fellow|lateral|deputation)\b/i.test(p.title);
+  if (lateral && field) pts += 20;
+  return { pts, tier, field, belowLevel: tier === 'junior' && userLevel(prof) >= 4 };
 }
 
 // ---- Required-subject check (t329u): officer boost needs subject fit when the notice names subjects. ----
