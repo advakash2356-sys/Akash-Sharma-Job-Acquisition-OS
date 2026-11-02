@@ -128,10 +128,12 @@ More docs: `docs/PROMISE_AUDIT.md` (each landing claim and its status), `docs/LE
 
 ## One-stop job search, no key (t345u)
 Upload or paste a CV (or pick a role) and JAOS finds and ranks jobs with **no API key**:
-- **Sources:** about 65,000 open jobs, collected every 6 hours by `scripts/collect-jobs.ts` (`.github/workflows/collect-jobs.yml`) into a snapshot on the `jobs-data` branch: Workday (180 verified employer career sites), Greenhouse, Lever, Ashby, SmartRecruiters and Workable (company boards from outscal/OpenJobs), plus Himalayas, Remote OK, Remotive and Arbeitnow. FreeHire and the official government sources stay live.
+- **Sources:** about 65,000 open jobs, collected every 6 hours by `scripts/collect-jobs.ts` (`.github/workflows/collect-jobs.yml`) into a snapshot on the `jobs-data` branch: Workday (195 verified employer career sites), Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee, Personio, Teamtailor, BambooHR, Breezy, Jobvite and JOIN (company boards from outscal/OpenJobs and career-ops, plus boards found in public apply links), and Himalayas, Remote OK, Remotive, Arbeitnow, Jobicy, Working Nomads, We Work Remotely (RSS) and NoDesk (RSS). FreeHire and the official government sources stay live.
 - **Ranking in the browser:** MiniSearch BM25 plus a 100-point score (skills 35, role/seniority 30, domain 20, location 15, penalties for missing licences, clearance, or age limits on cadre exams). The CV never leaves the browser.
 - **Tabs:** Corporate, Consulting, Remote Global, International, and Government, which is split into age-capped cadre exams and all-age lateral, Consultant and Young Professional roles.
 - **Other portals:** about 50 deep links (LinkedIn, Naukri, Indeed, Foundit and more) with the role and place prefilled. JAOS does not scrape them.
-- **Gemini key:** optional, under "Enhance with AI".
+- **Gemini key:** optional, under "Enhance with AI". Adding your own free key unlocks a résumé tailored to each job, cover letters, outreach, interview prep and AI fit scores. Google sign-in and résumé storage are unchanged.
+- **Precision:** strict role-cluster matching, penalties for a different field, domain or level, a 45/100 cut-off and de-duplication. Run `npx tsx scripts/precision-eval.ts` to see precision@20 for three test profiles.
+- **Government tiers:** postgraduates, professionals and anyone with 5+ years of experience don't see peon, MTS, clerk or Group C/D clerical posts unless they tick "Show all levels".
 
 Credits: outscal/OpenJobs and career-ops-hq/career-ops (MIT), srbhr/Resume-Matcher (Apache-2.0), lucaong/minisearch (MIT). See NOTICE. Akash Sync Agent.

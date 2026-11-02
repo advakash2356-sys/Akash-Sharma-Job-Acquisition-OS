@@ -10,7 +10,7 @@ import { callAi } from '../lib/api';
 import { boardLinks, GOVT_PORTALS } from '../lib/boards';
 import ManualProfile from '../components/ManualProfile';
 import PortalLinks from '../components/PortalLinks';
-import { rankJobs, skillsIn } from '../lib/onestop/rubric';
+import { MIN_SCORE, rankJobs, skillsIn } from '../lib/onestop/rubric';
 import { classify } from '../lib/onestop/category';
 import { expYearsOf } from '../lib/gov/shared';
 import { eligSummary } from '../components/EligibilityCard';
@@ -108,7 +108,10 @@ export default function Setup() {
     // No-key ranking in the browser (t345u): MiniSearch BM25 + deterministic 100-point rubric. The CV never leaves this device.
     const ranked = new Map(rankJobs(fresh.map((j) => ({ ...j, description: j.description || '' })), { resume: profile.resumeText, roles: titles, skills: [...(profile.skills || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), ...skillsIn(profile.resumeText)], location: location || profile.location || '', expYears: expYearsOf(profile), age: Number(profile.age) || undefined, remoteOk: q.remote }).map((r) => [r.id, r.rubric]));
     const now = today();
-    const jobs: Job[] = fresh.map((j: FoundJob, i: number) => {
+    // Precision (t347u): drop weak matches below MIN_SCORE (government notices are kept; they have their own filter).
+    const weak = fresh.filter((j) => !(j.official || j.govtFeed) && !fits.has(j.id) && (ranked.get(j.id)?.total ?? 100) < MIN_SCORE);
+    if (weak.length) msgs.push(`Left out ${weak.length} weak match${weak.length > 1 ? 'es' : ''} (score below ${MIN_SCORE}/100: different field, wrong level or far away).`);
+    const jobs: Job[] = fresh.filter((j) => !weak.includes(j)).map((j: FoundJob, i: number) => {
       const rb = ranked.get(j.id);
       const base = fits.get(j.id) || (rb ? { score: rb.total, kind: 'keyword' as const, summary: rb.reasons.join('. ') || 'Few overlaps with your resume.' } : { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const });
       const la = locationAdjust(j.location, q, j.decision);
@@ -213,7 +216,7 @@ export default function Setup() {
         </Card></li>
         <li><Card>
           <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={2} /><h2 className="text-2xl">Find and score matching jobs</h2></div>
-          {!step1 && <p className="text-sm text-muted-foreground">Starts by itself once your resume is in. No key or sign-up of any AI service needed: jobs are ranked in your browser with a 100-point score.</p>}
+          {!step1 && <p className="text-sm text-muted-foreground">Starts by itself once your resume is in. No Gemini key needed to search: jobs are ranked in your browser with a 100-point score. Add a key later to tailor your résumé and write cover letters.</p>}
           <ul className="grid gap-2 text-sm" aria-live="polite">
             {STAGES.map((s) => (
               <li key={s.id} className="flex items-center gap-2">
@@ -247,8 +250,8 @@ export default function Setup() {
           <PortalLinks role={splitTitles(titlesIn)[0] || ''} loc={locIn} exp={expYearsOf(profile)} />
         </Card></li>
         <li><details className="rounded-2xl" data-testid="enhance-ai">
-          <summary className="cursor-pointer text-lg">Optional: Enhance with AI (your own free Gemini key)</summary>
-          <p className="mt-2 text-sm text-muted-foreground">Not needed to find jobs. Adds AI resume parsing, AI fit scores and tailored documents. Only used after you add a key.</p>
+          <summary className="cursor-pointer text-lg">Optional: Enhance with AI (add your own free Gemini key)</summary>
+          <p className="mt-2 text-sm text-muted-foreground">Job search and scoring work without a key. <b>Add your own free Gemini key to unlock a custom résumé tailored to each job, cover letters, outreach messages, interview prep, AI fit scores and every other AI feature.</b> The key stays in your browser and is used only for those features.</p>
           <div className="mt-2"><ApiKeyCard prominent={false} /></div>
         </details></li>
       </ol>

@@ -17,12 +17,19 @@ import * as ashby from "./collect/vendor/openjobs/ashby.mjs";
 import * as workable from "./collect/vendor/openjobs/workable.mjs";
 import * as smartrecruiters from "./collect/vendor/openjobs/smartrecruiters.mjs";
 import * as workday from "./collect/vendor/openjobs/workday.mjs";
+import * as recruitee from "./collect/vendor/openjobs/recruitee.mjs";
+import * as personio from "./collect/vendor/openjobs/personio.mjs";
+import * as teamtailor from "./collect/vendor/openjobs/teamtailor.mjs";
+import * as bamboohr from "./collect/vendor/openjobs/bamboohr.mjs";
+import * as breezy from "./collect/vendor/openjobs/breezy.mjs";
+import * as jobvite from "./collect/vendor/openjobs/jobvite.mjs";
+import * as joincom from "./collect/vendor/openjobs/join.mjs";
 import { classify } from "../src/lib/onestop/category.js";
 
 const OPENJOBS = "https://raw.githubusercontent.com/outscal/OpenJobs/main/data/companies_v2.json";
 const OUT = process.env.OUT || "data/jobs-snapshot.json.gz";
 const CONC = Number(process.env.CONCURRENCY || 8);
-const WD_CAP = Number(process.env.WORKDAY_CAP || 400);
+const WD_CAP = Number(process.env.WORKDAY_CAP || 2000);
 const UA = "JAOS-job-collector/1.0 (+https://akash-sharma-job-acquisition-os.vercel.app/about)";
 const MAX_AGE_DAYS = 120;
 
@@ -57,18 +64,23 @@ function add(src: string, company: string, raw: { title: string; url: string; lo
 
 async function ats() {
   const companies: any[] = await fetchJson(OPENJOBS);
-  const adapters: [string, any][] = [["Greenhouse", greenhouse], ["Lever", lever], ["Ashby", ashby], ["Workable", workable], ["SmartRecruiters", smartrecruiters]];
+  // More boards: career-ops templates/portals.example.yml (MIT) URLs, plus boards discovered from apply links in the
+  // previous snapshot and this run's open feeds (a public apply URL on an ATS host means a public board).
+  const extra = readFileSync(new URL("./collect/career-ops-boards.txt", import.meta.url), "utf8").split(/\s+/).filter(Boolean);
+  for (const u of [...extra, ...discovered]) companies.push({ name: "", ats_links: [u] });
+  const adapters: [string, any][] = [["Greenhouse", greenhouse], ["Lever", lever], ["Ashby", ashby], ["Workable", workable], ["SmartRecruiters", smartrecruiters], ["Recruitee", recruitee], ["Personio", personio], ["Teamtailor", teamtailor], ["BambooHR", bamboohr], ["Breezy", breezy], ["Jobvite", jobvite], ["JOIN", joincom]];
   const work: { name: string; src: string; a: any; h: any }[] = []; const seen = new Set<string>();
   for (const co of companies) for (const [src, a] of adapters) { const h = a.detect(co); const id = h?.apiUrl || h?.apiBase; if (id && !seen.has(id)) { seen.add(id); work.push({ name: String(co.name || "").trim(), src, a, h }); break; } }
   const ctx = { fetchJson: (u: string, init?: RequestInit) => fetchJson(u, init), logWarn: (m: string) => { const s = m.split(" ")[0]; errors[s] = (errors[s] || 0) + 1; } };
   await pool(work, CONC, async (w) => {
     const list = await w.a.fetchJobs(w.h, ctx).catch(() => []);
-    for (const j of list) add(w.src, w.name, { title: j.title, url: j.apply_url || j.detail_url, location: j.location, date: isoDate(j.posted_date), remote: j.remote });
+    const name = w.name || String(w.h.slug || w.h.tenant || "").replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+    for (const j of list) add(w.src, name, { title: j.title, url: j.apply_url || j.detail_url, location: j.location, date: isoDate(j.posted_date), remote: j.remote });
   });
 }
 async function workdays() {
   const tenants: { name: string; tenant: string; wd: string; site: string }[] = JSON.parse(readFileSync(new URL("./collect/workday-tenants.json", import.meta.url), "utf8"));
-  await pool(tenants, 6, async (t) => {
+  await pool(tenants, 10, async (t) => {
     const h = workday.detect({ ats_links: [`https://${t.tenant}.wd${t.wd}.myworkdayjobs.com/${t.site}`] });
     const list = await workday.fetchJobs(h, { workdayCap: WD_CAP, fetchJson: (u: string, init?: RequestInit) => fetchJson(u, init) } as any).catch(() => []);
     (list.length ? wdOk : wdFail).push(t.name);
@@ -77,11 +89,22 @@ async function workdays() {
 }
 async function remoteFeeds() {
   // Himalayas: cursor pagination, as its feed asks (21/08/2026 note). Link back to himalayas.app on every card.
-  try { let cursor = ""; for (let p = 0; p < 50; p++) { const j = await fetchJson(`https://himalayas.app/jobs/api?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`); for (const x of j.jobs || []) add("Himalayas", x.companyName, { title: x.title, url: x.applicationLink || x.guid, location: (x.locationRestrictions || []).join(", ") || "Remote (worldwide)", date: isoDate(x.pubDate * 1000 || x.pubDate), remote: true, desc: x.excerpt }); if (!j.nextCursor) break; cursor = j.nextCursor; await sleep(400); } } catch { errors.Himalayas = 1; }
+  try { let cursor = ""; for (let p = 0; p < Number(process.env.HIMALAYAS_PAGES || 1500); p++) { const j = await fetchJson(`https://himalayas.app/jobs/api?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`); for (const x of j.jobs || []) add("Himalayas", x.companyName, { title: x.title, url: x.applicationLink || x.guid, location: (x.locationRestrictions || []).join(", ") || "Remote (worldwide)", date: isoDate(x.pubDate * 1000 || x.pubDate), remote: true, desc: x.excerpt }); if (!j.nextCursor) break; cursor = j.nextCursor; await sleep(250); } } catch { errors.Himalayas = 1; }
   // Remote OK: terms require a followed link back to remoteok.com and naming Remote OK as the source.
   try { const j = await fetchJson("https://remoteok.com/api"); for (const x of j.slice(1)) add("Remote OK", x.company, { title: x.position, url: x.url, location: x.location || "Remote", date: isoDate(x.date), remote: true }); } catch { errors["Remote OK"] = 1; }
   // Remotive: max 4 calls a day; must link back to the Remotive URL and name Remotive as the source.
   try { const j = await fetchJson("https://remotive.com/api/remote-jobs"); for (const x of j.jobs || []) add("Remotive", x.company_name, { title: x.title, url: x.url, location: x.candidate_required_location || "Remote", date: isoDate(x.publication_date), remote: true }); } catch { errors.Remotive = 1; }
+  // Jobicy: credit Jobicy with a direct link; apply buttons go to the original URL (its API notice).
+  try { const j = await fetchJson("https://jobicy.com/api/v2/remote-jobs?count=100"); for (const x of j.jobs || []) add("Jobicy", x.companyName, { title: x.jobTitle, url: x.url, location: x.jobGeo || "Remote", date: isoDate(x.pubDate), remote: true }); } catch { errors.Jobicy = 1; }
+  // Working Nomads public API; links go back to workingnomads.com.
+  try { const j = await fetchJson("https://www.workingnomads.com/api/exposed_jobs/"); for (const x of j || []) add("Working Nomads", x.company_name, { title: x.title, url: x.url, location: x.location || "Remote", date: isoDate(x.pub_date), remote: true }); } catch { errors["Working Nomads"] = 1; }
+  // Public RSS feeds (We Work Remotely, NoDesk); every card links back to the board.
+  for (const [src, url] of [["We Work Remotely", "https://weworkremotely.com/remote-jobs.rss"], ["NoDesk", "https://nodesk.co/remote-jobs/index.xml"]] as const) {
+    try { const xml = await (await fetch(url, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(20000) })).text();
+      for (const it of xml.split(/<item>/).slice(1)) { const g = (t: string) => (it.match(new RegExp(`<${t}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${t}>`)) || [])[1] || ""; let title = strip(g("title")), co = "";
+        const m = title.match(/^([^:]{2,60}):\s*(.+)$/); if (src === "We Work Remotely" && m) { co = m[1]; title = m[2]; }
+        add(src, co || src, { title, url: g("link").trim(), location: strip(g("region")) || "Remote", date: isoDate(g("pubDate")), remote: true }); } } catch { errors[src] = 1; }
+  }
   // Arbeitnow: free API, link back to arbeitnow.com.
   try { for (let p = 1; p <= 10; p++) { const j = await fetchJson(`https://www.arbeitnow.com/api/job-board-api?page=${p}`); for (const x of j.data || []) add("Arbeitnow", x.company_name, { title: x.title, url: x.url, location: x.location, date: isoDate((x.created_at || 0) * 1000), remote: !!x.remote, desc: strip(x.description, 600) }); if (!j.links?.next) break; await sleep(500); } } catch { errors.Arbeitnow = 1; }
 }
@@ -92,9 +115,14 @@ export function dedupe(list: Snap[]): Snap[] {
   return out;
 }
 
+const discovered = new Set<string>();
+const ATS_HOST = /^https?:\/\/(?:(?:job-)?boards(?:\.eu)?\.greenhouse\.io\/[^/?#]+|jobs(?:\.eu)?\.lever\.co\/[^/?#]+|jobs\.ashbyhq\.com\/[^/?#]+|apply\.workable\.com\/[^/?#]+|(?:careers|jobs)\.smartrecruiters\.com\/[^/?#]+|[a-z0-9-]+\.recruitee\.com|[a-z0-9-]+\.jobs\.personio\.(?:de|com)|[a-z0-9-]+\.teamtailor\.com|[a-z0-9-]+\.bamboohr\.com|[a-z0-9-]+\.breezy\.hr|jobs\.jobvite\.com\/[^/?#]+)/i;
 async function main() {
   const t0 = Date.now();
-  await Promise.all([ats(), workdays(), remoteFeeds()]);
+  if (existsSync(OUT)) for (const j of (JSON.parse(gunzipSync(readFileSync(OUT)).toString()).jobs || []) as Snap[]) { const m = j.u.match(ATS_HOST); if (m) discovered.add(m[0]); }
+  await Promise.all([workdays(), remoteFeeds()]);
+  for (const j of jobs) { const m = j.u.match(ATS_HOST); if (m) discovered.add(m[0]); }
+  await ats();
   const all = dedupe(jobs);
   // A sudden drop to 0 (or below 40% of the last snapshot) for a source is suspect: keep that source's previous jobs.
   if (existsSync(OUT)) {

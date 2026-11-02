@@ -6,6 +6,12 @@
 "site": "Search"
 },
 {
+"name": "Accenture",
+"tenant": "accenture",
+"wd": "103",
+"site": "accenturecareers"
+},
+{
 "name": "Adobe",
 "tenant": "adobe",
 "wd": "5",
@@ -108,6 +114,12 @@
 "site": "baxter"
 },
 {
+"name": "BDO",
+"tenant": "bdo",
+"wd": "3",
+"site": "bdo"
+},
+{
 "name": "Black Bery",
 "tenant": "bb",
 "wd": "3",
@@ -174,6 +186,12 @@
 "site": "Capital_One"
 },
 {
+"name": "Carrier",
+"tenant": "carrier",
+"wd": "5",
+"site": "jobs"
+},
+{
 "name": "Cerence",
 "tenant": "cerence",
 "wd": "5",
@@ -208,6 +226,12 @@
 "tenant": "cineplex",
 "wd": "3",
 "site": "Cineplex"
+},
+{
+"name": "Cisco",
+"tenant": "cisco",
+"wd": "5",
+"site": "cisco_Careers"
 },
 {
 "name": "Citi",
@@ -274,6 +298,12 @@
 "tenant": "hillenbrand",
 "wd": "3",
 "site": "Global"
+},
+{
+"name": "Dover",
+"tenant": "dover",
+"wd": "103",
+"site": "dover"
 },
 {
 "name": "DraftKings",
@@ -450,6 +480,12 @@
 "site": "ISScareers"
 },
 {
+"name": "JLL",
+"tenant": "jll",
+"wd": "1",
+"site": "JllCareers"
+},
+{
 "name": "Johnson Controls",
 "tenant": "jci",
 "wd": "5",
@@ -516,6 +552,12 @@
 "site": "Maersk_Careers"
 },
 {
+"name": "Mars",
+"tenant": "mars",
+"wd": "3",
+"site": "External"
+},
+{
 "name": "Marsh McLennan",
 "tenant": "mmc",
 "wd": "1",
@@ -538,6 +580,12 @@
 "tenant": "mastercard",
 "wd": "1",
 "site": "CorporateCareers"
+},
+{
+"name": "McKesson",
+"tenant": "mckesson",
+"wd": "3",
+"site": "External_Careers"
 },
 {
 "name": "Medtronic",
@@ -702,6 +750,24 @@
 "site": "careers"
 },
 {
+"name": "Proofpoint",
+"tenant": "proofpoint",
+"wd": "5",
+"site": "proofpointcareers"
+},
+{
+"name": "Prudential",
+"tenant": "prudential",
+"wd": "3",
+"site": "prudential"
+},
+{
+"name": "PTC",
+"tenant": "ptc",
+"wd": "1",
+"site": "ptc"
+},
+{
 "name": "PwC",
 "tenant": "pwc",
 "wd": "3",
@@ -730,6 +796,12 @@
 "tenant": "redhat",
 "wd": "5",
 "site": "jobs"
+},
+{
+"name": "RELX",
+"tenant": "relx",
+"wd": "3",
+"site": "relx"
 },
 {
 "name": "Revenera",
@@ -930,6 +1002,12 @@
 "site": "Telstra_Careers"
 },
 {
+"name": "Teleperformance",
+"tenant": "teleperformance",
+"wd": "1",
+"site": "teleperformance"
+},
+{
 "name": "Thales",
 "tenant": "thales",
 "wd": "3",
@@ -1078,5 +1156,17 @@
 "tenant": "ouryahoo",
 "wd": "5",
 "site": "careers"
+},
+{
+"name": "Zoetis",
+"tenant": "zoetis",
+"wd": "5",
+"site": "zoetis"
+},
+{
+"name": "Zoom",
+"tenant": "zoom",
+"wd": "5",
+"site": "zoom"
 }
 ]

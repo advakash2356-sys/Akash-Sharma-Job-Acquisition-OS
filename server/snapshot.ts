@@ -1,6 +1,7 @@
 import { gunzipSync } from "node:zlib";
 import type { FoundJob } from "./jobsSearch.js";
-import { expandTitle } from "../src/lib/onestop/clusters.js";
+import { coreTitles, expandTitle } from "../src/lib/onestop/clusters.js";
+const GENERIC = new Set(["associate", "consultant", "analyst", "engineer", "manager", "executive", "specialist", "officer", "lead", "developer", "designer", "teacher", "trainer", "recruiter"]);
 
 /**
  * Reads the 6-hourly job snapshot written by scripts/collect-jobs.ts (Workday, Greenhouse, Lever, Ashby, SmartRecruiters,
@@ -23,8 +24,10 @@ export async function loadSnapshot(): Promise<NonNullable<typeof cache>> {
 
 const norm = (s: string) => ` ${s.toLowerCase().replace(/[^a-z0-9+#&]+/g, " ").trim()} `;
 /** Snapshot postings whose title contains one of the titles or their 5-cluster expansions (whole-phrase match). */
-export function matchSnapshot(jobs: Snap[], titles: string[], max = 400): FoundJob[] {
-  const phrases = [...new Set(titles.flatMap((t) => expandTitle(t)).map((p) => norm(p)))].filter((p) => p.trim().length > 2);
+export function matchSnapshot(jobs: Snap[], titles: string[], max = 400, strict = true): FoundJob[] {
+  // strict (t347u): only the user's titles and the Core + Platform clusters, multi-word or distinctive phrases only.
+  const pool = strict ? titles.flatMap((t) => [t, ...coreTitles(t)]) : titles.flatMap((t) => expandTitle(t));
+  const phrases = [...new Set(pool.map((p) => norm(p)))].filter((p) => p.trim().length > 2 && (!strict || p.trim().includes(" ") || !GENERIC.has(p.trim())));
   const out: FoundJob[] = [];
   for (const j of jobs) {
     const nt = norm(j.t); if (!phrases.some((p) => nt.includes(p))) continue;
@@ -33,4 +36,4 @@ export function matchSnapshot(jobs: Snap[], titles: string[], max = 400): FoundJ
   }
   return out.sort((a, b) => b.postedAt.localeCompare(a.postedAt)).slice(0, max);
 }
-export async function snapshotJobs(titles: string[]): Promise<FoundJob[]> { return matchSnapshot((await loadSnapshot()).jobs, titles); }
+export async function snapshotJobs(titles: string[]): Promise<FoundJob[]> { return matchSnapshot((await loadSnapshot()).jobs, titles, 400, true); }

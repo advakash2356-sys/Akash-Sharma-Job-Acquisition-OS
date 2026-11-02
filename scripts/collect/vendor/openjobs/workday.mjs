@@ -93,7 +93,7 @@ export async function fetchJobs(handle, ctx) {
     let offset = 0;
     let total = Infinity;
     let guard = 0;
-    while (offset < total && all.length < hardCap && guard < 30) {
+    while (offset < total && all.length < hardCap && guard < 110) { // JAOS: raised from 30 so the WORKDAY_CAP (2000) is reachable
       guard++;
       const body = { appliedFacets: {}, limit: pageSize, offset, searchText: '' };
       const json = await postJson(handle.apiUrl, body, ctx);

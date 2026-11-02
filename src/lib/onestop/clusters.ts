@@ -15,3 +15,5 @@ export function expandTitle(title: string, max = 12): string[] {
   if (f) for (let i = 0; i < 5 && out.length < max; i++) for (const t of T[f][i]) if (out.length < max && !out.some((o) => o.toLowerCase() === t)) out.push(t);
   return out;
 }
+/** Core + Platform/systems-owner titles only (strict matching, t347u). */
+export function coreTitles(title: string): string[] { const f = familyOf(title); return f ? [...T[f][0], ...T[f][1]] : []; }
