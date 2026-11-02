@@ -9,6 +9,10 @@ import { useAiReady } from '../lib/aiReady';
 import { callAi } from '../lib/api';
 import { boardLinks, GOVT_PORTALS } from '../lib/boards';
 import ManualProfile from '../components/ManualProfile';
+import PortalLinks from '../components/PortalLinks';
+import { rankJobs, skillsIn } from '../lib/onestop/rubric';
+import { classify } from '../lib/onestop/category';
+import { expYearsOf } from '../lib/gov/shared';
 import { eligSummary } from '../components/EligibilityCard';
 import { COUNTRY_NAMES, dedupeAgainst, deriveCountries, guessLocation, guessTitles, candidateOf, keywordFit, locationAdjust, manualQuery, placeQuery, searchJobsApi, splitTitles, type FoundJob, type SearchQuery } from '../lib/jobSearch';
 import type { Job } from '../types';
@@ -19,7 +23,7 @@ const LIMIT = { parse: 50000, research: 30000, fit: 45000 };
 const FIT_TOTAL_MS = 70000;
 const STAGES = [
   { id: 'parse', label: 'Reading your resume and filling your profile', done: 'Read your resume and filled your profile', max: LIMIT.parse },
-  { id: 'research', label: 'Searching real postings on FreeHire', done: 'Searched real postings on FreeHire', max: LIMIT.research },
+  { id: 'research', label: 'Searching company career sites (Workday, Greenhouse, Lever, Ashby, SmartRecruiters, Workable), remote boards and FreeHire', done: 'Searched company career sites, remote boards and FreeHire', max: LIMIT.research },
   { id: 'fill', label: 'Scoring fit and adding postings to Jobs', done: 'Scored fit and added postings to Jobs', max: FIT_TOTAL_MS },
 ] as const;
 
@@ -101,16 +105,19 @@ export default function Setup() {
       }
     }
     if (aiNote) msgs.push(aiNote);
+    // No-key ranking in the browser (t345u): MiniSearch BM25 + deterministic 100-point rubric. The CV never leaves this device.
+    const ranked = new Map(rankJobs(fresh.map((j) => ({ ...j, description: j.description || '' })), { resume: profile.resumeText, roles: titles, skills: [...(profile.skills || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean), ...skillsIn(profile.resumeText)], location: location || profile.location || '', expYears: expYearsOf(profile), age: Number(profile.age) || undefined, remoteOk: q.remote }).map((r) => [r.id, r.rubric]));
     const now = today();
     const jobs: Job[] = fresh.map((j: FoundJob, i: number) => {
-      const base = fits.get(j.id) || { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const };
+      const rb = ranked.get(j.id);
+      const base = fits.get(j.id) || (rb ? { score: rb.total, kind: 'keyword' as const, summary: rb.reasons.join('. ') || 'Few overlaps with your resume.' } : { ...keywordFit(profile.resumeText, j), kind: 'keyword' as const });
       const la = locationAdjust(j.location, q, j.decision);
       const fit = { ...base, score: base.kind === 'ai' ? Math.max(0, Math.min(100, base.score + la.delta)) : base.score, rank: base.score + la.delta, summary: `${base.summary} Location: ${j.location || 'not stated'} (${la.label}${la.delta ? `, ${la.delta}` : ''}).` };
       return {
         id: `fh-${Date.now()}-${i}`, title: j.title, company: j.company, url: j.url,
         description: j.description || `${j.title} at ${j.company}. ${j.location}`,
         status: 'Saved' as const, createdAt: now, notes: '', interviews: [], source: 'Other',
-        found: { provider: 'freehire' as const, id: j.id, source: j.source, postedAt: j.postedAt, location: j.location, fit, mode: j.mode, decision: j.decision, evidence: j.eligibility?.evidence, ...(j.official || j.govtFeed ? { govt: { lastDate: (j.official?.lastDate || j.govtFeed?.lastDate) as string, official: !!j.official, via: j.official ? 'official notification' : 'SarkariMap (aggregator)' } } : {}) },
+        found: { provider: 'freehire' as const, id: j.id, source: j.source, rubric: rb, category: j.category || classify({ title: j.title, company: j.company, location: j.location, description: j.description, workMode: j.workMode, gov: !!(j.official || j.govtFeed) }), postedAt: j.postedAt, location: j.location, fit, mode: j.mode, decision: j.decision, evidence: j.eligibility?.evidence, ...(j.official || j.govtFeed ? { govt: { lastDate: (j.official?.lastDate || j.govtFeed?.lastDate) as string, official: !!j.official, via: j.official ? 'official notification' : 'SarkariMap (aggregator)' } } : {}) },
       };
     }).sort((a, b) => ((b.found!.fit as any).rank ?? b.found!.fit!.score) - ((a.found!.fit as any).rank ?? a.found!.fit!.score));
     setJobs((js) => [...jobs, ...js]);
@@ -179,10 +186,11 @@ export default function Setup() {
 
   // Everything automated: once the resume and key are in, start by itself (once).
   useEffect(() => {
-    if (hasResume && !profile.setupDone && !auto.current && !running.current && (profile.manual || ready)) { auto.current = true; run(profile.manual ? 'manual' : 'ai'); }
+    // No key needed (t345u): start as soon as the resume is in; AI parsing runs only if the optional key was added.
+    if (hasResume && !profile.setupDone && !auto.current && !running.current) { auto.current = true; run(profile.manual ? 'manual' : ready ? 'ai' : 'skip'); }
   }, [hasResume, ready, profile.setupDone, profile.manual]);
 
-  const step1 = hasResume, step2 = ready;
+  const step1 = hasResume, step2 = true; void ready;
   const Dot = ({ done, n }: { done: boolean; n: number }) => (
     <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm ${done ? 'bg-primary text-primary-foreground' : 'border border-border'}`}>{done ? <CheckCircle2 size={16} /> : n}</span>
   );
@@ -203,13 +211,9 @@ export default function Setup() {
             <textarea className="mt-2 h-48 w-full rounded-lg border border-border bg-background p-3 font-mono text-xs" value={profile.resumeText} onChange={(e) => { const t = e.target.value; setProfile((p) => ({ ...p, resumeText: t })); }} /></label>}
           <p className="mt-2 text-xs text-muted-foreground">Read in your browser. It leaves your device only when an AI step runs, and then only to Google's Gemini API.</p>
         </Card></li>
-        <li><div className={step1 ? '' : 'pointer-events-none opacity-50'} inert={!step1} aria-disabled={!step1 || undefined}>
-          <div className="mb-2 flex items-center gap-3"><Dot done={step2} n={2} /><h2 className="text-2xl">Add your free Gemini key</h2></div>
-          <ApiKeyCard prominent={step1 && !step2} />
-        </div></li>
         <li><Card>
-          <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={3} /><h2 className="text-2xl">Find and score matching jobs</h2></div>
-          {!(step1 && step2) && <p className="text-sm text-muted-foreground">{profile.manual ? 'Short form saved. Search runs by itself; a Gemini key (step 2) only adds fit scores.' : 'Starts by itself when steps 1 and 2 are done.'} No key? You can still <button className="underline cursor-pointer" disabled={!step1 || busy} onClick={() => run('skip')}>search jobs without AI</button>.</p>}
+          <div className="mb-3 flex items-center gap-3"><Dot done={st.fill === 'done'} n={2} /><h2 className="text-2xl">Find and score matching jobs</h2></div>
+          {!step1 && <p className="text-sm text-muted-foreground">Starts by itself once your resume is in. No key or sign-up of any AI service needed: jobs are ranked in your browser with a 100-point score.</p>}
           <ul className="grid gap-2 text-sm" aria-live="polite">
             {STAGES.map((s) => (
               <li key={s.id} className="flex items-center gap-2">
@@ -235,12 +239,18 @@ export default function Setup() {
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             {busy && <Button variant="outline" onClick={() => ctl.current?.abort()}><XCircle size={15} /> Cancel</Button>}
-            {step1 && (step2 || profile.manual) && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run('ai')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
-            {step1 && !busy && !profile.manual && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
+            {step1 && (step2 || profile.manual) && !busy && <Button variant={err ? 'primary' : 'outline'} onClick={() => run(ready ? 'ai' : 'skip')}><RotateCw size={15} /> {err ? 'Try again' : profile.setupDone ? 'Run again' : 'Start now'}</Button>}
+            {step1 && ready && !busy && !profile.manual && <Button variant={err && errStage === 'parse' ? 'primary' : 'outline'} onClick={() => run('skip')}><SkipForward size={15} /> Skip AI, search jobs now</Button>}
             {allJobs.length > 0 && added !== 0 && (st.fill === 'done' || profile.setupDone) && <Button onClick={() => go('jobs')}>Next: review matched jobs</Button>}
             {st.parse === 'done' && <Button variant="outline" onClick={() => go('resume')}>Review my profile</Button>}
           </div>
+          <PortalLinks role={splitTitles(titlesIn)[0] || ''} loc={locIn} exp={expYearsOf(profile)} />
         </Card></li>
+        <li><details className="rounded-2xl" data-testid="enhance-ai">
+          <summary className="cursor-pointer text-lg">Optional: Enhance with AI (your own free Gemini key)</summary>
+          <p className="mt-2 text-sm text-muted-foreground">Not needed to find jobs. Adds AI resume parsing, AI fit scores and tailored documents. Only used after you add a key.</p>
+          <div className="mt-2"><ApiKeyCard prominent={false} /></div>
+        </details></li>
       </ol>
     </>
   );

@@ -124,3 +124,14 @@ Full guide: `docs/FEEDBACK_SETUP.md`. Search Console and Bing: `docs/SEO_SETUP.m
 - The app shows **"Made by Akash Sync Agent"** in the footer, the sidebar, the About page and, optionally, in exported files.
 
 More docs: `docs/PROMISE_AUDIT.md` (each landing claim and its status), `docs/LEGAL_COPY_AUDIT.md`, `docs/FREEHIRE.md`, `DESIGN.md`.
+
+
+## One-stop job search, no key (t345u)
+Upload or paste a CV (or pick a role) and JAOS finds and ranks jobs with **no API key**:
+- **Sources:** about 65,000 open jobs, collected every 6 hours by `scripts/collect-jobs.ts` (`.github/workflows/collect-jobs.yml`) into a snapshot on the `jobs-data` branch: Workday (180 verified employer career sites), Greenhouse, Lever, Ashby, SmartRecruiters and Workable (company boards from outscal/OpenJobs), plus Himalayas, Remote OK, Remotive and Arbeitnow. FreeHire and the official government sources stay live.
+- **Ranking in the browser:** MiniSearch BM25 plus a 100-point score (skills 35, role/seniority 30, domain 20, location 15, penalties for missing licences, clearance, or age limits on cadre exams). The CV never leaves the browser.
+- **Tabs:** Corporate, Consulting, Remote Global, International, and Government, which is split into age-capped cadre exams and all-age lateral, Consultant and Young Professional roles.
+- **Other portals:** about 50 deep links (LinkedIn, Naukri, Indeed, Foundit and more) with the role and place prefilled. JAOS does not scrape them.
+- **Gemini key:** optional, under "Enhance with AI".
+
+Credits: outscal/OpenJobs and career-ops-hq/career-ops (MIT), srbhr/Resume-Matcher (Apache-2.0), lucaong/minisearch (MIT). See NOTICE. Akash Sync Agent.

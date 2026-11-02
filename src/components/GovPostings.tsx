@@ -6,6 +6,9 @@ import { downloadText } from '../lib/exportResult';
 import { filterPostings } from '../lib/gov/filter';
 import { BADGE_TEXT, eligibilityBadge, profileFit, profileOverlap, rankScore } from '../lib/gov/rank';
 import type { Profile } from '../lib/govJobs';
+import { classify } from '../lib/onestop/category';
+/** t345u: split age-capped cadre exams from all-age lateral / consultant / Young Professional roles. */
+export const govTrack = (p: { title: string; org: string; employmentType?: string }) => (p.employmentType && /contractual|deputation|fellowship/.test(p.employmentType)) || classify({ title: p.title, company: p.org, gov: true }) === 'gov-lateral' ? 'lateral' : 'cadre';
 
 /** Live government job POSTINGS (not just exams): last date, state, pay, vacancies, official notice. Akash Sync Agent. */
 export interface GovPosting { id: string; title: string; org: string; state: string; location: string; lastDate: string; startDate?: string; pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; applyUrl?: string; postedAt: string; source: string; lesserKnown: boolean; verifiedAt: string; level?: string; employmentType?: string; trust?: string; maxAge?: number; minAge?: number; eduTags?: string[] }
@@ -20,7 +23,8 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
   const load = async () => { setBusy(true); setErr(''); try { const r = await fetch('/api/gov/postings', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); setFeed(j); } catch (e: any) { setErr(`The official government portals and feeds are temporarily slow or under maintenance (${e.message}). Servers are busiest near closing hours (5 pm to midnight IST); try again in the morning. The eligibility checker below still works.`); } finally { setBusy(false); } };
   useEffect(() => { load(); }, []);
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
-  const list = filterPostings(feed?.postings || [], f)
+  const [track, setTrack] = useState<'all' | 'cadre' | 'lateral'>('all');
+  const list = filterPostings(feed?.postings || [], f).filter((p) => track === 'all' || govTrack(p) === track)
     .map((p) => { const fit = profileFit(p, profile); return { p, fit, score: rankScore(p, f.q.split(/[\s,]+/)) + fit.pts + (fit.subjects ? 0 : profileOverlap(p, keywords).pts) }; })
     .sort((a, b) => (f.sort === 'rank' ? b.score - a.score : 0) || a.p.lastDate.localeCompare(b.p.lastDate)).filter((x) => f.sort !== 'rank' || !x.fit.belowLevel).map((x) => x.p);
   const hidden = f.sort === 'rank' ? (feed?.postings || []).filter((p) => profileFit(p, profile).belowLevel).length : 0;
@@ -48,6 +52,10 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.soon} onChange={(e) => setF({ ...f, soon: e.target.checked })} /> Closing in 7 days</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.deputation} onChange={(e) => setF({ ...f, deputation: e.target.checked })} data-testid="gp-deputation" /> Show deputation-only posts</label></div>
         <div className="min-w-0"><Label htmlFor="gpo">Sort</Label><Select id="gpo" value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value })} data-testid="gp-sort"><option value="rank">Best match (closing soon, lesser-known, clear pay)</option><option value="date">Last date first</option></Select></div>
+      </div>
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Government track" data-testid="gov-track-tabs">
+        {([['all', 'All government'], ['cadre', 'Cadre exams (age-capped)'], ['lateral', 'Lateral / Consultant / Young Professional (all ages)']] as const).map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={track === k} onClick={() => setTrack(k)} className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${track === k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>{label} · {(feed?.postings || []).filter((p) => k === 'all' || govTrack(p) === k).length}</button>))}
       </div>
       {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} junior / entry-level posts are hidden from Best match because they are below your experience. Switch Sort to "Last date first" to see everything.</p>}
       <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the eligibility hint:</b> it uses your <b>date of birth</b>, <b>education</b>, <b>category</b> (and PwBD) <b>state</b>, <b>years of experience</b> and <b>professional degree</b> from "Your details" below, saved only in this browser. "Likely eligible" appears only when the posting states both an age limit and a qualification level and you meet them (with standard OBC +3, SC/ST +5, PwBD +10 years). If either is missing from the notice text you see "Needs verification"; deputation-only posts and posts you seem to miss show "May not qualify". It is a hint, not legal advice.</p>

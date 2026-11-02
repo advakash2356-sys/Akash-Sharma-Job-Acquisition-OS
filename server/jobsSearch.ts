@@ -1,6 +1,9 @@
 import { ApiError } from "./handlers.js";
 import { nearDuplicate } from "../src/lib/dedupe.js";
 import { dmy, govtNotices } from "./govtFeed.js";
+import { snapshotJobs } from "./snapshot.js";
+import { classify, type Category } from "../src/lib/onestop/category.js";
+import { expandTitle } from "../src/lib/onestop/clusters.js";
 import { classifyMode, countryCode, decide, extractEligibility, inferCandidate, COUNTRY_NAME, type Candidate, type Decision, type Eligibility, type WorkMode } from "../src/lib/eligibility.js";
 
 /**
@@ -11,7 +14,7 @@ const BASE = "https://freehire.me/api/v1/jobs/search";
 const TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE = 200;
 const PER_TITLE = 25;
-const MAX_RESULTS = 40;
+const MAX_RESULTS = 150; // one-stop (t345u): show as many good matches as possible
 const MAX_TITLES = 14;
 const MAX_AGE_DAYS = 180; // older postings are dropped even if FreeHire still lists them as open
 const WINDOW_MS = 60 * 1000;
@@ -29,6 +32,8 @@ export interface FoundJob {
   /** Structured restrictions from the source (Himalayas): empty array = worldwide. */
   locationRestrictions?: string[]; timezoneRestrictions?: number[];
   mode?: WorkMode; eligibility?: Eligibility; decision?: Decision;
+  /** One-stop tab (t345u): gov-cadre | gov-lateral | consulting | corporate | remote | international. */
+  category?: Category;
 }
 export interface HiddenSummary { total: number; reasons: { badge: string; count: number; example: string }[] }
 export interface SearchOut { jobs: FoundJob[]; total: number; queries: string[]; warnings: string[]; cached: boolean; provider: "freehire"; hidden?: HiddenSummary; candidate?: Candidate; sources?: string[] }
@@ -253,6 +258,7 @@ export async function searchJobs(body: any): Promise<SearchOut> {
   const key = JSON.stringify([titles.map((t) => t.toLowerCase()), countries, cities, remote, entryLevel, govt, education, candidate]);
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return { ...hit.out, cached: true };
+  const expanded = [...new Set(titles.flatMap((t) => expandTitle(t)))];
   const local = candidate.modes.includes("onsite") || candidate.modes.includes("hybrid");
 
   const reqs: { label: string; params?: Record<string, string>; govt?: boolean; ext?: () => Promise<FoundJob[]> }[] = [];
@@ -266,6 +272,8 @@ export async function searchJobs(body: any): Promise<SearchOut> {
       reqs.push({ label: `"${t}" remote open to ${COUNTRY_NAME[candidate.residence] || candidate.residence} (Himalayas)`, ext: () => himalayas(t, candidate.residence) });
     }
   }
+  // Company career sites + remote boards from the 6-hourly snapshot (scripts/collect-jobs.ts). Titles only, no CV.
+  if (titles.length) reqs.push({ label: `company career sites (Workday, Greenhouse, Lever, Ashby, SmartRecruiters, Workable) + Himalayas, Remote OK, Remotive, Arbeitnow`, ext: () => snapshotJobs(titles) });
   if (remote && titles.length) reqs.push({ label: `remote feed (Remote OK)`, ext: () => remoteOk(titles, entryLevel) });
   if (govt) {
     for (const q of ["Last Date Apply Online notification", "Recruitment 2026 Posts", education === "10" || education === "8" ? "Eligibility 10th pass" : "Eligibility 12th pass"]) {
@@ -289,7 +297,7 @@ export async function searchJobs(body: any): Promise<SearchOut> {
         if (!g) continue;
         j.official = g; j.url = g.url; j.description = clean(stripHtml(String(raw.description || "")), 1800);
       } else {
-        if (!titleRelevant(j.title, titles, entryLevel)) continue;
+        if (!titleRelevant(j.title, j.id.startsWith("snap:") ? expanded : titles, entryLevel)) continue;
         if (j.postedAt && Date.now() - Date.parse(j.postedAt) > MAX_AGE_DAYS * 86400000) continue;
         const m = classifyMode(j);
         const el = extractEligibility({ ...j, mode: m.mode });
@@ -299,13 +307,14 @@ export async function searchJobs(body: any): Promise<SearchOut> {
         j.mode = m.mode; j.eligibility = el; j.decision = { ...d, reason: `${d.reason} Work mode: ${m.why}.` };
         j.description = j.description.slice(0, 1800);
       }
+      j.category = j.category || classify({ title: j.title, company: j.company, location: j.location, description: j.description, workMode: j.workMode, gov: !!reqs[i].govt });
       seen.add(j.id); seen.add(j.url); sig.add(s); jobs.push(j);
     }
   });
   if (govt) {
     try {
       for (const g of await govtNotices(education)) {
-        const j: FoundJob = { id: g.id, title: g.title, company: "Government of India / State (via SarkariMap)", location: "India", url: g.url, postedAt: g.postedAt, source: "sarkarimap-rss", workMode: "", description: g.summary, skills: [], govtFeed: { lastDate: g.lastDate }, listingUrl: g.url };
+        const j: FoundJob = { id: g.id, title: g.title, company: "Government of India / State (via SarkariMap)", location: "India", url: g.url, postedAt: g.postedAt, source: "sarkarimap-rss", workMode: "", description: g.summary, skills: [], govtFeed: { lastDate: g.lastDate }, listingUrl: g.url, category: classify({ title: g.title, company: "Government", gov: true }) };
         if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
       }
       ok++;
@@ -321,7 +330,7 @@ export async function searchJobs(body: any): Promise<SearchOut> {
   const capped = jobs.filter((j) => j.decision?.kind !== "remote-unclear").slice(0, MAX_RESULTS + 15);
   capped.push(...jobs.filter((j) => j.decision?.kind === "remote-unclear").slice(0, Math.max(8, MAX_RESULTS + 15 - capped.length)));
   const hiddenSum: HiddenSummary = { total: [...hidden.values()].reduce((a, b) => a + b.count, 0), reasons: [...hidden.entries()].map(([badge, v]) => ({ badge, ...v })).sort((a, b) => b.count - a.count).slice(0, 12) };
-  const sources = [...new Set(capped.map((j) => j.source === "Himalayas" || j.source === "Remote OK" ? j.source : "FreeHire"))];
+  const sources = [...new Set(capped.map((j) => (j.id.startsWith("snap:") || j.source === "Himalayas" || j.source === "Remote OK" ? j.source : "FreeHire")))];
   const out: SearchOut = { jobs: capped, total, queries: reqs.map((r) => r.label), warnings, cached: false, provider: "freehire", hidden: hiddenSum, candidate, sources };
   if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value as string);
   cache.set(key, { at: Date.now(), out });

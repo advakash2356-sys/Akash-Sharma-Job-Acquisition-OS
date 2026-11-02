@@ -1,0 +1,29 @@
+# Every 6 hours: collect public, keyless job feeds into a compact snapshot on the `jobs-data` branch (t345u).
+# Sources and licences: see NOTICE. The previous snapshot is used to detect a suspicious drop per source.
+name: collect-jobs
+on:
+  schedule: [{ cron: "17 */6 * * *" }]
+  workflow_dispatch: {}
+permissions: { contents: write }
+concurrency: { group: collect-jobs, cancel-in-progress: false }
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - name: Previous snapshot
+        run: |
+          mkdir -p data
+          git fetch origin jobs-data --depth 1 && git show origin/jobs-data:data/jobs-snapshot.json.gz > data/jobs-snapshot.json.gz || echo "no previous snapshot"
+      - run: npx tsx scripts/collect-jobs.ts
+      - name: Publish to jobs-data branch
+        run: |
+          cp data/jobs-snapshot.json.gz /tmp/snap.gz
+          git config user.name "jaos-collector"; git config user.email "actions@users.noreply.github.com"
+          git checkout --orphan jobs-data-new && git rm -rfq . && mkdir -p data && cp /tmp/snap.gz data/jobs-snapshot.json.gz
+          git add data/jobs-snapshot.json.gz && git commit -qm "jobs snapshot $(date -u +%FT%TZ)"
+          git push -f origin jobs-data-new:jobs-data

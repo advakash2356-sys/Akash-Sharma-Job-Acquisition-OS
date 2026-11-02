@@ -1,0 +1,1082 @@
+[
+{
+"name": "3M",
+"tenant": "3m",
+"wd": "1",
+"site": "Search"
+},
+{
+"name": "Adobe",
+"tenant": "adobe",
+"wd": "5",
+"site": "external_experienced"
+},
+{
+"name": "Adtran",
+"tenant": "adtran",
+"wd": "3",
+"site": "ADTRAN"
+},
+{
+"name": "Ally",
+"tenant": "ally",
+"wd": "1",
+"site": "Ally"
+},
+{
+"name": "Ameriprise",
+"tenant": "ameriprise",
+"wd": "5",
+"site": "Ameriprise"
+},
+{
+"name": "ansira",
+"tenant": "ansira",
+"wd": "1",
+"site": "Ansira_Careers"
+},
+{
+"name": "Applied Materials",
+"tenant": "amat",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "Aptive",
+"tenant": "aptiv",
+"wd": "5",
+"site": "APTIV_CAREERS"
+},
+{
+"name": "Ariens Company",
+"tenant": "arienscompany",
+"wd": "5",
+"site": "External"
+},
+{
+"name": "Aristocrat",
+"tenant": "aristocrat",
+"wd": "3",
+"site": "AristocratExternalCareersSite"
+},
+{
+"name": "Ashland",
+"tenant": "ashland",
+"wd": "12",
+"site": "AshlandCareers1"
+},
+{
+"name": "AstraZeneca",
+"tenant": "astrazeneca",
+"wd": "3",
+"site": "Careers"
+},
+{
+"name": "athenahealth",
+"tenant": "athenahealth",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "Autodesk",
+"tenant": "autodesk",
+"wd": "1",
+"site": "Ext"
+},
+{
+"name": "Avalanche Software",
+"tenant": "warnerbros",
+"wd": "5",
+"site": "global"
+},
+{
+"name": "Bank of America",
+"tenant": "ghr",
+"wd": "1",
+"site": "Lateral-US"
+},
+{
+"name": "Barclays",
+"tenant": "barclays",
+"wd": "3",
+"site": "External_Career_Site_Barclays"
+},
+{
+"name": "Baxter",
+"tenant": "baxter",
+"wd": "1",
+"site": "baxter"
+},
+{
+"name": "Black Bery",
+"tenant": "bb",
+"wd": "3",
+"site": "QNX"
+},
+{
+"name": "BlackRock",
+"tenant": "blackrock",
+"wd": "1",
+"site": "BlackRock_Professional"
+},
+{
+"name": "Blue Yonder",
+"tenant": "jda",
+"wd": "5",
+"site": "JDA_Careers"
+},
+{
+"name": "BMO",
+"tenant": "bmo",
+"wd": "3",
+"site": "External"
+},
+{
+"name": "Boeing",
+"tenant": "boeing",
+"wd": "1",
+"site": "EXTERNAL_CAREERS"
+},
+{
+"name": "broadcom",
+"tenant": "broadcom",
+"wd": "1",
+"site": "External_Career"
+},
+{
+"name": "Broadridge",
+"tenant": "broadridge",
+"wd": "5",
+"site": "Careers"
+},
+{
+"name": "Cadence",
+"tenant": "cadence",
+"wd": "1",
+"site": "External_Careers"
+},
+{
+"name": "CAE",
+"tenant": "cae",
+"wd": "3",
+"site": "career"
+},
+{
+"name": "Calix",
+"tenant": "calix",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "Capital One",
+"tenant": "capitalone",
+"wd": "12",
+"site": "Capital_One"
+},
+{
+"name": "Cerence",
+"tenant": "cerence",
+"wd": "5",
+"site": "Cerence"
+},
+{
+"name": "CGS Carrers",
+"tenant": "csgi",
+"wd": "5",
+"site": "CSGCareers"
+},
+{
+"name": "CIBC",
+"tenant": "cibc",
+"wd": "3",
+"site": "search"
+},
+{
+"name": "Ciena",
+"tenant": "ciena",
+"wd": "5",
+"site": "Careers"
+},
+{
+"name": "Cigna",
+"tenant": "cigna",
+"wd": "5",
+"site": "cignacareers"
+},
+{
+"name": "Cineplex",
+"tenant": "cineplex",
+"wd": "3",
+"site": "Cineplex"
+},
+{
+"name": "Citi",
+"tenant": "citi",
+"wd": "5",
+"site": "2"
+},
+{
+"name": "Clearwater Analytics",
+"tenant": "clearwateranalytics",
+"wd": "1",
+"site": "Clearwater_Analytics_Careers"
+},
+{
+"name": "CME Group",
+"tenant": "cmegroup",
+"wd": "1",
+"site": "cme_careers"
+},
+{
+"name": "Comscore",
+"tenant": "comscore",
+"wd": "5",
+"site": "External"
+},
+{
+"name": "Crowd Strick",
+"tenant": "crowdstrike",
+"wd": "5",
+"site": "crowdstrikecareers"
+},
+{
+"name": "Cubic corporation",
+"tenant": "cubic",
+"wd": "1",
+"site": "cubic_global_careers"
+},
+{
+"name": "CVS Health",
+"tenant": "cvshealth",
+"wd": "1",
+"site": "CVS_Health_Careers"
+},
+{
+"name": "Dentsu",
+"tenant": "dentsuaegis",
+"wd": "3",
+"site": "DAN_GLOBAL"
+},
+{
+"name": "Deutsche Bank",
+"tenant": "db",
+"wd": "3",
+"site": "DBWebSite"
+},
+{
+"name": "Diageo",
+"tenant": "diageo",
+"wd": "3",
+"site": "Diageo_Careers"
+},
+{
+"name": "DME Company",
+"tenant": "hillenbrand",
+"wd": "3",
+"site": "Global"
+},
+{
+"name": "DraftKings",
+"tenant": "draftkings",
+"wd": "1",
+"site": "DraftKings"
+},
+{
+"name": "eBay",
+"tenant": "ebay",
+"wd": "5",
+"site": "apply"
+},
+{
+"name": "EisnerAmper",
+"tenant": "eisneramper",
+"wd": "1",
+"site": "EisnerAmper_External"
+},
+{
+"name": "Elevance Health",
+"tenant": "elevancehealth",
+"wd": "1",
+"site": "ANT"
+},
+{
+"name": "Equinix",
+"tenant": "equinix",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "FICO",
+"tenant": "fico",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "FIS",
+"tenant": "fis",
+"wd": "5",
+"site": "SearchJobs"
+},
+{
+"name": "Fiserv",
+"tenant": "fiserv",
+"wd": "5",
+"site": "EXT"
+},
+{
+"name": "Flexra Software",
+"tenant": "flexerasoftware",
+"wd": "1",
+"site": "FlexeraSoftware"
+},
+{
+"name": "Forcepoint",
+"tenant": "forcepoint",
+"wd": "1",
+"site": "engineering-external-careers1"
+},
+{
+"name": "Fox Factory",
+"tenant": "foxfactory",
+"wd": "1",
+"site": "FOX"
+},
+{
+"name": "Funcom",
+"tenant": "tencent",
+"wd": "1",
+"site": "Tencent_Careers"
+},
+{
+"name": "Gartner",
+"tenant": "gartner",
+"wd": "5",
+"site": "EXT"
+},
+{
+"name": "GEA Group",
+"tenant": "gea",
+"wd": "3",
+"site": "GEACareers"
+},
+{
+"name": "Gearbox",
+"tenant": "gearbox",
+"wd": "1",
+"site": "GEC"
+},
+{
+"name": "Gibbs Cam",
+"tenant": "sandvik",
+"wd": "3",
+"site": "gibbscam-jobs"
+},
+{
+"name": "Global Business Travel",
+"tenant": "travelhrportal",
+"wd": "1",
+"site": "Jobs"
+},
+{
+"name": "GlobalFoundries",
+"tenant": "globalfoundries",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "GSK",
+"tenant": "gsk",
+"wd": "5",
+"site": "GSKCareers"
+},
+{
+"name": "Guardian",
+"tenant": "guardianlife",
+"wd": "5",
+"site": "Guardian-Life-Careers"
+},
+{
+"name": "Haleon",
+"tenant": "gsknch",
+"wd": "3",
+"site": "GSKCareers"
+},
+{
+"name": "HP",
+"tenant": "hp",
+"wd": "5",
+"site": "ExternalCareerSite"
+},
+{
+"name": "Humana",
+"tenant": "humana",
+"wd": "5",
+"site": "Humana_External_Career_Site"
+},
+{
+"name": "Illumina",
+"tenant": "illumina",
+"wd": "1",
+"site": "illumina-careers"
+},
+{
+"name": "Intel",
+"tenant": "intel",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "Invesco",
+"tenant": "invesco",
+"wd": "1",
+"site": "IVZ"
+},
+{
+"name": "IQVIA",
+"tenant": "iqvia",
+"wd": "1",
+"site": "IQVIA"
+},
+{
+"name": "Iron Mountain",
+"tenant": "ironmountain",
+"wd": "5",
+"site": "iron-mountain-jobs"
+},
+{
+"name": "ISS Stoxx",
+"tenant": "issgovernance",
+"wd": "1",
+"site": "ISScareers"
+},
+{
+"name": "Johnson Controls",
+"tenant": "jci",
+"wd": "5",
+"site": "JCI"
+},
+{
+"name": "Kimberly-Clark",
+"tenant": "kimberlyclark",
+"wd": "1",
+"site": "GLOBAL"
+},
+{
+"name": "KLA",
+"tenant": "kla",
+"wd": "1",
+"site": "Search"
+},
+{
+"name": "Kyndryl",
+"tenant": "kyndryl",
+"wd": "5",
+"site": "KyndrylProfessionalCareers"
+},
+{
+"name": "Labcorp",
+"tenant": "labcorp",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "Light Speed Studios",
+"tenant": "tencent",
+"wd": "1",
+"site": "Lightspeed"
+},
+{
+"name": "Likewize",
+"tenant": "likewize",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "London stock Exchange",
+"tenant": "lseg",
+"wd": "3",
+"site": "Careers"
+},
+{
+"name": "Lowe's",
+"tenant": "lowes",
+"wd": "5",
+"site": "LWS_External_CS"
+},
+{
+"name": "Lytx, Inc.",
+"tenant": "lytx",
+"wd": "1",
+"site": "Lytx"
+},
+{
+"name": "Maersk",
+"tenant": "maersk",
+"wd": "3",
+"site": "Maersk_Careers"
+},
+{
+"name": "Marsh McLennan",
+"tenant": "mmc",
+"wd": "1",
+"site": "MMC"
+},
+{
+"name": "Marvell",
+"tenant": "marvell",
+"wd": "1",
+"site": "MarvellCareers"
+},
+{
+"name": "Mastercard",
+"tenant": "mastercard",
+"wd": "1",
+"site": "CUOReqSite"
+},
+{
+"name": "Mastercard",
+"tenant": "mastercard",
+"wd": "1",
+"site": "CorporateCareers"
+},
+{
+"name": "Medtronic",
+"tenant": "medtronic",
+"wd": "1",
+"site": "MedtronicCareers"
+},
+{
+"name": "Micron",
+"tenant": "micron",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "Minecast",
+"tenant": "mimecast",
+"wd": "5",
+"site": "Mimecast-Careers"
+},
+{
+"name": "Mitel",
+"tenant": "mitel",
+"wd": "3",
+"site": "mitelcareers"
+},
+{
+"name": "Morgan Stanley",
+"tenant": "ms",
+"wd": "5",
+"site": "External"
+},
+{
+"name": "Morning Star",
+"tenant": "morningstar",
+"wd": "5",
+"site": "Americas"
+},
+{
+"name": "Motorola solutions",
+"tenant": "motorolasolutions",
+"wd": "5",
+"site": "Careers"
+},
+{
+"name": "MRI Software",
+"tenant": "mrisoftware",
+"wd": "501",
+"site": "External_CareerSite"
+},
+{
+"name": "Nasdaq",
+"tenant": "nasdaq",
+"wd": "1",
+"site": "Global_External_Site"
+},
+{
+"name": "NCR Atleos",
+"tenant": "ncratleos",
+"wd": "1",
+"site": "ext_apacatleos"
+},
+{
+"name": "NCR Voyix",
+"tenant": "ncr",
+"wd": "1",
+"site": "ext_apac"
+},
+{
+"name": "nissan",
+"tenant": "alliance",
+"wd": "3",
+"site": "nissanjobs"
+},
+{
+"name": "Novartis",
+"tenant": "novartis",
+"wd": "3",
+"site": "Novartis_Careers"
+},
+{
+"name": "NVIDIA",
+"tenant": "nvidia",
+"wd": "5",
+"site": "NVIDIAExternalCareerSite"
+},
+{
+"name": "NXP",
+"tenant": "nxp",
+"wd": "3",
+"site": "careers"
+},
+{
+"name": "Olg",
+"tenant": "olg",
+"wd": "3",
+"site": "Careers"
+},
+{
+"name": "Optiv",
+"tenant": "optiv",
+"wd": "5",
+"site": "Optiv_Careers"
+},
+{
+"name": "P&G",
+"tenant": "pg",
+"wd": "5",
+"site": "1000"
+},
+{
+"name": "PayPal",
+"tenant": "paypal",
+"wd": "1",
+"site": "jobs"
+},
+{
+"name": "pentair",
+"tenant": "pentair",
+"wd": "5",
+"site": "Pentair_Careers"
+},
+{
+"name": "Pfizer",
+"tenant": "pfizer",
+"wd": "1",
+"site": "PfizerCareers"
+},
+{
+"name": "Philips",
+"tenant": "philips",
+"wd": "3",
+"site": "jobs-and-careers"
+},
+{
+"name": "PHINIA",
+"tenant": "phinia",
+"wd": "5",
+"site": "PHINIA_Careers"
+},
+{
+"name": "Plug power",
+"tenant": "plugpower",
+"wd": "5",
+"site": "Plug_Power_Inc"
+},
+{
+"name": "Pluralsight",
+"tenant": "pluralsight",
+"wd": "1",
+"site": "Careers"
+},
+{
+"name": "PNC",
+"tenant": "pnc",
+"wd": "5",
+"site": "External"
+},
+{
+"name": "Porch Group",
+"tenant": "porch",
+"wd": "1",
+"site": "careers"
+},
+{
+"name": "PwC",
+"tenant": "pwc",
+"wd": "3",
+"site": "Global_Experienced_Careers"
+},
+{
+"name": "Rakuten",
+"tenant": "rakuten",
+"wd": "1",
+"site": "RakutenTV"
+},
+{
+"name": "Razer",
+"tenant": "razer",
+"wd": "3",
+"site": "Careers"
+},
+{
+"name": "RBC",
+"tenant": "rbc",
+"wd": "3",
+"site": "RBCGLOBAL1"
+},
+{
+"name": "Red Hat",
+"tenant": "redhat",
+"wd": "5",
+"site": "jobs"
+},
+{
+"name": "Revenera",
+"tenant": "flexerasoftware",
+"wd": "1",
+"site": "revenera"
+},
+{
+"name": "Rocket",
+"tenant": "rocket",
+"wd": "5",
+"site": "rocket_careers"
+},
+{
+"name": "Rolls-Royce",
+"tenant": "rollsroyce",
+"wd": "3",
+"site": "professional"
+},
+{
+"name": "RSM",
+"tenant": "rsm",
+"wd": "1",
+"site": "RSMCareers"
+},
+{
+"name": "Ruselle Investments",
+"tenant": "russell",
+"wd": "5",
+"site": "russellinvestments"
+},
+{
+"name": "S&P Global",
+"tenant": "spgi",
+"wd": "5",
+"site": "SPGI_Careers"
+},
+{
+"name": "Sabre India",
+"tenant": "sabre",
+"wd": "1",
+"site": "SabreJobs"
+},
+{
+"name": "Sailpoint",
+"tenant": "sailpoint",
+"wd": "1",
+"site": "SailPoint"
+},
+{
+"name": "Salesforce",
+"tenant": "salesforce",
+"wd": "12",
+"site": "External_Career_Site"
+},
+{
+"name": "Sanofi",
+"tenant": "sanofi",
+"wd": "3",
+"site": "SanofiCareers"
+},
+{
+"name": "Saxo Bank",
+"tenant": "saxobank",
+"wd": "3",
+"site": "CareeratSaxoBank"
+},
+{
+"name": "Scientific Games",
+"tenant": "sglottery",
+"wd": "5",
+"site": "ScientificGamesExternalCareers"
+},
+{
+"name": "SciPlay",
+"tenant": "lnw",
+"wd": "5",
+"site": "SciPlayExternalCareersSite"
+},
+{
+"name": "Semtech",
+"tenant": "semtech",
+"wd": "1",
+"site": "SemtechCareers"
+},
+{
+"name": "Shell",
+"tenant": "shell",
+"wd": "3",
+"site": "ShellCareers"
+},
+{
+"name": "Shipt",
+"tenant": "shipt",
+"wd": "1",
+"site": "Shipt_External"
+},
+{
+"name": "Silicon Labs",
+"tenant": "silabs",
+"wd": "1",
+"site": "SiliconlabsCareers"
+},
+{
+"name": "Simcorp",
+"tenant": "simcorp",
+"wd": "3",
+"site": "SimCorp_Jobs"
+},
+{
+"name": "Sony Global",
+"tenant": "sonyglobal",
+"wd": "1",
+"site": "SonyGlobalCareers"
+},
+{
+"name": "Sony Pictures Entertainment",
+"tenant": "spe",
+"wd": "1",
+"site": "SonyPicturesEntertainment"
+},
+{
+"name": "Springer Group",
+"tenant": "springernature",
+"wd": "3",
+"site": "SpringerNatureCareers"
+},
+{
+"name": "Sprinkler",
+"tenant": "sprinklr",
+"wd": "1",
+"site": "careers"
+},
+{
+"name": "State Street",
+"tenant": "statestreet",
+"wd": "1",
+"site": "Global"
+},
+{
+"name": "Stem, Inc.",
+"tenant": "stem",
+"wd": "12",
+"site": "steminc"
+},
+{
+"name": "Stibo Systems",
+"tenant": "stibosystems",
+"wd": "3",
+"site": "careers-at-stibo-systems"
+},
+{
+"name": "Stryker",
+"tenant": "stryker",
+"wd": "1",
+"site": "StrykerCareers"
+},
+{
+"name": "Synechron",
+"tenant": "synechron",
+"wd": "1",
+"site": "SynechronCareers"
+},
+{
+"name": "Syniverse",
+"tenant": "syniverse",
+"wd": "1",
+"site": "SyniverseCareers"
+},
+{
+"name": "T. Rowe Price",
+"tenant": "troweprice",
+"wd": "5",
+"site": "TRowePrice"
+},
+{
+"name": "TAG",
+"tenant": "tag",
+"wd": "3",
+"site": "Tag_Careers"
+},
+{
+"name": "Target",
+"tenant": "target",
+"wd": "5",
+"site": "targetcareers"
+},
+{
+"name": "TD",
+"tenant": "td",
+"wd": "3",
+"site": "TD_Bank_Careers"
+},
+{
+"name": "Telastra",
+"tenant": "telstra",
+"wd": "3",
+"site": "Telstra_Careers"
+},
+{
+"name": "Thales",
+"tenant": "thales",
+"wd": "3",
+"site": "Careers"
+},
+{
+"name": "The Walt Disney Company",
+"tenant": "disney",
+"wd": "5",
+"site": "disneycareer"
+},
+{
+"name": "Thomson Reuters",
+"tenant": "thomsonreuters",
+"wd": "5",
+"site": "External_Career_Site"
+},
+{
+"name": "Toppan MErril",
+"tenant": "toppanmerrill",
+"wd": "5",
+"site": "Toppan_Merrill"
+},
+{
+"name": "TransUnion",
+"tenant": "transunion",
+"wd": "5",
+"site": "TransUnion"
+},
+{
+"name": "Trek",
+"tenant": "trekbikes",
+"wd": "1",
+"site": "TREK"
+},
+{
+"name": "Trellix",
+"tenant": "trellix",
+"wd": "1",
+"site": "EnterpriseCareers"
+},
+{
+"name": "Trend Micro",
+"tenant": "trendmicro",
+"wd": "3",
+"site": "External"
+},
+{
+"name": "TVH",
+"tenant": "tvh",
+"wd": "3",
+"site": "JobsatTVH"
+},
+{
+"name": "Unilever",
+"tenant": "unilever",
+"wd": "3",
+"site": "Unilever_Experienced_Professionals"
+},
+{
+"name": "Unisys",
+"tenant": "unisys",
+"wd": "5",
+"site": "External"
+},
+{
+"name": "Universal Music",
+"tenant": "umusic",
+"wd": "5",
+"site": "UMGUS"
+},
+{
+"name": "Univision",
+"tenant": "univision",
+"wd": "1",
+"site": "External"
+},
+{
+"name": "US Bank",
+"tenant": "usbank",
+"wd": "1",
+"site": "US_Bank_Careers"
+},
+{
+"name": "Valeo",
+"tenant": "valeo",
+"wd": "3",
+"site": "valeo_jobs"
+},
+{
+"name": "Vanderlande",
+"tenant": "vanderlande",
+"wd": "3",
+"site": "careers"
+},
+{
+"name": "Vanguard",
+"tenant": "vanguard",
+"wd": "5",
+"site": "vanguard_external"
+},
+{
+"name": "Vertx Inc.",
+"tenant": "vertexinc",
+"wd": "1",
+"site": "VertexInc"
+},
+{
+"name": "Visa",
+"tenant": "visa",
+"wd": "5",
+"site": "Visa"
+},
+{
+"name": "Wells Fargo",
+"tenant": "wf",
+"wd": "1",
+"site": "WellsFargoJobs"
+},
+{
+"name": "Wolters Kluwer",
+"tenant": "wk",
+"wd": "3",
+"site": "External"
+},
+{
+"name": "WordPay",
+"tenant": "worldpay",
+"wd": "5",
+"site": "Worldpay_External_Careers_Site"
+},
+{
+"name": "Workday",
+"tenant": "workday",
+"wd": "5",
+"site": "Workday"
+},
+{
+"name": "WPI",
+"tenant": "wpi",
+"wd": "5",
+"site": "WPI_External_Career_Site"
+},
+{
+"name": "Yahoo",
+"tenant": "ouryahoo",
+"wd": "5",
+"site": "careers"
+}
+]

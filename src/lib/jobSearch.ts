@@ -5,7 +5,7 @@ export { nearDuplicate } from './dedupe';
 import type { Profile } from '../types';
 import { inferCandidate, type Candidate, type Decision, type WorkMode } from './eligibility';
 
-export interface FoundJob { id: string; title: string; company: string; location: string; url: string; postedAt: string; source: string; workMode: string; description: string; skills: string[]; official?: { url: string; lastDate: string }; govtFeed?: { lastDate: string }; mode?: WorkMode; decision?: Decision; eligibility?: { evidence: string[] } }
+export interface FoundJob { id: string; title: string; company: string; location: string; url: string; postedAt: string; source: string; workMode: string; description: string; skills: string[]; official?: { url: string; lastDate: string }; govtFeed?: { lastDate: string }; mode?: WorkMode; decision?: Decision; eligibility?: { evidence: string[] }; category?: import('./onestop/category').Category }
 export interface SearchResult { jobs: FoundJob[]; total: number; queries: string[]; warnings: string[]; cached: boolean; hidden?: { total: number; reasons: { badge: string; count: number; example: string }[] }; sources?: string[] }
 
 const COUNTRIES: [RegExp, string][] = [
