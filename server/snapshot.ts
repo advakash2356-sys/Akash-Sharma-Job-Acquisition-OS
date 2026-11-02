@@ -10,7 +10,7 @@ const GENERIC = new Set(["associate", "consultant", "analyst", "engineer", "mana
  */
 export const SNAPSHOT_URL = process.env.JOBS_SNAPSHOT_URL || "https://raw.githubusercontent.com/advakash2356-sys/Akash-Sharma-Job-Acquisition-OS/jobs-data/data/jobs-snapshot.json.gz";
 const TTL = 30 * 60 * 1000;
-export interface Snap { t: string; c: string; l: string; u: string; d: string; s: string; r: 0 | 1; k: string }
+export interface Snap { t: string; c: string; l: string; u: string; d: string; s: string; r: 0 | 1; k: string; v?: 1 }
 let cache: { at: number; jobs: Snap[]; stamp: string; counts: Record<string, number> } | null = null;
 
 export async function loadSnapshot(): Promise<NonNullable<typeof cache>> {
@@ -31,7 +31,7 @@ export function matchSnapshot(jobs: Snap[], titles: string[], max = 400, strict 
   const out: FoundJob[] = [];
   for (const j of jobs) {
     const nt = norm(j.t); if (!phrases.some((p) => nt.includes(p))) continue;
-    out.push({ id: `snap:${j.u}`, title: j.t, company: j.c, location: j.l || (j.r ? "Remote" : ""), url: j.u, listingUrl: j.u, postedAt: j.d, source: j.s, workMode: j.r ? "remote" : "", description: `${j.t} at ${j.c}. ${j.l}`, skills: [], countryCodes: [], category: j.k } as FoundJob);
+    out.push({ id: `snap:${j.u}`, title: j.t, company: j.c, location: j.l || (j.r ? "Remote" : ""), url: j.u, listingUrl: j.u, postedAt: j.d, source: j.s, workMode: j.r ? "remote" : "", description: `${j.t} at ${j.c}. ${j.l}${j.v ? ". Visa sponsorship / relocation mentioned in the posting." : ""}`, skills: [], countryCodes: [], category: j.k } as FoundJob);
     if (out.length >= max * 3) break;
   }
   return out.sort((a, b) => b.postedAt.localeCompare(a.postedAt)).slice(0, max);

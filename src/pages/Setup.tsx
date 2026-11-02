@@ -86,7 +86,7 @@ export default function Setup() {
     }
     set('research', 'done'); set('fill', 'running');
     // Tester LOW: one card per role at a company ("Sr" vs "Senior", repeated reqs).
-    const key = (j: { title: string; company: string }) => `${j.title}|${j.company}`.toLowerCase().replace(/\b(sr|senior)\b\.?/g, 'senior').replace(/[^a-z|]/g, '');
+    const key = (j: { title: string; company: string; location?: string; found?: { location?: string } }) => `${j.title}|${j.company}|${j.location || j.found?.location || ''}`.toLowerCase().replace(/\b(sr|senior)\b\.?/g, 'senior').replace(/[^a-z|]/g, '');
     const seenKey = new Set(jobsNow.current.map((j) => key(j)));
     const fresh = dedupeAgainst(r.jobs, jobsNow.current).filter((j) => { const k = key(j); if (seenKey.has(k)) return false; seenKey.add(k); return true; });
     if (!fresh.length) {

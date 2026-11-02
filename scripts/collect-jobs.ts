@@ -24,7 +24,7 @@ import * as bamboohr from "./collect/vendor/openjobs/bamboohr.mjs";
 import * as breezy from "./collect/vendor/openjobs/breezy.mjs";
 import * as jobvite from "./collect/vendor/openjobs/jobvite.mjs";
 import * as joincom from "./collect/vendor/openjobs/join.mjs";
-import { classify } from "../src/lib/onestop/category.js";
+import { classify, visaHint } from "../src/lib/onestop/category.js";
 
 const OPENJOBS = "https://raw.githubusercontent.com/outscal/OpenJobs/main/data/companies_v2.json";
 const OUT = process.env.OUT || "data/jobs-snapshot.json.gz";
@@ -33,7 +33,7 @@ const WD_CAP = Number(process.env.WORKDAY_CAP || 2000);
 const UA = "JAOS-job-collector/1.0 (+https://akash-sharma-job-acquisition-os.vercel.app/about)";
 const MAX_AGE_DAYS = 120;
 
-export interface Snap { t: string; c: string; l: string; u: string; d: string; s: string; r: 0 | 1; k: string }
+export interface Snap { t: string; c: string; l: string; u: string; d: string; s: string; r: 0 | 1; k: string; /** 1 = posting text mentions visa sponsorship or relocation (checked before the text is dropped). */ v?: 1 }
 const strip = (s: unknown, n = 200) => String(s ?? "").replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim().slice(0, n);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -58,7 +58,8 @@ function add(src: string, company: string, raw: { title: string; url: string; lo
   if (raw.date && Date.now() - Date.parse(raw.date) > MAX_AGE_DAYS * 864e5) return;
   const l = strip(raw.location, 100); const c = strip(company, 80);
   const k = classify({ title: t, company: c, location: l, description: raw.desc, remote: raw.remote });
-  jobs.push({ t, c, l, u, d: raw.date || "", s: src, r: raw.remote ? 1 : 0, k });
+  const v = visaHint(`${raw.title} ${String(raw.desc || "").replace(/<[^>]*>/g, " ")}`);
+  jobs.push({ t, c, l, u, d: raw.date || "", s: src, r: raw.remote ? 1 : 0, k, ...(v ? { v: 1 as const } : {}) });
   counts[src] = (counts[src] || 0) + 1;
 }
 
@@ -75,7 +76,7 @@ async function ats() {
   await pool(work, CONC, async (w) => {
     const list = await w.a.fetchJobs(w.h, ctx).catch(() => []);
     const name = w.name || String(w.h.slug || w.h.tenant || "").replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
-    for (const j of list) add(w.src, name, { title: j.title, url: j.apply_url || j.detail_url, location: j.location, date: isoDate(j.posted_date), remote: j.remote });
+    for (const j of list) add(w.src, name, { title: j.title, url: j.apply_url || j.detail_url, location: j.location, date: isoDate(j.posted_date), remote: j.remote, desc: String(j.raw?.descriptionPlain || j.raw?.content || j.raw?.description || j.raw?.descriptionHtml || j.raw?.additionalPlain || "").slice(0, 20000) });
   });
 }
 async function workdays() {

@@ -24,6 +24,8 @@ const CLEARANCE = /\b(security clearance|ts\/sci|secret clearance|public trust|u
 
 /** Ranks jobs: BM25 (MiniSearch) over title+description against the CV, plus the 100-point rubric. Highest first. */
 const FOREIGN = /\b(usa|us|united states|canada|uk|united kingdom|europe|eu|emea|germany|france|spain|mexico|brazil|latam|philippines|australia|japan|poland|netherlands|ireland)\b/i;
+/** Years of experience stated in the CV ("8 years", "8+ yrs"), or -1. */
+export const cvYears = (cv: string) => { const m = [...cv.matchAll(/(\d{1,2})\+?\s*(?:years|yrs)/gi)].map((x) => Number(x[1])).filter((n) => n < 45); return m.length ? Math.max(...m) : -1; };
 const QUAL_STOP = new Set('senior junior lead leader team head principal staff associate assistant manager remote hybrid contract full time part fixed term month months night shift india global with based from level the and for'.split(' '));
 /** Jobs scoring below this are dropped from results (strict mode). */
 export const MIN_SCORE = 45;
@@ -46,7 +48,7 @@ export function score(j: RubricJob, p: RubricProfile, bm25 = 0, strict = true): 
   const t = j.title.toLowerCase(); const exact = p.roles.some((r) => r && t.includes(r.toLowerCase()));
   const fam = p.roles.map(familyOf).filter(Boolean); const sameFam = fam.length && fam.includes(familyOf(j.title));
   let role = exact ? 20 : sameFam ? 14 : Math.round(12 * bm25);
-  const y = p.expYears ?? -1; const sen = SENIOR.test(j.title), jun = JUNIOR.test(j.title);
+  const y = p.expYears ?? cvYears(p.resume); const sen = SENIOR.test(j.title), jun = JUNIOR.test(j.title);
   const lvl = y < 0 ? 6 : sen ? (y >= 5 ? 10 : y >= 3 ? 6 : 1) : jun ? (y <= 2 ? 10 : y <= 4 ? 5 : 2) : (y >= 1 && y <= 8 ? 10 : 6);
   role += lvl; if (exact) reasons.push('Title matches your target role'); else if (sameFam) reasons.push('Related title (same role family)');
   // Domain 20: shared domain words (BM25 relevance) between CV and posting.
@@ -79,7 +81,7 @@ export function score(j: RubricJob, p: RubricProfile, bm25 = 0, strict = true): 
     // Wrong seniority, stricter: intern/junior roles for 5+ years, director/VP/head for under 5.
     if (y >= 5 && /\b(intern|internship|trainee|junior|jr\.?|entry level|graduate program)\b/i.test(j.title)) { penalty -= 30; reasons.push('Penalty: below your level'); }
     // Tester MEDIUM: with 5+ years, individual-contributor junior titles rank below lead/manager roles.
-    else if (y >= 5 && /\b(executive|agent|representative|rep|associate|advisor|officer|specialist)\b/i.test(j.title) && !/\b(lead|leader|manager|head|senior|sr\.?|principal|director|supervisor|counsel|attorney|lawyer)\b/i.test(j.title) && !p.roles.some((r) => /\b(executive|agent|representative|associate|advisor|officer|specialist)\b/i.test(r))) { penalty -= 30; reasons.push('Penalty: junior title for your experience'); }
+    else if (y >= 5 && /\b(executive|agent|representative|rep|associate|advisor|officer|specialist)\b/i.test(j.title) && !/\b(lead|leader|manager|head|senior|sr\.?|principal|director|supervisor|counsel|attorney|lawyer)\b/i.test(j.title) && !/\b(executive|agent|representative|associate|advisor|officer|specialist)\b/i.test(p.roles[0] || '') /* newest or target role only, never older guessed titles */) { penalty -= 30; reasons.push('Penalty: junior title for your experience'); }
     else if (y >= 0 && y < 5 && /\b(director|vp|vice president|head of|chief|principal)\b/i.test(j.title)) { penalty -= 30; reasons.push('Penalty: too senior'); }
   } else if (y >= 0 && ((sen && y < 1) || (jun && y > 6))) { penalty -= 30; reasons.push(sen ? 'Penalty: more senior than your experience' : 'Penalty: below your level'); }
   const total = Math.max(0, Math.min(100, skills + role + domain + location + penalty));

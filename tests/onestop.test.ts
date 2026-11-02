@@ -64,3 +64,22 @@ test('precision@20 on the real snapshot (when present) is at least 0.6 for each 
   const jobs = JSON.parse(gunzipSync(readFileSync('data/jobs-snapshot.json.gz')).toString()).jobs;
   for (const r of run(jobs, true)) assert.ok(r.p20 >= 0.6, `${r.profile}: ${r.p20}`);
 });
+
+import { guessTitles } from '../src/lib/guessTitles';
+const LAWYER_CV = `Priya Sharma\nNew Delhi | priya@example.com\nTarget Roles: Legal Counsel; Contract Manager / Legal Operations Manager\n\nProfessional Experience\nAssistant Manager - Legal & Contracts, ABC Infra Ltd (2021 - Present)\nDrafted and negotiated contracts, CLM, litigation support, due diligence.\nLegal Executive, XYZ Pvt Ltd (2018 - 2021)\n\nEducation\nLLB, Delhi University. 7 years of experience.`;
+test('title guessing: Target roles anywhere wins, label dropped, split on , ; /', () => {
+  assert.deepEqual(guessTitles(LAWYER_CV), ['Legal Counsel', 'Contract Manager', 'Legal Operations Manager']);
+  assert.deepEqual(guessTitles(LAWYER_CV.replace(/Target Roles:[^\n]*\n/, '')).slice(0, 1), ['Assistant Manager - Legal & Contracts']);
+});
+const snap = existsSync('data/jobs-snapshot.json.gz') ? JSON.parse(gunzipSync(readFileSync('data/jobs-snapshot.json.gz')).toString()).jobs : null;
+test('lawyer CV: most top results are legal', { skip: !snap }, () => {
+  const roles = guessTitles(LAWYER_CV);
+  const top = rankJobs(matchSnapshot(snap, roles, 600), { resume: LAWYER_CV, roles, skills: [], location: 'Delhi' }).filter((j) => j.rubric.total >= 45).slice(0, 20);
+  const legal = top.filter((j) => /legal|counsel|contract|lawyer|attorney|paralegal|compliance/i.test(j.title)).length;
+  assert.ok(top.length >= 5 && legal / top.length >= 0.7, `${legal}/${top.length}`);
+});
+test('team lead (8 yrs): top 10 has at most 2 executive/agent roles', { skip: !snap }, () => {
+  const cv = 'Team lead, 8 years in customer support and operations. Earlier: Customer Support Executive, Call Centre Agent. Zendesk, SLAs. Pune.';
+  const top = rankJobs(matchSnapshot(snap, ['Team Lead', 'Customer Support'], 600), { resume: cv, roles: ['Team Lead', 'Customer Support'], skills: [], location: 'Pune' }).filter((j) => j.rubric.total >= 45).slice(0, 10);
+  assert.ok(top.filter((j) => /\b(executive|agent|representative)\b/i.test(j.title) && !/\b(lead|manager|senior|supervisor)\b/i.test(j.title)).length <= 2, top.map((j) => j.title).join(' | '));
+});

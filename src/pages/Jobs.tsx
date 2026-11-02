@@ -168,7 +168,7 @@ export default function Jobs() {
         <EmptyState icon={<Briefcase size={32} />} title="No jobs yet" body="Paste a job description to score it against your resume and track it through to an offer." action={<Button onClick={() => setAdding(true)}><Plus size={16} /> Add your first job</Button>} />
       ) : (
         <>
-          <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Filter by category" data-testid="category-tabs">
+          <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Filter by category" data-testid="category-tabs" style={{ maxWidth: "100%" }}>
             {(['all', ...CATEGORY_ORDER] as const).map((c) => { const n = c === 'all' ? jobs.length : jobs.filter((j) => catOf(j) === c).length; return (c === 'all' || n > 0) && (
               <button key={c} role="tab" aria-selected={cat === c} onClick={() => setCat(c)}
                 className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${cat === c ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
@@ -196,7 +196,7 @@ export default function Jobs() {
           ) : (
           <div className="grid gap-3">
             {shown.map((j) => (
-              <Card key={j.id} className="flex flex-wrap items-center gap-3 p-4">
+              <Card key={j.id} className="flex min-w-0 flex-wrap items-center gap-3 p-4 [overflow-wrap:anywhere]">
                 <button onClick={() => go('job', j.id)} className="min-w-0 flex-1 text-left cursor-pointer">
                   <div className="truncate font-medium">{j.title}</div>
                   <div className="truncate text-sm text-muted-foreground">{j.company} · added {j.createdAt}</div>
@@ -211,7 +211,7 @@ export default function Jobs() {
                 <Badge tone={j.status === 'Offer' ? 'primary' : 'muted'}>{j.status}</Badge>
                 {(j.tailoredResume || j.coverLetter || j.outreach) && <Badge tone="primary">{[j.tailoredResume && 'Resume', j.coverLetter && 'Letter', j.outreach && 'Outreach'].filter(Boolean).join(' · ')}</Badge>}
                 <Button size="sm" variant="outline" onClick={() => go('job', j.id)}>Open job</Button>
-                {j.found?.rubric && <div className="basis-full text-xs text-muted-foreground" data-testid="rubric-breakdown">Skills {j.found.rubric.skills}/35 · Role {j.found.rubric.role}/30 · Domain {j.found.rubric.domain}/20 · Location {j.found.rubric.location}/15{j.found.rubric.penalty ? ` · Penalty ${j.found.rubric.penalty}` : ''}{j.found.rubric.reasons.length ? ` · ${j.found.rubric.reasons.slice(0, 3).join('; ')}` : ''}</div>}
+                {j.found?.rubric && <div className="min-w-0 basis-full text-xs text-muted-foreground [overflow-wrap:anywhere]" data-testid="rubric-breakdown">Skills {j.found.rubric.skills}/35 · Role {j.found.rubric.role}/30 · Domain {j.found.rubric.domain}/20 · Location {j.found.rubric.location}/15{j.found.rubric.penalty ? ` · Penalty ${j.found.rubric.penalty}` : ''}{j.found.rubric.reasons.length ? ` · ${j.found.rubric.reasons.slice(0, 3).join('; ')}` : ''}</div>}
                 <div className="basis-full"><JobFacts job={j} compact /></div>
               </Card>
             ))}
