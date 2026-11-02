@@ -105,7 +105,7 @@ export async function fetchJobs(handle, ctx) {
         const location = p.locationsText || '';
         const extPath = p.externalPath || '';
         const detailUrl = extPath
-          ? `https://${handle.host}${extPath.startsWith('/') ? extPath : '/' + extPath}`
+          ? `https://${handle.host}/${handle.siteId}${extPath.startsWith('/') ? extPath : '/' + extPath}` // JAOS fix: the career-site segment is required, without it links 404
           : handle.boardUrl;
         all.push({
           title,
