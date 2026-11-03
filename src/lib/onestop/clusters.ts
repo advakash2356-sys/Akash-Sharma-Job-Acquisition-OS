@@ -1,5 +1,5 @@
 // 5-cluster title expansion via a fixed lookup (src/lib/onestop/titleClusters.json). Akash Sync Agent.
-import TABLE from './titleClusters.json';
+import TABLE from './titleClusters.json' with { type: 'json' };
 export const CLUSTER_NAMES = ['Core', 'Platform / systems owner', 'Commercial & ops adjacent', 'Government equivalent', 'AI-era hybrid'] as const;
 const T = TABLE as unknown as Record<string, string[][]>;
 const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9& ]/g, ' ').split(/\s+/).filter((w) => w.length > 1);
