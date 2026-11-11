@@ -30,6 +30,22 @@ export function track(e: EventName) {
     u.searchParams.set('p', e); u.searchParams.set('t', e); u.searchParams.set('e', 'true'); u.searchParams.set('rnd', Math.random().toString(36).slice(2));
     const img = new Image(); img.referrerPolicy = 'no-referrer'; img.src = u.toString();
   } catch { /* never break the app for stats */ }
+  loadUmami();
+}
+
+// Optional Umami (https://github.com/umami-software/umami). Off unless VITE_UMAMI_WEBSITE_ID is set.
+// Loads only after consent, through countVisit(). Umami keeps the ?src= value in the page URL.
+const UMAMI_ID = import.meta.env.VITE_UMAMI_WEBSITE_ID as string | undefined;
+const UMAMI_SRC = (import.meta.env.VITE_UMAMI_SCRIPT_URL as string | undefined) || 'https://cloud.umami.is/script.js';
+let umamiLoaded = false;
+function loadUmami() {
+  if (!UMAMI_ID || umamiLoaded || statsOptedOut()) return;
+  umamiLoaded = true;
+  try {
+    const sc = document.createElement('script');
+    sc.defer = true; sc.src = UMAMI_SRC; sc.dataset.websiteId = UMAMI_ID;
+    document.head.appendChild(sc);
+  } catch { /* never break the app for stats */ }
 }
 
 const SOURCES: readonly string[] = [...CHANNELS, 'share'];
