@@ -1,11 +1,11 @@
 // Government Jobs eligibility finder (India). Hand-curated from official notifications; every entry carries
 // its source and the date it was last checked. Information only, not legal advice. Akash Sync Agent.
 /** Professional field of the degree (e.g. LLB = law). Used only to rank live postings. */
-export type Spec = '' | 'law' | 'engineering' | 'medical' | 'finance' | 'other';
-export type Edu = '10' | '12' | 'iti' | 'diploma' | 'grad' | 'eng' | 'pg';
+export type Spec = '' | 'law' | 'engineering' | 'medical' | 'finance' | 'teaching' | 'other';
+export type Edu = '10' | '12' | 'iti' | 'diploma' | 'grad' | 'eng' | 'pg' | 'phd';
 export type Cat = 'GEN' | 'EWS' | 'OBC' | 'SC' | 'ST';
 export type Gender = 'male' | 'female' | 'other';
-export interface Profile { dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec; /** true once the user picked education on this page themselves */ eduSet?: boolean }
+export interface Profile { /** optional city or district, used to pre-fill the advanced search */ city?: string; dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec; /** true once the user picked education on this page themselves */ eduSet?: boolean }
 export interface Exam {
   id: string; name: string; body: string; group: 'UPSC' | 'SSC' | 'Banking' | 'Railways' | 'Defence' | 'Courts' | 'PSU / Research' | 'Postal';
   minAge: number; maxAge: number; asOn: string; // age reckoning date in the notification used
@@ -46,7 +46,7 @@ export const EXAMS: Exam[] = [
   { id: 'ntpc-et', name: 'NTPC Engineering Executive Trainee (via GATE)', body: 'NTPC (PSU)', group: 'PSU / Research', minAge: 18, maxAge: 27, asOn: '2026-02-25', edu: ['eng', 'pg'], qual: 'BE/BTech in a relevant branch + valid GATE score', relax: 'central', lesser: true, note: 'Hired through GATE every year. Minimum age not stated; 18 shown as a floor.', src: 'https://www.ntpc.co.in/recruitment-system-ntpc', site: 'https://careers.ntpc.co.in', verified: V },
   { id: 'ta-officer', name: 'Territorial Army Officer (for working civilians)', body: 'Territorial Army', group: 'Defence', minAge: 18, maxAge: 42, asOn: '2026-05-19', edu: G, qual: 'Graduate and gainfully employed (govt, private or self-employed)', relax: 'none', lesser: true, note: 'Serve part-time without leaving your job.', src: 'https://territorialarmy.in/page/3', site: 'https://territorialarmy.in', verified: V },
 ];
-const RANK: Record<Edu, number> = { '10': 0, iti: 1, '12': 1, diploma: 1, grad: 2, eng: 2, pg: 3 };
+const RANK: Record<Edu, number> = { '10': 0, iti: 1, '12': 1, diploma: 1, grad: 2, eng: 2, pg: 3, phd: 4 };
 export const dobInvalid = (dob: string, today = new Date().toISOString().slice(0, 10)) => !!dob && (isNaN(Date.parse(dob)) || dob >= today);
 /** Verification older than this many days gets a 'may be out of date' warning. */
 export const STALE_DAYS = 120;
@@ -60,7 +60,7 @@ export function relaxation(e: Exam, p: Profile) {
 }
 export function eduOk(e: Exam, p: Profile) {
   if (e.edu.includes(p.edu)) return true;
-  if (p.edu === 'pg') return e.edu.includes('grad');
+  if (p.edu === 'pg' || p.edu === 'phd') return e.edu.includes('pg') || e.edu.includes('grad');
   if (p.edu === 'eng') return e.edu.includes('grad');
   return false;
 }

@@ -10,7 +10,8 @@ import { LocalNote } from '../components/LocalNote';
 import { Steps } from '../components/Steps';
 import { usePersisted, clearPersisted } from '../lib/persist';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '../components/ui';
-import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile , type Spec} from '../lib/govJobs';
+import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile , type Spec, RANK} from '../lib/govJobs';
+import { userLevel } from '../lib/gov/rank';
 import { CREDIT } from '../lib/brand';
 
 const STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu & Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Other UT'];
@@ -25,7 +26,9 @@ export default function GovJobs() {
   const freshRun = async () => { setFresh('Checking…'); try { const r = await fetch('/data/gov-jobs-version.json', { cache: 'no-store' }); const j = await r.json(); if (j.verified > VERIFIED) { setFresh(`Newer data (${j.verified}) is available. Reloading…`); setTimeout(() => location.reload(), 800); } else setFresh(`Fresh run done ${new Date().toLocaleString('en-IN')}. You have the latest data on this site (verified ${VERIFIED}). Check each official notice for updates after that date.`); } catch { setFresh('Could not check for newer data. Your results use the data verified ' + VERIFIED + '.'); } }; const [showAll, setShowAll] = useState(false);
   const set = (k: keyof Profile) => (e: any) => setP({ ...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const res = useMemo(() => (p.dob && !dobInvalid(p.dob) ? match(p) : []), [p]);
-  const list = res.filter((m) => (!lesserOnly || m.exam.lesser) && (showAll || m.ok));
+  // t385u: graduates and professionals do not see exams far below their level (10th/12th-only entry exams) unless they ask.
+  const [allLevels, setAllLevels] = useState(false); const far = (e: (typeof EXAMS)[number]) => userLevel(p) >= 3 && !e.edu.includes('eng') && Math.min(...e.edu.map((x) => RANK[x])) <= 1;
+  const list = res.filter((m) => (!lesserOnly || m.exam.lesser) && (showAll || m.ok) && (allLevels || !far(m.exam))); const farN = res.filter((m) => m.ok && far(m.exam)).length;
   const n = res.filter((m) => m.ok).length, nl = res.filter((m) => m.ok && m.exam.lesser).length;
   return (
     <>
@@ -38,18 +41,19 @@ export default function GovJobs() {
       <SourceDirectory p={prov} />
       <LocalNote onClear={() => { clearPersisted('jaos_gov_profile', 'jaos_gov_postings_filter', 'jaos_gov_postings_ack', 'jaos_gov_country'); location.reload(); }} />
       <div className="mb-5"><ConsentBoxes where="gov-jobs" /></div>
-      <Steps id="gov" title="Find your government jobs in 4 steps" steps={[{ title: 'Enter your profile below', body: 'Date of birth, education, category, gender and state. Then it is saved in this browser.' }, { title: 'Review your matches', body: 'Check the age pass/fail badge, qualification and pay for each exam. Then use the Lesser-known filter.' }, { title: 'Press Fresh run', body: 'Then open the official notification of each exam you like and check for updates.' }, { title: 'Save or share your shortlist', body: 'Note the exams you will apply for and their official links, then share this page with a friend.' }]} />
-      <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-form"><h2 className="text-xl font-medium">Your details</h2>
+      <Steps id="gov" title="Find your government jobs in 4 steps" steps={[{ title: 'Enter your profile below', body: 'Fill once: date of birth, education, professional degree, category, gender, state and city. It is saved in this browser and pre-fills every search.' }, { title: 'Review your matches', body: 'Check the age pass/fail badge, qualification and pay for each exam. Then use the Lesser-known filter.' }, { title: 'Press Fresh run', body: 'Then open the official notification of each exam you like and check for updates.' }, { title: 'Save or share your shortlist', body: 'Note the exams you will apply for and their official links, then share this page with a friend.' }]} />
+      <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-form"><h2 className="text-xl font-medium">Your details (fill once)</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="min-w-0"><Label htmlFor="gd">Date of birth</Label><Input id="gd" type="date" value={p.dob} onChange={set('dob')} /></div>
           <div className="min-w-0"><Label htmlFor="ge">Highest education</Label><Select id="ge" className="w-full" value={p.edu} onChange={(e) => setP({ ...p, edu: e.target.value as Edu, eduSet: true })}>
-            {([['10','Class 10'],['12','Class 12'],['iti','ITI'],['diploma','Diploma (engineering)'],['grad','Graduate (any)'],['eng','Engineering graduate (BE/BTech)'],['pg','Postgraduate']] as [Edu,string][]).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</Select></div>
+            {([['10','Class 10'],['12','Class 12'],['iti','ITI'],['diploma','Diploma (engineering)'],['grad','Graduate (any)'],['eng','Engineering graduate (BE/BTech)'],['pg','Postgraduate (MA/MSc/MCom/MBA/LLM/MTech)'],['phd','PhD / doctorate']] as [Edu,string][]).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</Select></div>
           <div className="min-w-0"><Label htmlFor="gs" hint="Class 12">Stream</Label><Select id="gs" className="w-full" value={p.stream12} onChange={set('stream12')}><option value="pcm">Science with Physics & Maths</option><option value="other">Other</option></Select></div>
           <div className="min-w-0"><Label htmlFor="gc">Category</Label><Select id="gc" className="w-full" value={p.cat} onChange={set('cat')}>{(['GEN','EWS','OBC','SC','ST'] as Cat[]).map((c) => <option key={c} value={c}>{c === 'GEN' ? 'General' : c === 'OBC' ? 'OBC (non-creamy layer)' : c}</option>)}</Select></div>
           <div className="min-w-0"><Label htmlFor="gg">Gender</Label><Select id="gg" className="w-full" value={p.gender} onChange={set('gender')}>{(['male','female','other'] as Gender[]).map((g) => <option key={g} value={g}>{g === 'other' ? 'Transgender / other' : g[0].toUpperCase() + g.slice(1)}</option>)}</Select></div>
           <div className="min-w-0"><Label htmlFor="gx" hint="total, all jobs">Years of experience</Label><Input id="gx" type="number" min={0} max={45} value={p.expYears ?? ''} onChange={(e) => setP({ ...p, expYears: e.target.value === '' ? undefined : Math.max(0, Math.min(45, Number(e.target.value))) })} data-testid="gov-exp" /></div>
-          <div className="min-w-0"><Label htmlFor="gsp" hint="e.g. LLB = Law">Professional degree</Label><Select id="gsp" className="w-full" value={p.spec || ''} onChange={(e) => setP({ ...p, spec: e.target.value as Spec })} data-testid="gov-spec"><option value="">None</option><option value="law">Law (LLB / LLM)</option><option value="engineering">Engineering / Tech</option><option value="medical">Medical / Health</option><option value="finance">CA / CS / CMA / Finance</option><option value="other">Other professional</option></Select></div>
+          <div className="min-w-0"><Label htmlFor="gsp" hint="e.g. LLB = Law">Professional degree</Label><Select id="gsp" className="w-full" value={p.spec || ''} onChange={(e) => setP({ ...p, spec: e.target.value as Spec })} data-testid="gov-spec"><option value="">None</option><option value="law">Law (LLB / LLM)</option><option value="engineering">Engineering / Tech</option><option value="medical">Medical / Health</option><option value="finance">CA / CS / CMA / Finance</option><option value="teaching">Teaching (B.Ed / NET / faculty)</option><option value="other">Other professional</option></Select></div>
           <div className="min-w-0"><Label htmlFor="gst">State</Label><Select id="gst" className="w-full" value={p.state} onChange={set('state')}><option value="">Choose</option>{STATES.map((s) => <option key={s}>{s}</option>)}</Select></div>
+          <div className="min-w-0"><Label htmlFor="gcity" hint="optional">City or district</Label><Input id="gcity" value={p.city || ''} onChange={set('city')} placeholder="e.g. Lucknow" data-testid="gov-city" /></div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={p.pwbd} onChange={set('pwbd')} /> Person with benchmark disability (PwBD)</label>
@@ -57,7 +61,7 @@ export default function GovJobs() {
         </div>
         <div className="flex flex-wrap gap-2"><Button onClick={freshRun} data-testid="gov-fresh"><RefreshCw size={15} /> Fresh run</Button><Button variant="ghost" className="w-fit" onClick={() => setP({ ...p, dob: '2001-05-10', edu: 'grad', cat: 'OBC' })}>Try a sample profile (made up)</Button></div>
         {fresh && <p className="text-sm" role="status" data-testid="gov-fresh-msg">{fresh}</p>}
-        <p className="text-xs text-muted-foreground">Your details are saved in this browser and filled in when you come back.</p>
+        <p className="text-xs text-muted-foreground">Fill these once: they are saved in this browser, filled in when you come back, and used to pre-fill every search above (advanced search, labels and ranking).</p>
       </Card>
       {dobInvalid(p.dob) && <p className="mb-5 text-sm text-red-700" role="alert" data-testid="gov-dob-invalid">Invalid date: date of birth must be in the past.</p>}
       {p.dob && !dobInvalid(p.dob) && <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-results">
@@ -65,7 +69,9 @@ export default function GovJobs() {
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={lesserOnly} onChange={(e) => setLesserOnly(e.target.checked)} data-testid="gov-lesser" /> Lesser-known only</label>
           <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Also show ones I don't qualify for</label>
+          <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={allLevels} onChange={(e) => setAllLevels(e.target.checked)} data-testid="gov-exam-all-levels" /> Show all levels</label>
         </div>
+        {!allLevels && farN > 0 && <p className="text-xs text-muted-foreground" data-testid="gov-exam-hidden">{farN} entry-level exam{farN === 1 ? '' : 's'} for Class 10 / 12 (MTS, GD constable, clerk, Group D) hidden because they are far below your qualification. Tick "Show all levels" to see them.</p>}
         {p.esm && <p className="text-sm text-muted-foreground">Ex-servicemen relaxation is calculated from your service period, so it is not added below. See the note on each exam and the notification.</p>}
         <ul className="grid gap-3">{list.map(({ exam: e, age, upper, ok, why }) => <li key={e.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-exam">
           <div className="flex flex-wrap items-center gap-2"><b>{e.name}</b>{e.lesser && <Badge tone="gold">Lesser-known</Badge>}<Badge tone={ok ? 'primary' : 'danger'}>{ok ? 'Likely eligible' : 'Not eligible'}</Badge><span className="text-xs text-muted-foreground">{e.group} · {e.body}</span></div>
