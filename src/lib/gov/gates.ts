@@ -30,9 +30,22 @@ const POST_ELIG: [Disc, RegExp][] = [
   ['AGRI', /\b(agricultur\w*|forestry|horticultur\w*|veterinary)\b/i], ['CHEM', /\bchemistry\b/i], ['PHYSICS', /\bphysics\b/i],
   ['COMPUTER', /\b(computer science|computer applications|mca\b|bca\b|information technology)\b/i], ['STATS', /\b(statistics|mathematics|economics|econometrics)\b/i],
   ['COMMERCE', /\b(commerce|b\.?\s?com|m\.?\s?com|accountancy|finance)\b/i], ['MGMT', /\b(mba|pgdm|management degree)\b/i],
+  ['CA', /\bCA\b(?![- ]?(?:Inter|Foundation))/], // "CA / MBA Finance": upper-case CA only
 ];
 /** Disciplines a post asks for (title first; eligibility text adds). Menial titles ask for none. */
+/** Eligibility text without the preferred / desirable phrases: only the phrase is dropped, not the whole comma clause.
+ *  Catches "X preferred", "preferably X", "(desirable)", "Desirable: X", "preference will be given to X", "X will be given weightage",
+ *  "X is an added advantage", "desirable but not essential". */
+export function requiredPart(t: string): string {
+  const W = '(?:preferred|preferable|preferably|preference|desirable|desired|desirability|weightage|advantage(?:ous)?)';
+  return (t || '')
+    .replace(new RegExp(String.raw`[^,;.\n()]*\(\s*(?:is\s+)?(?:an?\s+)?(?:added\s+)?${W}[^)]*\)`, 'gi'), ' ') // "LLB (desirable)": the degree before the marker goes too
+    .replace(new RegExp(String.raw`\([^)]*\b${W}\b[^)]*\)`, 'gi'), ' ') // "(PSU experience preferred)"
+    .replace(new RegExp(String.raw`(?:^|(?<=[,;.\n:]))[^,;.\n]*\b${W}\b[^,;.\n]*`, 'gi'), ' ') // the phrase between delimiters
+    .replace(/\s{2,}/g, ' ').trim();
+}
 export function postDiscs(title: string, eligibility = ''): Disc[] {
+  eligibility = requiredPart(eligibility);
   if (MENIAL_ANY.test(title) && !/law clerk/i.test(title)) return [];
   const s = new Set<Disc>(); for (const [d, re] of POST_TITLE) if (re.test(title)) s.add(d);
   // "Graduate in any discipline" opens a non-professional title (Data Analyst, Research Associate) to every degree.
@@ -53,6 +66,10 @@ export function userDiscs(prof?: Profile | null): Disc[] {
   if (/\b(b\.?\s?sc|m\.?\s?sc|science)\b/i.test(t) && ![...s].some((d) => ['ENV', 'LIFE', 'CHEM', 'PHYSICS', 'COMPUTER', 'STATS', 'AGRI'].includes(d))) s.add('LIFE');
   return [...s];
 }
+/** The post names one of the person's own disciplines directly (not via a cross-fit). prof=true limits it to professional degrees (CA, LLB, MBBS, BE...). */
+export function directMatch(p: { title: string; eligibility: string }, prof?: Profile | null, professionalOnly = false): boolean {
+  const have = new Set(userDiscs(prof)); return postDiscs(p.title, p.eligibility).some((d) => have.has(d) && (!professionalOnly || PROFESSIONAL.includes(d)));
+}
 /** Fair cross-fits: a degree in the key family is accepted for posts asking for any family in the list. */
 export const CROSS: Partial<Record<Disc, Disc[]>> = {
   ENV: ['ENV', 'LIFE', 'AGRI', 'CHEM', 'STATS'], LIFE: ['LIFE', 'ENV', 'AGRI'], AGRI: ['AGRI', 'ENV', 'LIFE'], CHEM: ['CHEM', 'ENV'], PHYSICS: ['PHYSICS', 'STATS'],
@@ -70,19 +87,20 @@ export const RELATED: Partial<Record<Disc | 'SCHOOL', RelatedRole[]>> = {
     [/\bcompany secretary\b|\bcontract (?:manager|management|officer)|\bvigilance officer\b|\bethics\b/i, 'contracts / vigilance', 'contracts and vigilance work relies on legal drafting and inquiry skills from your {deg} degree{exp}'],
     [/\bhuman rights\b|\bconsumer (?:affairs|protection)\b/i, 'rights / consumer protection', 'rights and consumer-protection work builds on your {deg} degree{exp}'],
     [/\bresearch (?:officer|associate|fellow)\b|\bresearch analyst\b/i, 'research', 'research posts use the legal research and writing skills of your {deg} degree{exp}'],
-    [/\bdata analyst\b|\banalyst\b/i, 'data / analysis', 'analyst posts use the analytical and research skills of your {deg} degree{exp}']],
+    [/\bdata analyst\b|\b(?:policy|research|legal|business|programme|program|management|compliance|risk) analyst\b/i, 'data / analysis', 'analyst posts use the analytical and research skills of your {deg} degree{exp}']],
   ENV: [[/\bpolicy\b|\bclimate\b|\bsustainab\w*|\besg\b/i, 'policy / climate', 'climate and environment policy draws on your {deg} degree{exp}'],
     [/\bgis\b|remote sensing/i, 'GIS / remote sensing', 'GIS and remote-sensing work uses the mapping skills of your {deg} degree{exp}'],
     [/\bresearch (?:officer|associate|fellow|scientist|assistant)|\bproject (?:associate|scientist|fellow)|\bscientist\b|\bjrf\b|\bsrf\b/i, 'research', 'research posts match the lab and field work of your {deg} degree{exp}'],
     [/\bpollution\b|\bwaste\b|\bwater quality\b|\bforest\w*|\bwildlife\b|\bbiodiversity\b|\becolog\w*/i, 'pollution / natural resources', 'pollution and natural-resource work is core to your {deg} degree{exp}'],
-    [/\bdata analyst\b|\banalyst\b|\bstatistic\w*|\bconsultant\b/i, 'data / analysis', 'analyst posts use the data and analytical skills of your {deg} degree{exp}']],
+    [/\bdata analyst\b|\b(?:environment\w*|research|policy|data|water|climate) analyst\b|\bstatistic\w*|\bconsultant\b/i, 'data / analysis', 'analyst posts use the data and analytical skills of your {deg} degree{exp}']],
   ENGINEERING: [[/\bpolicy\b|\bregulatory\b/i, 'technical policy', 'technical policy and regulation work draws on your {deg} degree{exp}'],
     [/\bproject (?:manager|officer)|\bplanning officer\b/i, 'projects / planning', 'project and planning work uses your {deg} degree{exp}'],
     [/\btechnical officer\b|\bquality (?:assurance|control)\b|\bqc\b|\bsafety officer\b/i, 'technical / QA / safety', 'QA, safety and technical posts use your {deg} degree{exp}'],
-    [/\bdata analyst\b|\banalyst\b/i, 'data / analysis', 'analyst posts use the quantitative skills of your {deg} degree{exp}']],
-  CA: [[/\bcompliance\b|\brisk\b|\binternal audit/i, 'risk / compliance', 'risk, audit and compliance work is close to your CA practice{exp}'],
+    [/\bdata analyst\b|\b(?:systems?|technical|data|operations|business) analyst\b/i, 'data / analysis', 'analyst posts use the quantitative skills of your {deg} degree{exp}']],
+  CA: [[/\bdata analyst\b/i, 'data / analysis', 'analyst posts use the financial-analysis and audit skills of your CA training{exp}'],
+    [/\bcompliance\b|\brisk\b|\binternal audit/i, 'risk / compliance', 'risk, audit and compliance work is close to your CA practice{exp}'],
     [/\bpolicy\b|\bregulatory\b/i, 'policy / regulatory', 'financial policy and regulation draws on your CA training{exp}'],
-    [/\bfinancial analyst|\bcredit (?:officer|analyst)\b|\banalyst\b/i, 'financial analysis / credit', 'credit and financial analysis use your CA training{exp}']],
+    [/\bfinancial analyst|\bcredit (?:officer|analyst)\b|\b(?:investment|risk|business|treasury|budget) analyst\b/i, 'financial analysis / credit', 'credit and financial analysis use your CA training{exp}']],
   MEDICAL: [[/\bpublic health\b|\bepidemiolog\w*|\bhealth (?:officer|programme|program)\b/i, 'public health', 'public-health work builds on your {deg} degree{exp}'],
     [/\bpolicy\b|\bconsultant\b/i, 'health policy', 'health policy and consulting draw on your {deg} degree{exp}'],
     [/\bresearch (?:officer|associate|scientist)|\bscientist\b/i, 'medical research', 'research posts use the clinical knowledge of your {deg} degree{exp}']],
@@ -174,10 +192,49 @@ export function relaxYears(p: Pick<Profile, 'cat' | 'pwbd'> & Partial<Pick<Profi
 }
 
 // ---------- Level floor by tier ----------
-/** 10th/ITI-level and support posts. */
-export const MENIAL_ANY = /\b(peon|sweeper|safai|chowkidar|watchman|security guard|gate ?keeper|helper|attendant|cook|mali|gardener|mts|multi[- ]?tasking|orderly|daftary|daftari|chaprasi|process server|bailiff|cleaner|sanitation|trackman|track maintainer|khalasi|driver|constable|home ?guard|agniveer|agnipath|forest guard|van rakshak|gds|gramin dak sevak|dak sevak|lab attendant|park(?:ing)? attendant|porter|dhobi|barber|tradesman)(?:s|es)?\b|चपरासी|अनुसेवक|आदेशपाल|चालक|वाहन चालक|ड्राइवर|ड्राईवर|ड्रायवर|स्वीपर|जमादार|रसोइया|रसोईया|बावर्ची|गार्ड|सुरक्षा गार्ड|सुरक्षाकर्मी|अर्दली|खलासी|धोबी|नाई|बेलदार|मजदूर|सफाईकर्मी|सफाई कर्मचारी|सफाई कर्मी|चौकीदार|माली|सफाई|स्वच्छक|परिचारक|सिपाही|आरक्षी|होम ?गार्ड|अग्निवीर|वनरक्षक|पत्रवाहक|फर्राश|दफ्तरी|प्रोसेस सर्वर|आदेशिका वाहक/i;
+/** Whole-token match for Devanagari (JS \b does not work there): no Devanagari letter or sign on either side,
+ *  with an optional plural / oblique ending (चालकों, सहायकों). So चालक never matches inside संचालक (Director). */
+const DEV = '\\u0900-\\u097F';
+export const hiTokens = (words: string[]) => `(?<![${DEV}])(?:${words.join('|')})(?:ों|ो|ें|े|ाें)?(?![${DEV}])`;
+const MENIAL_EN = ['peon', 'sweeper', 'safai ?(?:karmachari|karmi|wala|mitra)?', 'chowkidar', 'chaukidar', 'watchman', 'watch and ward', 'security guard', 'guard', 'gate ?keeper', 'helper', 'attendant', 'cook', 'cook[- ]cum[- ]helper', 'mali', 'gardener', 'mts', 'multi[- ]?tasking(?: staff)?', 'multi[- ]?purpose (?:worker|staff|employee)', 'orderly', 'daftary', 'daftari', 'dafadar', 'chaprasi', 'process server', 'bailiff', 'cleaner', 'sanitation (?:worker|staff)', 'sanitary (?:worker|staff)', 'scavenger', 'mehtar', 'trackman', 'track maintainer', 'khalasi', 'driver', 'constable', 'home ?guard', 'agniveer', 'agnipath', 'forest guard', 'van rakshak', 'gds', 'gramin dak sevak', 'dak sevak', 'lab attendant', 'park(?:ing)? attendant', 'porter', 'hamal', 'dhobi', 'washerman', 'barber', 'tradesman', 'waterman', 'water ?carrier', 'bhisti', 'bearer', 'farash', 'farrash', 'farash', 'masalchi', 'lascar', 'lashkar', 'khansama', 'beldar', 'labou?rer', 'mazdoor', 'mate', 'chainman', 'ward ?boy', 'ward ?attendant', 'aaya', 'ayah', 'office ?boy', 'messenger', 'dak runner', 'runner', 'liftman', 'lift operator', 'pump operator', 'mess (?:boy|helper|attendant)', 'kitchen (?:helper|boy)', 'safaiwala', 'jamadar', 'jamedar', 'chowkidar[- ]cum[- ]\\w+'];
+const MENIAL_HI = [
+  // Hindi
+  'चपरासी', 'भृत्य', 'अनुसेवक', 'आदेशपाल', 'आदेशवाहक', 'अर्दली', 'चालक', 'वाहन ?चालक', 'ड्राइवर', 'ड्राईवर', 'ड्रायवर', 'ड्रायव्हर', 'स्वीपर', 'जमादार', 'मेहतर', 'सफाई ?(?:कर्मी|कर्मचारी|कामगार|वाला|मित्र)', 'सफाईकर्मी', 'स्वच्छक', 'स्वच्छता ?(?:कर्मी|कर्मचारी|कामगार)', 'रसोइया', 'रसोईया', 'बावर्ची', 'खानसामा', 'कुक', 'हेल्पर',
+  'गार्ड', 'सुरक्षा ?गार्ड', 'सुरक्षाकर्मी', 'चौकीदार', 'पहरेदार', 'पहरेवाला', 'माली', 'खलासी', 'धोबी', 'नाई', 'बेलदार', 'मजदूर', 'श्रमिक', 'हमाल', 'जलवाहक', 'पानी ?वाला', 'भिश्ती', 'लश्कर', 'मसालची', 'फर्राश', 'फराश', 'दफ्तरी', 'परिचारक', 'वार्ड ?(?:बॉय|ब्वाय|आया)', 'आया',
+  'सिपाही', 'आरक्षी', 'होम ?गार्ड', 'अग्निवीर', 'वनरक्षक', 'वन ?रक्षक', 'पत्रवाहक', 'प्रोसेस ?सर्वर', 'आदेशिका ?वाहक', 'तामील ?कुनिंदा', 'जारीकर्ता',
+  // Marathi
+  'शिपाई', 'पहारेकरी', 'रखवालदार', 'माळी', 'सफाई ?कामगार', 'मदतनीस', 'स्वयंपाकी', 'वाहनचालक', 'कामगार', 'चौकीदार', 'बेलदार', 'हवालदार', 'पोलीस ?शिपाई'];
+/** 10th/ITI-level and support posts (title list, English + Hindi + Marathi; whole words / tokens only). */
+export const MENIAL_ANY = new RegExp(`\\b(?:${MENIAL_EN.join('|')})(?:s|es)?\\b|${hiTokens(MENIAL_HI)}`, 'i');
+const CLERICAL_HI = ['पारा ?विधिक', 'विधिक ?स्वयंसेवक', 'लिपिक', 'टंकक', 'टंकलेखक', 'आशुलिपिक', 'लघुलेखक', 'डाटा ?एंट्री', 'डेटा ?एंट्री', 'कनिष्ठ ?सहायक', 'सहायक ?ग्रेड(?:-?\\s?[३3])?', 'प्रतिलिपिक', 'कंप्यूटर ?ऑपरेटर', 'संगणक ?चालक', 'नाजिर', 'नाज़िर', 'कनिष्ठ ?लिपिक', 'अवर ?श्रेणी ?लिपिक', 'निम्न ?श्रेणी ?लिपिक', 'उच्च ?श्रेणी ?लिपिक', 'कार्यालय ?सहायक'];
 /** Clerical posts: blocked for professional graduates, not for general graduates. */
-export const CLERICAL = /\b(ldc|udc|lower division|upper division|clerk|data entry|deo|typist|stenographer|steno|office assistant|junior assistant|record keeper|copyist|junior court assistant|court assistant|assistant grade|computer operator|receptionist|supportive staff|para[- ]?legal volunteer|plv)(?:s|es)?\b|पारा ?विधिक|विधिक स्वयंसेवक|लिपिक|टंकक|आशुलिपिक|डाटा एंट्री|कनिष्ठ सहायक|सहायक ग्रेड|प्रतिलिपिक|कंप्यूटर ऑपरेटर|नाजिर|नाज़िर/i;
+export const CLERICAL = new RegExp(`\\b(?:ldc|udc|lower division(?: clerk)?|upper division(?: clerk)?|clerk|data entry(?: operator)?|deo|typist|stenographer|steno|office assistant|junior assistant|record keeper|copyist|junior court assistant|court assistant|assistant grade|computer operator|receptionist|supportive staff|para[- ]?legal volunteer|plv)(?:s|es)?\\b|${hiTokens(CLERICAL_HI)}`, 'i');
+/** Officer / professional titles: the structural floor never blocks them. */
+export const OFFICER_TITLE = new RegExp(`\\b(officer|manager|director|engineer|scientist|inspector|superintendent|professor|lecturer|teacher|judge|magistrate|prosecutor|counsel|doctor|specialist|consultant|analyst|registrar|secretary|commissioner|controller|accountant|auditor)s?\\b|${hiTokens(['अधिकारी', 'संचालक', 'निदेशक', 'अभियंता', 'निरीक्षक', 'प्रबंधक', 'वैज्ञानिक', 'न्यायाधीश', 'अभियोजक', 'चिकित्सक', 'प्राध्यापक', 'व्याख्याता', 'शिक्षक', 'सचिव', 'लेखाकार', 'सलाहकार', 'अधिकारी'])}`, 'i');
+// ---------- Structural floor: category / pay level / minimum qualification, in English, Hindi and Marathi ----------
+const GROUP_D = new RegExp(`\\b(?:group|grade|class|category|cat\\.?)[- ]?['"‘’]?(?:d|iv|4)['"‘’]?(?![\\w-])|\\bfourth (?:class|grade)\\b|\\bclass[- ]?four\\b|${hiTokens(['चतुर्थ ?श्रेणी', 'चतुर्थश्रेणी', 'चतुर्थ ?वर्ग', 'ग्रुप[- ]?(?:डी|घ)', 'समूह[- ]?(?:घ|डी)', 'वर्ग[- ]?(?:४|4|घ)', 'गट[- ]?ड', 'श्रेणी[- ]?(?:४|IV)'])}`, 'i');
+const GROUP_C = new RegExp(`\\b(?:group|grade|class|category|cat\\.?)[- ]?['"‘’]?(?:c|iii|3)['"‘’]?(?![\\w-])|\\bthird (?:class|grade)\\b|${hiTokens(['तृतीय ?श्रेणी', 'तृतीयश्रेणी', 'तृतीय ?वर्ग', 'ग्रुप[- ]?(?:सी|ग)', 'समूह[- ]?(?:ग|सी)', 'वर्ग[- ]?(?:३|3|ग)', 'गट[- ]?क', 'श्रेणी[- ]?(?:३|III)'])}`, 'i');
+const Q_BASIC = new RegExp(`\\b(?:(?:5th|8th|10th)(?: class| std| standard)?(?: pass(?:ed)?)?|class (?:v|viii|x|5|8|10)(?: pass(?:ed)?)?|(?:v|viii|x) (?:class |std |standard )?pass(?:ed)?|matric(?:ulation|ulate)?|high school|middle (?:school|pass)|s\\.s\\.c\\.|ssc pass|iti|i\\.t\\.i\\.?|ncvt|scvt|literate|read and write)\\b|${hiTokens(['आठवीं', 'आठवी', '8वीं', '8 ?वी', 'दसवीं', 'दसवी', '10वीं', '10 ?वी', 'हाई ?स्कूल', 'हाईस्कूल', 'मैट्रिक', 'मैट्रिकुलेशन', 'आईटीआई', 'आई\\.टी\\.आई\\.?', 'दहावी', 'आठवी', 'साक्षर', 'पाचवी', 'पांचवीं'])}`, 'i');
+const Q_12 = new RegExp(`\\b(?:12th|xii|class (?:xii|12)|intermediate|higher secondary|hsc|h\\.s\\.c\\.?|10\\+2|senior secondary|plus two|diploma)\\b|${hiTokens(['बारहवीं', 'बारहवी', '12वीं', '12 ?वी', 'इंटरमीडिएट', 'इण्टरमीडिएट', 'उच्चतर ?माध्यमिक', 'बारावी', 'डिप्लोमा', 'पदविका'])}`, 'i');
+const Q_GRAD = new RegExp(`\\b(?:graduat\\w*|degree|bachelor\\w*|b\\.?\\s?a\\b|b\\.?\\s?sc|b\\.?\\s?com|b\\.?\\s?tech|b\\.?\\s?e\\b|llb|mbbs|post ?graduat\\w*|master\\w*|m\\.?\\s?sc|m\\.?\\s?a\\b|mba|phd|ca|cma)\\b|${hiTokens(['स्नातक', 'स्नातकोत्तर', 'उपाधि', 'पदवी', 'पदवीधर', 'डिग्री'])}`, 'i');
+/** Lowest qualification the notice states: 1 = 8th / 10th / ITI, 2 = 12th / diploma, 3 = graduate or higher, null = not stated. */
+export function minQual(p: { title: string; eligibility: string; eduTags?: string[] }): 1 | 2 | 3 | null {
+  const t = `${p.title} ${requiredPart(p.eligibility || '')}`; const tags = p.eduTags || [];
+  // A stated degree wins (a "Hindi at matric level" clause on a graduate post is not the minimum).
+  if (Q_GRAD.test(t)) return 3; if (Q_BASIC.test(t)) return 1; if (Q_12.test(t)) return 2;
+  if (!tags.length) return null; if (tags.includes('10TH') || tags.includes('ITI')) return 1; if (tags.includes('12TH')) return 2; return 3;
+}
+/** Structural floor reason for degree profiles, or null. Officer titles are never blocked. */
+export function structuralFloor(p: { title: string; eligibility: string; pay?: string; eduTags?: string[] }): string | null {
+  if (OFFICER_TITLE.test(p.title)) return null;
+  const t = `${p.title} ${p.eligibility} ${p.pay || ''}`; const pi = payInfo(p.pay || ''); const lvl = pi.level ?? (/\b(?:pay )?level[- ]?(\d{1,2})\b(?!\s*[-–]\s*\d)/i.exec(t) ? Number(/\b(?:pay )?level[- ]?(\d{1,2})\b(?!\s*[-–]\s*\d)/i.exec(t)![1]) : undefined);
+  const q = minQual(p);
+  if (GROUP_D.test(t)) return 'Group D / Class IV post';
+  if (lvl === 1) return 'pay level 1 post';
+  if (q === 1) return '8th / 10th / ITI-level post';
+  if ((GROUP_C.test(t) || (lvl !== undefined && lvl >= 2 && lvl <= 5)) && q !== null && q < 3) return 'Group C / Class III post with a below-graduate minimum';
+  return null;
+}
 export type Tier = 'school' | 'graduate' | 'professional' | 'senior';
 /** Spec table: senior professional (PhD, or PG/professional + 5 yrs), professional graduate (LLB, BTech, MBBS, CA, PG), general graduate, school. */
 export function userTier(prof?: Profile | null): Tier | null {
@@ -188,11 +245,15 @@ export function userTier(prof?: Profile | null): Tier | null {
   return 'school';
 }
 /** Does the floor block this post for this person? Own-profession posts (e.g. Law Clerk-cum-Research Assistant) are never blocked. */
-export function floorBlocks(p: { title: string; eligibility: string; eduTags?: string[] }, prof?: Profile | null, ownProfession = false): string | null {
-  const tier = userTier(prof); if (!tier || tier === 'school' || ownProfession && !MENIAL_ANY.test(p.title)) return null;
+export function floorBlocks(p: { title: string; eligibility: string; eduTags?: string[]; pay?: string }, prof?: Profile | null, ownProfession = false): string | null {
+  const tier = userTier(prof); if (!tier || tier === 'school') return null;
+  // Structural gate first (category words, pay level 1, 8th/10th/ITI minimum) so any wording of a low-level post is caught.
+  const sf = structuralFloor(p as { title: string; eligibility: string; pay?: string; eduTags?: string[] }); if (sf) return sf;
+  if (ownProfession && !MENIAL_ANY.test(p.title)) return null;
   const lowEdu = !!p.eduTags?.length && p.eduTags.every((t) => ['10TH', '12TH', 'ITI'].includes(t));
   if (MENIAL_ANY.test(p.title) || /\b(10th|matric(?:ulation)?|class (?:x|10)|8th) pass\b/i.test(`${p.title} ${p.eligibility}`) || lowEdu && !CLERICAL.test(p.title) && p.eduTags!.every((t) => t !== '12TH')) return '10th / 12th / ITI-level post';
   if (tier === 'graduate') return lowEdu && p.eduTags!.every((t) => t !== '12TH') ? '10th / ITI-level post' : null;
+  if (OFFICER_TITLE.test(p.title) && !CLERICAL.test(p.title)) return null;
   if (CLERICAL.test(p.title) || lowEdu || /\bgroup\s*[cd]\b/i.test(`${p.title} ${p.eligibility}`)) return 'clerical / Group C-D post';
   if (tier === 'senior' && /\b(trainee|apprentice|graduate engineer trainee|management trainee|group\s*b non[- ]gazetted)\b/i.test(p.title)) return 'fresh-graduate trainee / Group B non-gazetted post';
   return null;

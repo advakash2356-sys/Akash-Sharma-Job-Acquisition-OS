@@ -12,7 +12,7 @@ export function filterPostings<T extends Filterable>(list: T[], f: Filter, today
 // Pure and fixture-tested. Uses only what the posting text states; an unknown field never hides a post unless asked.
 import { EDU_RANK, TAG_RANK, relaxation, tierOf, type RankInput } from './rank';
 import { ageOn, type Cat, type Profile } from '../govJobs';
-import { disciplineGate, experienceGate, licenceGate } from './gates';
+import { directMatch, disciplineGate, experienceGate, licenceGate } from './gates';
 export const QUALS: [string, string][] = [['10TH', '10th'], ['12TH', '12th'], ['ITI', 'ITI'], ['DIPLOMA', 'Diploma'], ['GRADUATE', 'Graduate'], ['ENGINEERING', 'Engineering (BE/BTech)'], ['LAW', 'Law (LLB/LLM)'], ['MEDICAL', 'Medical / Nursing / Pharmacy'], ['PG', 'Postgraduate'], ['PHD', 'PhD']];
 export const SECTORS: [string, string][] = [['central', 'Central government'], ['state', 'State government'], ['psu', 'PSU / public bank'], ['autonomous', 'Research, universities, institutes'], ['judiciary', 'Courts / judiciary'], ['defence', 'Defence / police forces'], ['regulator', 'Regulators (RBI, SEBI…)'], ['local', 'Municipal / district']];
 export const TIERS: [string, string][] = [['junior', 'Entry (Group C/D, MTS, clerk)'], ['mid', 'Middle (assistant, technical, JE)'], ['senior', 'Officer / specialist (Group A/B)']];
@@ -41,7 +41,7 @@ export function qualFits(p: Pick<RankInput, 'eduTags'> & Partial<Pick<RankInput,
   const school = ['10', '12', 'iti'].includes(prof.edu);
   if (school && (tierOf({ title: tp.title, org: '', eligibility: tp.eligibility, pay: '', eduTags: p.eduTags }) === 'senior' || (!!p.eduTags?.length && Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3)) >= 3))) return false;
   // t386u H1: a passing professional discipline gate (e.g. CA with ICAI for "CA / CMA") overrides the coarse tag-rank check.
-  if (dg === true && !school) return true;
+  if (dg === true && !school && directMatch(tp, prof, true)) return true;
   if (!p.eduTags?.length) return gates.includes(true) ? true : null;
   return (EDU_RANK[prof.edu] || 0) >= Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3));
 }

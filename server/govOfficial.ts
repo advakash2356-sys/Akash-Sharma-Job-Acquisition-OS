@@ -12,6 +12,17 @@
  * Nothing is invented: a missing field stays empty and is shown as "see notice".
  */
 import type { GovPosting } from "./govPostings.js";
+/** Notices AIMED at retired staff (re-employment / engagement of retirees, pension notices). Incidental mentions are kept:
+ *  "Ex-Servicemen (pensioners) as Drivers", "superannuation age 60", "retired employees are not eligible". */
+const RET_WHO = String.raw`(?:retired|retd\.?|superannuated|सेवा ?निवृत्त|रिटायर्ड|सेवानिवृत)`;
+const RET_STAFF = String.raw`(?:govt\.?\s+|government\s+|central\s+|state\s+|judicial\s+|bank\s+|court\s+|psu\s+)?(?:employees?|officers?|officials?|personnel|persons?|staff|judges?|judicial officers?|govt\.? servants?|government servants?|कर्मचारि\S*|कर्मचारी|अधिकारि\S*|अधिकारी|न्यायिक अधिकारी)`;
+const RET_NEG = /\b(?:not eligible|should not be|must not be|shall not be|not be (?:a )?retired|other than retired|ineligible|need not apply|shall not be considered|not be considered|not allowed|are excluded|cannot apply)\b|पात्र नहीं|आवेदन नहीं कर सकते/i;
+const RET_AIM = new RegExp(String.raw`\b(?:engagement|engaging|appointment|empanelment|hiring|inviting applications|applications? (?:are )?invited)\s+(?:of|from)\s+(?:the\s+)?(?:eligible\s+)?(?:and\s+)?(?:willing\s+)?(?:retired|retd\.?|pensioners?|superannuated)|${RET_WHO}\s*(?:[-/]\s*)?${RET_STAFF}|re-?employment|re-?engagement of (?:the )?(?:retired|retd|superannuated)|(?:ex|former)[- ]employees? of the judicial|\bpension (?:notice|adalat|revision|papers?|cases?|disbursement|sanction)s?\b|\bpensioners?'?\s+(?:meet|grievance|adalat|life certificates?|notice)|\blife certificates?\b|पेंशन (?:अदालत|सूचना)|पुनर्नियोजन|पुनर्नियुक्ति`, "i");
+export function retireeNotice(t: string): boolean {
+  if (!RET_AIM.test(t)) return false;
+  // "retired employees are not eligible" is a clause in a normal post, not a notice for retirees.
+  const m = RET_AIM.exec(t)!; const near = t.slice(m.index, m.index + m[0].length + 60); return !RET_NEG.test(near);
+}
 
 export const EN_URL = "https://employmentnews.gov.in/newemp/AllJobs.aspx?k=All";
 export const ISRO_URL = "https://www.isro.gov.in/ISRO_EN/ViewAllOpportunities.html";
@@ -70,8 +81,8 @@ export function fromIsro(html: string, today: string): GovPosting[] {
 
 // ---- 3) District courts (S3WaaS) ----
 /** Positive: reads as an open call. Negative: results, lists, orders, instructions, test notices, promotions. */
-const OPEN_CALL = /\b(applications? (?:are |is )?invited|inviting applications?|invites? applications?|recruit?e?ments? notice|recruitment (?:process|advertisement)|advertisement|advt\.?|employment notice|notification (?:no\.?|for (?:the )?(?:post|recruitment))|application (?:call|form)|walk[- ]?in|vacanc(?:y|ies)|engagement of|empanel(?:l)?ment|filling up|appointment (?:of|to) (?:the )?(?:post|panel))|विज्ञापन|भर्ती|रिक्ति/i;
-const NOT_OPEN = /\b(result|select(?:ed|ion)? (?:list|notification|of candidates)|wait(?:ing)? ?list|merit list|joining|appointment (?:orders?|letters?)|posting orders?|receipt of appointment|resolution of applications|application (?:form|format)s?|in pursuan\w*|reg(?:arding)? appointment letters?|instructions?|intimation|addendum|corrigendum|admit[- ]?card|hall[- ]?ticket|retired|retd|pensioner|superannuat\w*|re-?employment|call[- ]?letter|answer[- ]?key|interview (?:list|schedule|notice|date)|amended|typing test|skill test|qualifying test|written test|viva|document verification|provisional|shortlist|eligible candidates|ineligible|rejected|marks|cancel|postpone|promotion|by way of promotion|transfer|seniority|passing benchmark|objection|key answer)(?:s|es)?\b|पदोन्नति|परिणाम|प्रतीक्षा|चयन सूची/i;
+const OPEN_CALL = /\b(applications? (?:are |is )?invited|recruitment (?:of|for|to) |inviting applications?|invites? applications?|recruit?e?ments? notice|recruitment (?:process|advertisement)|advertisement|advt\.?|employment notice|notification (?:no\.?|for (?:the )?(?:post|recruitment))|application (?:call|form)|walk[- ]?in|vacanc(?:y|ies)|engagement of|empanel(?:l)?ment|filling up|appointment (?:of|to) (?:the )?(?:post|panel))|विज्ञापन|भर्ती|रिक्ति/i;
+const NOT_OPEN = /\b(final list|list of (?:eligible|ineligible|selected|shortlisted|provisional\w*|qualified)|eligible applications?|result|select(?:ed|ion)? (?:list|notification|of candidates)|wait(?:ing)? ?list|merit list|joining|appointment (?:orders?|letters?)|posting orders?|receipt of appointment|resolution of applications|application (?:form|format)s?|in pursuan\w*|reg(?:arding)? appointment letters?|instructions?|intimation|addendum|corrigendum|admit[- ]?card|hall[- ]?ticket|call[- ]?letter|answer[- ]?key|interview (?:list|schedule|notice|date)|amended|typing test|skill test|qualifying test|written test|viva|document verification|provisional|shortlist|eligible candidates|ineligible|rejected|marks|cancel|postpone|promotion|by way of promotion|transfer|seniority|passing benchmark|objection|key answer)(?:s|es)?\b|पदोन्नति|परिणाम|प्रतीक्षा|चयन सूची/i;
 export interface S3Site { host: string; org: string; state: string; city: string }
 /** Rows: title | description | start date | end date | file. S3WaaS "end date" is the date the notice stays listed, which offices set to the application last date for recruitment notices; the UI says to confirm it in the notice. */
 export function fromS3waas(html: string, site: S3Site, today: string): GovPosting[] {
@@ -81,7 +92,7 @@ export function fromS3waas(html: string, site: S3Site, today: string): GovPostin
     const cells = row.match(/<td[^>]*>[\s\S]*?<\/td>/g) || []; if (cells.length < 5) continue;
     const [title, desc] = [text(cells[0]), text(cells[1])]; const start = ddmmyyyy(text(cells[2])), end = ddmmyyyy(text(cells[3]));
     const all = `${title} ${desc}`;
-    if (!end || end < today || !OPEN_CALL.test(all) || NOT_OPEN.test(all)) continue;
+    if (!end || end < today || !OPEN_CALL.test(all) || NOT_OPEN.test(all) || retireeNotice(all)) continue;
     // Long-running listings (e.g. a 2023 process kept up until 2034) are not current openings.
     if (start && (Date.parse(today) - Date.parse(start)) / 864e5 > 120) continue;
     if ((Date.parse(end) - Date.parse(today)) / 864e5 > 400) continue;

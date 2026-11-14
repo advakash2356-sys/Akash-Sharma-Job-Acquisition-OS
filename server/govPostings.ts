@@ -1,5 +1,5 @@
 import { CURATED_CHECKED, curatedPostings } from "./govCurated.js";
-import { EN_URL, ISRO_URL, S3_PATH, S3_SITES, fromEmploymentNews, fromIsro, fromS3waas } from "./govOfficial.js";
+import { EN_URL, ISRO_URL, S3_PATH, S3_SITES, fromEmploymentNews, fromIsro, fromS3waas, retireeNotice } from "./govOfficial.js";
 /**
  * Government job POSTINGS feed (public, read-only). Akash Sync Agent.
  * Sources, read on the server only (the browser talks to our own /api/gov/postings, so CSP gains no new origin):
@@ -54,12 +54,12 @@ export function eduTagsOf(t: string): string[] {
   return tags.filter(([, re]) => re.test(t)).map(([k]) => k);
 }
 /** t386u M3: notices only for retired staff / re-employment of retirees are not openings for job seekers. */
-export const RETIREES = /\b(?:retired|retd\.?)\s+(?:govt\.?\s+|government\s+|central\s+|state\s+|judicial\s+|bank\s+)?(?:employees?|officers?|officials?|personnel|persons?|staff|judges?)\b|\bre-?employment of (?:the )?retire\w*|\b(?:ex|former)[- ]employees? of the judicial\b|\bpensioners?\b|\bsuperannuat\w*|सेवानिवृत्त/i;
+export { retireeNotice } from "./govOfficial.js";
 /** Playbook §7 scam heuristics: personal UPI/WhatsApp payment or fee-disguise wording. */
 export const SCAM = /@(okaxis|ybl|paytm|oksbi|okhdfcbank|okicici|upi)\b|whats ?app\s*(no|number|pe)|security deposit|training kit charge|laptop charge|confirmed (sarkari )?job without exam|joining fee/i;
 export function enrich(p: GovPosting, text: string): GovPosting | null {
   const all = `${p.title} ${p.org} ${text}`;
-  if (SCAM.test(all) || RETIREES.test(`${p.title} ${p.eligibility}`)) return null;
+  if (SCAM.test(all) || retireeNotice(`${p.title} ${p.eligibility}`)) return null;
   const tr = inDomain(p.noticeUrl).tier;
   return { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
 }
