@@ -110,3 +110,32 @@ test('L4: District Court cards say "listing ends" unless a real last date is par
   const [a] = fromS3waas(s3row('Recruitment of Process Server', 'Applications are invited for the post of Process Server'), site('jalaun'), T); assert.equal(a.dateKind, 'listing');
   const [b] = fromS3waas(s3row('Recruitment of Stenographer', 'Applications invited. Last date for receipt 25-11-2026'), site('jalaun'), T); assert.equal(b.dateKind, 'last'); assert.equal(b.lastDate, '2026-11-25');
 });
+
+// Akash (3:03 PM IST): "Related fit" = adjacent roles suited by education AND experience, above the floor, ranked after exact matches.
+test('Related fit: a lawyer sees compliance, legal-analyst, policy and data-analyst posts at their level, after law posts', async () => {
+  const { relatedFit, profileSortKey, compareKeys } = await import('../src/lib/gov/rank');
+  const law5: Profile = { ...lawyer, expYears: 5 };
+  const rel = [P('Compliance Officer', { org: 'SEBI', pay: 'Level 10', eligibility: 'Any graduate with 3 years experience', maxAge: 35 }), P('Research Analyst (Regulatory)', { org: 'IFSCA', pay: 'Rs 60,000 per month', eligibility: 'Graduate' }),
+    P('Policy Officer', { org: 'Ministry of Consumer Affairs', pay: 'Level 10', eligibility: 'Any degree' }), P('Data Analyst', { org: 'NHAI', pay: 'Level 8', eligibility: 'Graduate in any discipline' })];
+  for (const p of rel) { const m = matchLabel(p, law5, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /^Related fit: .*Law degree and 5 years of experience\.$/, p.title); assert.ok(relatedFit(p, law5)); }
+  // A legal-analyst post is already a law post (exact profession), so it is shown and ranks with law posts.
+  const la = P('Legal Analyst', { org: 'NITI Aayog', pay: 'Rs 60,000 per month', eligibility: 'Graduate' }); assert.equal(profileFit(la, law5).field, true); assert.equal(govResults([la], F, law5, [], T).list.length, 1);
+  // Stays above the floor: clerical / menial "compliance" or data-entry posts are never Related fit.
+  for (const p of [P('Compliance Clerk', { eligibility: '12th pass' }), P('Data Entry Operator (Policy Cell)', { eligibility: 'Graduate' }), P('Junior Assistant (Compliance)')]) { assert.equal(relatedFit(p, law5), null, p.title); assert.notEqual(matchLabel(p, law5, T).label, 'related', p.title); }
+  // A hard gate still wins: a data-analyst post that needs Statistics is not offered to an LLB.
+  assert.equal(relatedFit(P('Data Analyst', { pay: 'Level 8', eligibility: "Master's in Statistics" }), law5), null);
+  // Ranking: exact law posts first, then Related fit, then the rest.
+  const lo = P('Law Officer', { org: 'Coal India Limited', level: 'psu', pay: 'E2 Rs 50,000 - 1,60,000', eligibility: 'LLB', maxAge: 40 }); const other = P('Assistant Director (Tourism)', { pay: 'Level 10', eligibility: 'Graduate' });
+  const sorted = [other, rel[0], lo].sort((a, b) => compareKeys(profileSortKey(a, law5, T), profileSortKey(b, law5, T)));
+  assert.deepEqual(ids(sorted), ['Law Officer', 'Compliance Officer', 'Assistant Director (Tourism)']);
+  assert.deepEqual(ids(govResults([other, rel[0], lo], F, law5, [], T).list).slice(0, 2), ['Law Officer', 'Compliance Officer']);
+});
+test('Related fit: an MSc Env Sci sees research, data and policy posts', async () => {
+  const { relatedFit } = await import('../src/lib/gov/rank');
+  const env: Profile = { ...base, edu: 'pg', spec: '', subject: 'MSc Environmental Science', expYears: 3 };
+  for (const p of [P('Research Associate', { org: 'CSIR-NEERI', pay: 'Rs 58,000 per month', eligibility: 'PG in Science' }), P('GIS Analyst', { org: 'Forest Survey of India', pay: 'Level 7', eligibility: 'Post graduate' }), P('Climate Policy Consultant', { org: 'MoEFCC', pay: 'Rs 80,000 per month', eligibility: 'Masters degree' })]) {
+    const m = matchLabel(p, env, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /Environmental Science degree and 3 years of experience/, p.title);
+  }
+  assert.equal(relatedFit(P('Field Attendant (Forest)', { eligibility: '10th pass', eduTags: ['10TH'] }), env), null, 'below the floor');
+  assert.equal(relatedFit(P('Research Associate (Law)', { pay: 'Rs 58,000', eligibility: 'LLM' }), env), null, 'law research needs a law degree');
+});

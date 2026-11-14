@@ -35,6 +35,8 @@ const POST_ELIG: [Disc, RegExp][] = [
 export function postDiscs(title: string, eligibility = ''): Disc[] {
   if (MENIAL_ANY.test(title) && !/law clerk/i.test(title)) return [];
   const s = new Set<Disc>(); for (const [d, re] of POST_TITLE) if (re.test(title)) s.add(d);
+  // "Graduate in any discipline" opens a non-professional title (Data Analyst, Research Associate) to every degree.
+  if (/\bany (?:discipline|degree|graduat\w*|stream|subject)\b|\bgraduat\w* in any\b/i.test(eligibility)) for (const d of [...s]) if (!PROFESSIONAL.includes(d)) s.delete(d);
   for (const [d, re] of POST_ELIG) if (re.test(eligibility)) s.add(d);
   // "Assistant Professor (Law)" is a law post that also needs NET: keep both. A "Legal Assistant" is never an engineering post.
   if (s.has('LAW') && /\b(assistant|technical)\b/i.test(title) && !POST_ELIG[5][1].test(eligibility)) s.delete('ENGINEERING');
@@ -57,6 +59,15 @@ export const CROSS: Partial<Record<Disc, Disc[]>> = {
   ENGINEERING: ['ENGINEERING', 'COMPUTER', 'STATS'], COMPUTER: ['COMPUTER', 'STATS'], STATS: ['STATS'], CA: ['CA', 'COMMERCE'], COMMERCE: ['COMMERCE'], MEDICAL: ['MEDICAL', 'LIFE'], MGMT: ['MGMT', 'COMMERCE'],
 };
 /** Exact degree & discipline gate. ok=null when the post names no discipline (any graduate) or the person's degree is unknown. */
+// ---------- Related fit (adjacent roles the person's degree AND experience suit, beyond the exact profession) ----------
+/** [role regex on the post title, plain role name]. Only posts at or above the level floor are ever offered as related. */
+export const RELATED: Partial<Record<Disc, [RegExp, string][]>> = {
+  LAW: [[/\bcompliance\b/i, 'compliance'], [/\blegal (?:analyst|researcher|research)|\bresearch (?:officer|associate|fellow)\b.*\b(?:law|legal)|\blaw researcher/i, 'legal research / analysis'], [/\bpolicy\b|\bregulatory\b|\bgovernance\b/i, 'policy / regulatory'], [/\bdata analyst|\banalyst\b/i, 'data / analyst'], [/\bcompany secretary\b|\bcontract (?:manager|management|officer)|\bvigilance officer\b|\bethics\b/i, 'contracts / vigilance / secretarial'], [/\bhuman rights\b|\bconsumer (?:affairs|protection)\b/i, 'rights / consumer protection']],
+  ENV: [[/\bresearch (?:officer|associate|fellow|scientist|assistant)|\bproject (?:associate|scientist|fellow)|\bscientist\b|\bjrf\b|\bsrf\b/i, 'research'], [/\bdata analyst|\banalyst\b|\bgis\b|remote sensing|\bstatistic/i, 'data / GIS analysis'], [/\bpolicy\b|\bclimate\b|\bsustainab\w*|\besg\b|\bconsultant\b/i, 'policy / climate / sustainability'], [/\bpollution\b|\bwaste\b|\bwater quality\b|\bforest\w*|\bwildlife\b|\bbiodiversity\b|\becolog\w*/i, 'pollution / natural resources']],
+  ENGINEERING: [[/\bproject (?:manager|officer|engineer)|\bplanning officer\b/i, 'projects / planning'], [/\bdata analyst|\banalyst\b/i, 'data / analyst'], [/\btechnical officer\b|\bquality (?:assurance|control)\b|\bsafety officer\b/i, 'technical / QA / safety']],
+  CA: [[/\bcompliance\b|\brisk\b|\binternal audit/i, 'risk / compliance'], [/\bfinancial analyst|\banalyst\b|\bcredit officer\b/i, 'financial analysis / credit'], [/\bpolicy\b|\bregulatory\b/i, 'policy / regulatory']],
+  MEDICAL: [[/\bpublic health\b|\bepidemiolog\w*|\bhealth (?:officer|programme|program)\b/i, 'public health'], [/\bresearch (?:officer|associate|scientist)|\bscientist\b/i, 'medical research'], [/\bpolicy\b|\bconsultant\b/i, 'health policy / consulting']],
+};
 // ---------- Engineering branches (spec Gate 2: "specific engineering branch codes") ----------
 export type Branch = 'CIVIL' | 'MECH' | 'ELEC' | 'ECE' | 'CSE' | 'CHEM' | 'ENV' | 'INSTR' | 'MINING' | 'METAL' | 'AERO' | 'BIOTECH' | 'AGRI';
 const BRANCH: [Branch, RegExp][] = [['CIVIL', /\bcivil\b/i], ['MECH', /\bmech\w*|production engineering|industrial engineering/i], ['ELEC', /\belectrical\b|\beee\b|electrical (?:and|&) electronics/i],

@@ -1,6 +1,6 @@
 // Ranking and eligibility hints for live postings (playbook §2 and §6, simplified). Not legal advice. Akash Sync Agent.
 import { ageOn, type Profile } from '../govJobs';
-import { CLERICAL, MENIAL_ANY, disciplineGate, domicileGate, experienceGate, floorBlocks, licenceGate, payBelow, payInfo, relaxYears, DISC_NAME } from './gates';
+import { CLERICAL, MENIAL_ANY, RELATED, disciplineGate, domicileGate, experienceGate, floorBlocks, licenceGate, payBelow, payInfo, relaxYears, userDiscs, DISC_NAME } from './gates';
 export interface RankInput { lastDate: string; lesserKnown: boolean; pay: string; vacancies: string; official: boolean; title: string; org: string; eligibility: string; state: string; level?: string; employmentType?: string; maxAge?: number; minAge?: number; eduTags?: string[] }
 export const daysLeft = (d: string, today = new Date().toISOString().slice(0, 10)) => Math.ceil((Date.parse(d) - Date.parse(today)) / 864e5);
 /** 0-100ish: urgency (closing within 14 days), lesser-known boost, data quality, keyword relevance. */
@@ -125,8 +125,21 @@ export function profileOverlap(p: Pick<RankInput, 'title' | 'eligibility'>, kws:
 }
 
 // ---- t385u: one label per result and profession-first ordering. ----
-export type Label = 'strong' | 'eligible' | 'check';
-export const LABEL_TEXT: Record<Label, string> = { strong: 'Strong match', eligible: 'Eligible', check: 'Check notice' };
+export type Label = 'strong' | 'eligible' | 'related' | 'check';
+export const LABEL_TEXT: Record<Label, string> = { strong: 'Strong match', eligible: 'Eligible', related: 'Related fit', check: 'Check notice' };
+/** Related fit: an adjacent role (not the exact profession) that the person's degree AND experience suit, at or above their level floor.
+ *  Returns the one-line reason, or null. Never offered for junior / below-floor posts or when a hard gate fails. */
+export function relatedFit(p: RankInput, prof: Profile | null): string | null {
+  if (!prof) return null; const fit = profileFit(p, prof); if (fit.field || fit.belowLevel || fit.tier === 'junior') return null;
+  const tp = { title: p.title, eligibility: p.eligibility || '' };
+  if (disciplineGate(tp, prof).ok === false || experienceGate(tp, prof).ok === false || licenceGate(tp, prof).ok === false) return null;
+  const discs = new Set(userDiscs(prof)); if (prof.spec === 'law') discs.add('LAW'); if (prof.spec === 'engineering') discs.add('ENGINEERING'); if (prof.spec === 'medical') discs.add('MEDICAL'); if (prof.icai) discs.add('CA');
+  for (const d of discs) for (const [re, role] of RELATED[d] || []) if (re.test(p.title)) {
+    const exp = prof.expYears ?? 0;
+    return `Related fit: ${role} work draws on your ${DISC_NAME[d].replace(/ \(.*\)$/, '')} degree${exp > 0 ? ` and ${exp} year${exp === 1 ? '' : 's'} of experience` : ''}.`;
+  }
+  return null;
+}
 const PROF_NAME: Record<string, string> = { law: 'law', engineering: 'engineering', medical: 'medical / health', finance: 'finance / accounts', teaching: 'teaching' };
 /** Spec rules 4-5. Strong match = your profession + nothing to verify on your side + pay at/above your floor.
  *  Eligible = you meet everything stated, with a stated soft trade-off (place, contract/tenure, or a non-profession post).
@@ -137,6 +150,8 @@ export function matchLabel(p: RankInput, prof: Profile | null, today?: string): 
   if (e.badge === 'maynot') return { label: 'check', why: ['May not qualify:', ...e.why] };
   const own = fit?.field ? [`${/^[aeiou]/i.test(PROF_NAME[prof!.spec || ''] || prof!.spec || '') ? 'An' : 'A'} ${PROF_NAME[prof!.spec || ''] || prof!.spec} post, your profession.`] : [];
   const rest = e.why.filter((w) => !/^Matches your/.test(w));
+  const rel = !fit?.field ? relatedFit(p, prof) : null;
+  if (rel) return { label: 'related', why: [rel, ...(personal.length ? [`Check notice: verify ${personal.slice(0, 2).map((c) => c.replace(/\.+$/, '')).join('; ')}.`] : []), ...(trade.length ? [`Trade-off: ${trade.join('; ')}.`] : []), ...rest] };
   if (personal.length) return { label: 'check', why: [...own, `Check notice: verify ${personal.slice(0, 2).map((c) => c.replace(/\.+$/, '')).join('; ')}.`, ...rest] };
   // t386u M5: Strong match needs the age confirmed against a stated limit. "Age: see notice" caps the label at Check notice.
   const ageOpen = e.checks.some((c) => /age limit \(not/.test(c));
@@ -170,10 +185,11 @@ export function levelFit(p: RankInput, prof: Profile | null): number {
 export function profileSortKey(p: RankInput, prof: Profile | null, today?: string): number[] {
   const l = matchLabel(p, prof, today); const fit = prof ? profileFit(p, prof) : null; const { level, basic } = payFacts(p.pay || '');
   const pay = basic ?? (level ? level * 5000 : 0); const home = placeScore(p, prof);
-  const cert = l.label === 'strong' ? 2 : l.label === 'eligible' ? 2 : eligibilityBadge(p, prof, today).badge === 'maynot' ? 0 : 1;
+  const cert = l.label === 'strong' ? 2 : l.label === 'eligible' || l.label === 'related' ? 2 : eligibilityBadge(p, prof, today).badge === 'maynot' ? 0 : 1;
   // Profession > level fit > eligibility certainty > pay > location > days left. Nearby posts first: with "not open to relocate"
   // (or a city set), location outranks pay so posts in your city / state come before far-away ones.
   const near = prof && (prof.relocate === false || !!prof.city);
-  return [fit?.field ? 1 : 0, levelFit(p, prof), cert, near ? home : pay, near ? pay : home, -daysLeft(p.lastDate, today)];
+  // Exact profession first, then Related fit, then the rest.
+  return [fit?.field ? 2 : l.label === 'related' ? 1 : 0, levelFit(p, prof), cert, near ? home : pay, near ? pay : home, -daysLeft(p.lastDate, today)];
 }
 export function compareKeys(a: number[], b: number[]) { for (let i = 0; i < Math.max(a.length, b.length); i++) { const d = (b[i] ?? 0) - (a[i] ?? 0); if (d) return d; } return 0; }
