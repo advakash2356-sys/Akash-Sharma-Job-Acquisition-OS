@@ -26,14 +26,64 @@ const POST_TITLE: [Disc, RegExp][] = [
 const POST_ELIG: [Disc, RegExp][] = [
   ['LAW', /\b(l\.?\s?l\.?\s?b|l\.?\s?l\.?\s?m|degree in law|law graduate|bachelor of laws?|enrol(?:l)?ed as (?:an )?advocate|bar council|practi[cs]ing advocate|practice (?:at|in) the bar|as an advocate)\b/i],
   ['MEDICAL', /\b(mbbs|m\.?d\.?\b|m\.?s\.?\b(?= ?\()|nmc|national medical commission|medical council|mci\b)\b/i], ['DENTAL', /\b(bds|mds)\b/i], ['NURSING', /\b(b\.?sc\.? nursing|gnm|anm|nursing council)\b/i], ['PHARMACY', /\b(b\.?\s?pharm|d\.?\s?pharm|m\.?\s?pharm|pharmacy council)\b/i],
-  ['ENGINEERING', /\b(b\.?\s?e\.?\b|b\.?\s?tech|m\.?\s?tech|degree in engineering|engineering degree|gate score|be\/btech)\b/i],
+  ['ENGINEERING', /\b(b\.?\s?e\.?\b|b\.?\s?tech|m\.?\s?tech|degree in engineering|(?:degree|graduat\w*|bachelor\w*) in [a-z &]{0,30}engineering|engineering degree|gate score|be\/btech)\b/i],
   ['CA', /\b(icai|chartered accountant|cma\b|icwa|icmai|company secretary|icsi)\b/i], ['TEACHING', /\b(b\.?\s?ed|ctet|tet\b|ugc[- ]net|net\/set|slet)\b/i],
   ['ENV', /\b(environmental (?:science|studies|engineering)|ecology)\b/i], ['LIFE', /\b(life sciences?|biolog\w*|zoology|botany|microbiology|biotechnology|bio[- ]?science)\b/i],
-  ['AGRI', /\b(agricultur\w*|forestry|horticultur\w*|veterinary)\b/i], ['CHEM', /\bchemistry\b/i], ['PHYSICS', /\bphysics\b/i],
+  ['AGRI', /\b(agricultur\w*|forestry|horticultur\w*|veterinary)\b/i], ['CHEM', /(?<!(?:pharmaceutical|agricultural|agri|agro|industrial|bio|petro)[- ]?)\bchemistry\b/i], ['PHYSICS', /(?<!(?:geo|bio|astro)[- ]?)\bphysics\b/i], ['PHARMACY', /\b(?:degree|graduat\w*|bachelor\w*) in pharmacy\b/i],
   ['COMPUTER', /\b(computer science|computer applications|mca\b|bca\b|information technology)\b/i], ['STATS', /\b(statistics|mathematics|economics|econometrics)\b/i],
   ['COMMERCE', /\b(commerce|b\.?\s?com|m\.?\s?com|accountancy|finance)\b/i], ['MGMT', /\b(mba|pgdm|management degree)\b/i],
   ['CA', /\bCA\b(?![- ]?(?:Inter|Foundation))/], // "CA / MBA Finance": upper-case CA only
 ];
+const GENERIC_FIELD = /\b(?:graduat\w*|degree|bachelor'?s?(?: degree)?|b\.?\s?sc\.?|post[- ]?graduat\w*|master'?s?(?: degree)?)\s+(?:in|of)\s+(?:science|arts|humanities|commerce)\b|\bscience graduates?\b|\bgraduat\w* \(science\)/i;
+// ---------- Subjects (whole terms; compound subjects first, so "Pharmaceutical Chemistry" never reads as Chemistry) ----------
+const SUBJECTS: [string, RegExp][] = [
+  ['pharmaceutical chemistry', /\bpharmaceutical chemistry\b/gi], ['agricultural chemistry', /\b(?:agri(?:cultural)?|agro)[- ]?chemistry\b/gi], ['industrial chemistry', /\bindustrial chemistry\b/gi],
+  ['biochemistry', /\bbio[- ]?chemistry\b/gi], ['petrochemicals', /\bpetro[- ]?chemi\w*/gi], ['geophysics', /\bgeo[- ]?physics\b/gi], ['biophysics', /\bbio[- ]?physics\b/gi], ['astrophysics', /\bastro[- ]?physics\b/gi],
+  ['environmental science', /\benvironment(?:al)? (?:science|studies)\b/gi], ['food science', /\bfood (?:science|technology)\b/gi], ['forensic science', /\bforensic science\b/gi],
+  ['computer science', /\bcomputer (?:science|applications)\b|\binformation technology\b/gi], ['life science', /\blife sciences?\b|\bbio[- ]?sciences?\b/gi],
+  ['pharmacy', /\bpharmacy\b|\b[bdm]\.?\s?pharm\b/gi], ['forestry', /\bforestry\b/gi], ['horticulture', /\bhorticultur\w*/gi], ['agriculture', /\bagricultur\w*/gi],
+  ['microbiology', /\bmicro[- ]?biology\b/gi], ['biotechnology', /\bbio[- ]?technology\b|\bbiotech\b/gi], ['chemistry', /\bchemistry\b/gi], ['physics', /\bphysics\b/gi],
+  ['botany', /\bbotany\b/gi], ['zoology', /\bzoology\b/gi], ['biology', /\bbiology\b/gi], ['mathematics', /\bmathematics\b|\bmaths?\b/gi], ['statistics', /\bstatistics\b/gi],
+  ['geology', /\bgeology\b/gi], ['electronics', /\belectronics\b/gi], ['geography', /\bgeography\b/gi],
+];
+const COMBOS: [RegExp, string[]][] = [[/\bpcm\b/i, ['physics', 'chemistry', 'mathematics']], [/\bpcb\b/i, ['physics', 'chemistry', 'biology']], [/\bcbz\b|\bzbc\b/i, ['chemistry', 'botany', 'zoology']]];
+/** Explicit allow-map: a profile subject also satisfies these required subjects (umbrella terms only). */
+const SUBJECT_ALLOW: Record<string, string[]> = { botany: ['biology', 'life science'], zoology: ['biology', 'life science'], microbiology: ['biology', 'life science'], biotechnology: ['life science'], biochemistry: ['life science'], biology: ['life science'] };
+/** Subjects named in a text, as whole terms (compound subjects are matched first and masked). */
+export function subjectsIn(t: string): Set<string> {
+  let s = ` ${t || ''} `; const out = new Set<string>();
+  for (const [re, list] of COMBOS) if (re.test(s)) list.forEach((x) => out.add(x));
+  for (const [k, re] of SUBJECTS) { re.lastIndex = 0; if (re.test(s)) { out.add(k); re.lastIndex = 0; s = s.replace(re, ' # '); } re.lastIndex = 0; }
+  return out;
+}
+// Words after "B.Sc / Degree in / Graduate in" that are not a specific subject.
+const NOT_SUBJECT = /^(?:any|a|an|the|science|sciences|arts|humanities|commerce|law|laws|engineering|technology|medicine|education|management|recognised|recognized|relevant|concerned|appropriate|related|similar|first|second|third|class|division|hons?|honours|honors|with|from|of|or|and|at|least|minimum|marks|percent|degree|graduation|discipline|subject|stream|field|ug|pg|full|time|regular|mode|equivalent|university|institute|india|govt|government|b\.?ed|m\.?ed)$/i;
+const SUBJECT_WORDS = new Set(SUBJECTS.map(([k]) => k));
+function unknownSubject(clause: string): string | null {
+  const m = clause.match(/\b(?:b\.?\s?sc\.?|m\.?\s?sc\.?|bachelor'?s?(?:\s+degree)?|master'?s?(?:\s+degree)?|degree|graduat(?:e|ion))\s*(?:\(\s*hons?\.?\s*\)\s*)?(?:in|with)\s+([a-z][a-z-]{3,})(?:\s+([a-z][a-z-]{3,}))?/i);
+  if (!m) return null; const w = m[1].toLowerCase(); const phrase = [m[1], m[2]].filter(Boolean).join(' ');
+  if (NOT_SUBJECT.test(w) || [...SUBJECT_WORDS].some((k) => k.split(' ').includes(w))) return null;
+  return phrase;
+}
+const SCI_DISCS: Disc[] = ['ENV', 'LIFE', 'AGRI', 'CHEM', 'PHYSICS', 'COMPUTER', 'STATS', 'PHARMACY'];
+/** A specific required subject must equal the profile's subject or be in the allow-map; otherwise fail. Unclear: Check. */
+export function subjectGate(p: { title: string; eligibility: string }, prof?: Profile | null): { ok: boolean | null; why?: string } {
+  if (!prof || SCHOOL.has(prof.edu) || prof.edu === 'eng' || prof.spec === 'engineering') return { ok: null };
+  const clause = requiredPart(p.eligibility || '').replace(/\b(?:at|in)\s+(?:the\s+)?(?:10\+2|12th|xii|intermediate|higher secondary|senior secondary|class\s*(?:xii|12))(?:\s+level)?\b|\b(?:10\+2|12th|intermediate|higher secondary)\s+(?:with|in)\s+[a-z ,/&]+?(?=[,;.]|$)/gi, ' ');
+  if (/\bany (?:discipline|subject|stream|graduat\w*)\b/i.test(clause)) return { ok: null };
+  const req = subjectsIn(clause);
+  if (!req.size) { const u = unknownSubject(clause); return u && !POST_ELIG.some(([, re]) => re.test(clause)) ? { ok: null, why: `Check notice: asks for a degree in ${u}; confirm your subject is accepted.` } : { ok: null }; }
+  // the clause also offers a non-science discipline (Commerce, Law, MBA...): the discipline gate decides
+  const other = POST_ELIG.filter(([d, re]) => !SCI_DISCS.includes(d) && re.test(clause)).map(([d]) => d); if (other.length) return { ok: null };
+  // "Graduate in Science or Food Technology": the generic science alternative admits any science graduate
+  if (/\b(?:graduat\w*|degree|bachelor'?s?(?: degree)?|post[- ]?graduat\w*|master'?s?(?: degree)?|pg)\s+(?:in|of)\s+science\b|\bscience graduates?\b/i.test(clause)) return userDiscs(prof).some((d) => SCI_DISCS.includes(d)) ? { ok: true, why: 'Subject match: a science degree.' } : { ok: null };
+  const own = subjectsIn(prof.subject || ''); const accepts = new Set<string>([...own, ...[...own].flatMap((x) => SUBJECT_ALLOW[x] || [])]);
+  const names = [...req].join(' / ');
+  if (!own.size) return userDiscs(prof).some((d) => SCI_DISCS.includes(d)) ? { ok: null, why: `Check notice: asks for a degree in ${names}; add your degree subject in "Your details".` } : { ok: false, why: `Needs a degree in ${names}; your profile lists ${prof.subject || 'no matching subject'}.` };
+  const hit = [...req].filter((x) => accepts.has(x));
+  if (hit.length) return { ok: true, why: `Subject match: ${hit.slice(0, 2).join(' / ')}.` };
+  return { ok: false, why: `Needs a degree in ${names}; your subject (${[...own].join(', ')}) is a different subject.` };
+}
 /** Disciplines a post asks for (title first; eligibility text adds). Menial titles ask for none. */
 /** Eligibility text without the preferred / desirable phrases: only the phrase is dropped, not the whole comma clause.
  *  Catches "X preferred", "preferably X", "(desirable)", "Desirable: X", "preference will be given to X", "X will be given weightage",
@@ -43,6 +93,10 @@ export function postDiscs(title: string, eligibility = ''): Disc[] {
   eligibility = requiredPart(eligibility);
   if (SUPPORT_RE.test(title) && !OFFICER_RE.test(title) && !/law clerk/i.test(title)) return [];
   const s = new Set<Disc>(); for (const [d, re] of POST_TITLE) if (re.test(title)) s.add(d);
+  // The notice's qualification clause beats the title: when the clause names a discipline (or "Graduate in Science / Arts /
+  // Commerce"), the disciplines implied by title words alone ("Technical Officer" -> Engineering) are dropped.
+  const clauseNames = POST_ELIG.some(([, re]) => re.test(eligibility)) || GENERIC_FIELD.test(eligibility) || subjectsIn(eligibility).size > 0;
+  if (clauseNames) s.clear();
   // "Graduate in any discipline" opens a non-professional title (Data Analyst, Research Associate) to every degree.
   if (/\bany (?:discipline|degree|graduat\w*|stream|subject)\b|\bgraduat\w* in any\b/i.test(eligibility)) for (const d of [...s]) if (!PROFESSIONAL.includes(d)) s.delete(d);
   for (const [d, re] of POST_ELIG) if (re.test(eligibility)) s.add(d);
@@ -97,11 +151,21 @@ export const RELATED: Partial<Record<Disc | 'SCHOOL', RelatedRole[]>> = {
     [/\bdisaster (?:management|risk)\b|\bwater resources?\b|\bwatershed\b|\bsanitation (?:officer|specialist|expert)\b|\bsolid waste\b/i, 'disaster / water / sanitation', 'disaster, water and sanitation programmes use the environmental systems knowledge of your {deg} degree{exp}'],
     [/\b(?:junior |senior )?(?:scientific|science) (?:officer|assistant)\b|\b(?:chemist|analyst) \(|\blaboratory (?:officer|analyst)\b|\bfield (?:officer|investigator)\b/i, 'lab / field science', 'lab and field science posts use the sampling and analysis skills of your {deg} degree{exp}']],
   CHEM: [[/\b(?:junior |senior |assistant |deputy )?chemists?\b|\bchemical (?:examiner|analyst|assistant)\b|\bassistant chemical examiner\b/i, 'chemist / chemical analysis', 'chemist and chemical-analysis posts are built on the chemistry of your {deg} degree{exp}'],
-    [/\b(?:junior |senior )?(?:scientific|science) (?:officer|assistant)\b|\b(?:laboratory|lab) (?:officer|assistant|analyst|technician|technologist)\b|\blaboratory incharge\b/i, 'lab / scientific', 'lab and scientific-assistant posts use the analytical and lab skills of your {deg} degree{exp}'],
+    [/\b(?:junior |senior )?(?:scientific|science) (?:officer|assistant)\b|\b(?:laboratory|lab) (?:officer|assistant|analyst|technician|technologist)\b|\blaboratory incharge\b|\btechnical (?:officer|assistant) \((?:lab\w*|chem\w*)\)/i, 'lab / scientific', 'lab and scientific-assistant posts use the analytical and lab skills of your {deg} degree{exp}'],
     [/\bquality (?:control|assurance)\b|\bq\.?c\.? (?:officer|chemist|analyst)\b|\bqa officer\b/i, 'quality control', 'quality-control posts test materials and products with the methods of your {deg} degree{exp}'],
-    [/\bforensic\b|\bfood (?:analyst|safety officer)\b|\bpublic analyst\b|\b(?:water|soil|fertili[sz]er|drug|seed) (?:analyst|testing)\b|\bassay\w*\b/i, 'forensic / food / testing', 'forensic, food and testing-lab posts apply the chemical analysis of your {deg} degree{exp}'],
+    [/\bforensic\b|\bfood (?:analyst|safety officer)\b|\bpublic analyst\b|\b(?:water|soil|fertili[sz]er|drug|seed) (?:analyst|testing)\b|\banalyst\b[^,;]*\b(?:food|water|testing|laboratory)\b|\bassay\w*\b/i, 'forensic / food / testing', 'forensic, food and testing-lab posts apply the chemical analysis of your {deg} degree{exp}'],
     [/\bresearch (?:officer|associate|fellow|assistant)\b|\bproject (?:associate|assistant|fellow)\b|\bjrf\b|\bsrf\b/i, 'research', 'research posts match the lab work of your {deg} degree{exp}'],
     [/\bpollution\b|\bwater quality\b|\benvironment\w* (?:officer|analyst|assistant)\b/i, 'pollution monitoring', 'pollution and water-quality monitoring relies on the chemistry of your {deg} degree{exp}']],
+  PHYSICS: [[/\b(?:junior |senior )?(?:scientific|science|technical) (?:officer|assistant)\b|\b(?:laboratory|lab) (?:officer|assistant|technician)\b/i, 'lab / scientific', 'scientific-assistant and lab posts use the measurement and instrumentation work of your {deg} degree{exp}'],
+    [/\bmeteorolog\w*|\bweather\b|\bseismolog\w*|\bobservator\w*/i, 'meteorology / observatory', 'meteorology and observatory posts are applied physics, the core of your {deg} degree{exp}'],
+    [/\bradiation (?:safety|physicist|officer)|\bradiolog\w* safety|\bnuclear\b/i, 'radiation / nuclear', 'radiation-safety and nuclear posts rest on the physics of your {deg} degree{exp}'],
+    [/\bresearch (?:officer|associate|fellow|assistant)\b|\bproject (?:associate|assistant|fellow)\b|\bjrf\b|\bsrf\b/i, 'research', 'research posts match the lab work of your {deg} degree{exp}'],
+    [/\bquality (?:control|assurance)\b|\bstandards?\b|\bcalibration\b|\bmetrolog\w*/i, 'quality / standards', 'quality, calibration and standards work uses the measurement science of your {deg} degree{exp}']],
+  LIFE: [[/\bplant protection\b|\bagricultur\w* (?:officer|extension|development)\b|\bhorticultur\w* (?:officer|development)\b|\bseed (?:officer|inspector|analyst)|\bherbari\w*|\bnursery\b/i, 'plant science / agriculture', 'plant-protection and agriculture posts use the plant science of your {deg} degree{exp}'],
+    [/\b(?:junior |senior )?(?:scientific|science|technical) (?:officer|assistant)\b|\b(?:laboratory|lab) (?:officer|assistant|technician)\b/i, 'lab / scientific', 'scientific-assistant and lab posts use the lab skills of your {deg} degree{exp}'],
+    [/\bresearch (?:officer|associate|fellow|assistant)\b|\bproject (?:associate|assistant|fellow)\b|\bjrf\b|\bsrf\b/i, 'research', 'research posts match the lab and field work of your {deg} degree{exp}'],
+    [/\bforest\w*|\bwildlife\b|\bbiodiversity\b|\bzoo\b|\bfisher\w*|\bsericultur\w*/i, 'forest / wildlife / fisheries', 'forest, wildlife and fisheries posts build on the biology of your {deg} degree{exp}'],
+    [/\bfood (?:analyst|safety officer)|\bquality (?:control|assurance)\b|\bpublic health\b|\bmicrobiolog\w*/i, 'food / quality / health', 'food-safety, quality and public-health lab posts use the biology of your {deg} degree{exp}']],
   ENGINEERING: [[/\bpolicy\b|\bregulatory\b/i, 'technical policy', 'technical policy and regulation work draws on your {deg} degree{exp}'],
     [/\bproject (?:manager|officer)|\bplanning officer\b/i, 'projects / planning', 'project and planning work uses your {deg} degree{exp}'],
     [/\btechnical officer\b|\bquality (?:assurance|control)\b|\bqc\b|\bsafety officer\b/i, 'technical / QA / safety', 'QA, safety and technical posts use your {deg} degree{exp}'],
@@ -254,6 +318,11 @@ export function userTier(prof?: Profile | null): Tier | null {
 export function floorBlocks(p: { title: string; eligibility: string; eduTags?: string[]; pay?: string; facts?: NoticeFacts }, prof?: Profile | null, ownProfession = false): string | null {
   const tier = userTier(prof); if (!tier || tier === 'school') return null;
   const f = factsOf(p); const lv = postLevelOf(f);
+  // Graduate floor (spec rule 2 / table 5), no title exemptions (an "Analyst" with a 10+2 minimum is still a 12th-level post):
+  // a 10th / 12th minimum, or pay below Level 6 / Rs 35,400, is below a degree holder's floor. Hidden unless "Show all levels".
+  if (f.minEdu !== null && f.minEdu <= 2 && !f.essential.includes('DIPLOMA')) return `the notice's minimum is ${f.minEdu >= 2 ? '12th' : '10th'} pass, below your degree`;
+  const pi = payInfo(p.pay || ''); const lowPay = pi.level !== undefined ? pi.level < 6 : pi.basicMax !== undefined ? pi.basicMax < 35400 : false;
+  if (!ownProfession && lowPay) return 'pay below Level 6 / Rs 35,400, the floor for a graduate';
   if (lv === 'officer') return tier === 'senior' && /\b(trainee|apprentice|graduate engineer trainee|management trainee)\b/i.test(p.title) ? 'fresh-graduate trainee post' : null;
   if (lv === 'support') return LEVEL_WHY(f);
   if (ownProfession) return null;

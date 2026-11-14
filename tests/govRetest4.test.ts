@@ -122,10 +122,11 @@ test('soft preferred wordings never make LLB essential; the Masters requirement 
 });
 
 // ---------- 4. Age: missing limit / DOB keeps the label with a sub-note; other unknowns still Check ----------
-test('missing age limit or DOB keeps Strong / Eligible / Related and adds "Age limit not stated — check notice"', () => {
-  const lo = S('Law Officer', { eligibility: 'LLB', pay: 'Level 10' }); const m = matchLabel(lo, P.lawyer, T); assert.equal(m.label, 'strong'); assert.match(m.why.join(' '), /Age limit not stated — check notice/);
-  assert.equal(matchLabel(S('Law Officer', { eligibility: 'LLB', pay: 'Level 10', maxAge: 40 }), { ...P.lawyer, dob: '' }, T).label, 'strong');
+test('missing age limit or DOB: Strong needs a confirmed age (r6 HIGH 3): "Eligible, verify age"; Related stays Related with the note', () => {
+  const lo = S('Law Officer', { eligibility: 'LLB', pay: 'Level 10' }); const m = matchLabel(lo, P.lawyer, T); assert.equal(m.label, 'eligible'); assert.match(m.why.join(' '), /Eligible, verify age \(not stated in the notice\)/);
+  assert.equal(matchLabel(S('Law Officer', { eligibility: 'LLB', pay: 'Level 10', maxAge: 40 }), { ...P.lawyer, dob: '' }, T).label, 'eligible');
   assert.match(matchLabel(S('Law Officer', { eligibility: 'LLB', pay: 'Level 10', maxAge: 40 }), { ...P.lawyer, dob: '' }, T).why.join(' '), /add your date of birth/);
+  assert.equal(matchLabel(S('Law Officer', { eligibility: 'LLB', pay: 'Level 10', maxAge: 40 }), P.lawyer, T).label, 'strong');
   const co = S('Compliance Officer', { eligibility: 'Graduate in any discipline', pay: 'Level 8' }); assert.equal(matchLabel(co, P.lawyer, T).label, 'related'); assert.match(why(co, 'lawyer'), /Related fit: .*Age limit not stated/);
   // other unknown essentials still Check
   assert.equal(matchLabel(S('Law Officer', { eligibility: '', pay: 'Level 10' }), P.lawyer, T).label, 'check', 'qualification unknown');
@@ -157,8 +158,9 @@ test('CA override: "CA/CMA Inter or MBA" is not a CA requirement; named CA is', 
     const p = S('Finance Controller', { eligibility: e, pay: 'Level 11', maxAge: 40 }); const l = lab(p, 'ca'); assert.equal(HOPE.includes(l), ok, `${e} -> ${l}`); }
   assert.deepEqual(qualsIn('CA/CMA Inter or MBA'), ['CA_INTER', 'MBA']);
 });
-test('Research Analyst (Entry), Intermediate pass, Rs 22,000: shown to a BSc graduate as Eligible, not Check; sub-graduate analyst posts with structure stay hidden', () => {
-  const ra = S('Research Analyst (Entry)', { eligibility: 'Intermediate pass', pay: 'Rs 22,000 per month' }); assert.ok(['eligible', 'related'].includes(lab(ra, 'bsc')), lab(ra, 'bsc'));
+test('Research Analyst (Entry), Intermediate pass, Rs 22,000 (r6 HIGH 4, no analyst exemption): hidden for a BSc by default, shown under Show all levels', () => {
+  const ra = S('Research Analyst (Entry)', { eligibility: 'Intermediate pass', pay: 'Rs 22,000 per month' }); assert.equal(lab(ra, 'bsc'), 'HIDDEN');
+  assert.equal(govResults([ra], { ...F, allLevels: true, adv: advFromProfile(P.bsc) }, P.bsc, [], T).list.length, 1);
   for (const [t, e, pay] of [['Junior Data Analyst', 'Higher Secondary with computer knowledge', 'Level 3'], ['Analyst Assistant', 'Matriculation', 'Level 2'], ['Laboratory Analyst Helper', '10th pass', '']]) assert.deepEqual(DEG.filter((k) => lab(S(t, { eligibility: e, pay }), k) !== 'HIDDEN'), [], t);
 });
 

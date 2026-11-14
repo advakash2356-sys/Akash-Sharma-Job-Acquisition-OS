@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { govResults, advFromProfile, qualFits } from '../src/lib/gov/filter';
-import { eligibilityBadge, matchLabel, profileFit, profileSortKey, compareKeys, relatedFit } from '../src/lib/gov/rank';
+import { eligibilityBadge, matchLabel, profileFit, profileSortKey, compareKeys, relatedFit, subjectExact } from '../src/lib/gov/rank';
 import { experienceGate } from '../src/lib/gov/gates';
 import { noticeTypeFromPdf, noticeTypeOf, parseNotice, postLevelOf, qualsIn, splitEligibility, titleClass } from '../src/lib/gov/notice';
 import { mergeFacts } from '../server/govNoticeRead';
@@ -25,7 +25,7 @@ const P: Record<string, Profile> = {
 };
 let n = 0; const S = (title: string, x: any = {}) => ({ id: 'v' + ++n, title, org: 'Govt body', location: '', eligibility: '', state: 'All India', lesserKnown: false, official: true, lastDate: '2026-12-10', pay: '', vacancies: '', level: 'central', eduTags: [], ...x });
 const F = { q: '', state: '', lesser: false, official: false, soon: false, deputation: false, sort: 'rank', allLevels: false };
-const run = (posts: any[], pr: Profile) => govResults(posts, { ...F, adv: advFromProfile(pr) }, pr, [], T).list;
+const run = (posts: any[], pr: Profile, all = false) => govResults(posts, { ...F, allLevels: all, adv: advFromProfile(pr) }, pr, [], T).list;
 const DEG = ['lawyer', 'engineer', 'envMSc', 'mbbs', 'ca'];
 const shownTo = (p: any, who = DEG) => who.filter((k) => run([p], P[k]).length);
 
@@ -65,7 +65,10 @@ const SHOW: [string, string, string, string][] = [['Laboratory Assistant', 'B.Sc
   // held-out officer heads containing a low-level word
   ['Security Officer', 'Graduate', 'Level 7', 'bsc'], ['Deputy Commandant (Home Guards)', 'Graduate', 'Level 11', 'bsc'], ['सहायक अभियंता (आईटी)', 'B.E. / B.Tech in Computer Science', 'Level 10', 'engineer'], ['Driving Licence Inspector', 'Graduate', 'Level 6', 'bsc']];
 test('floor: officer heads and degree-minimum posts stay visible to the matching degree holder (never hidden on title words)', () => {
-  for (const [t, e, pay, who] of SHOW) assert.equal(run([S(t, { eligibility: e, pay })], P[who]).length, 1, `${t} / ${who}`);
+  // r6 HIGH 4: pay below Level 6 / Rs 35,400 is below a graduate's floor (own-profession posts keep their pay exemption)
+  const payFloor = (t: string, e: string, pay: string, who: string) => (/^matriculation|^10th|^12th/i.test(e) || (/Level [1-5]\b/i.test(pay) && !profileFit(S(t, { eligibility: e, pay }), P[who]).field));
+  for (const [t, e, pay, who] of SHOW.filter(([t, e, pay, who]) => payFloor(t, e, pay, who))) { assert.equal(run([S(t, { eligibility: e, pay })], P[who]).length, 0, `${t} / ${who} hidden by default`); assert.equal(run([S(t, { eligibility: e, pay })], P[who], true).length, 1, `${t} / ${who} under Show all levels`); }
+  for (const [t, e, pay, who] of SHOW.filter(([t, e, pay, who]) => !payFloor(t, e, pay, who))) assert.equal(run([S(t, { eligibility: e, pay })], P[who]).length, 1, `${t} / ${who}`);
   for (const t of ['सहायक संचालक (मत्स्य)', 'संयुक्त संचालक, अभियोजन', 'संचालक मंडल सदस्य', 'परिचालन प्रबंधक', 'स्टाफ नर्स (परिचारिका)']) assert.equal(titleClass(t) === 'support', false, t);
   // Pharmacist (D.Pharm / B.Pharm) is hidden for an MBBS by design: the notice's essential degree is pharmacy, which the profile does not hold.
   assert.equal(run([S('Pharmacist', { eligibility: 'D.Pharm / B.Pharm', pay: 'Level 5' })], P.mbbs).length, 0);
@@ -181,7 +184,9 @@ test('discovery: broader Related roles for a lawyer, a CA, an MBBS and an engine
 test('Env Sci: subject-exact posts rank above Related posts (r3_v F)', () => {
   const env = [S('Policy Consultant', { eligibility: 'Masters degree', pay: 'Rs 80,000 per month', maxAge: 40 }), S('GIS Analyst', { eligibility: 'Masters in any discipline', pay: 'Level 8', maxAge: 40 }), S('Environmental Officer', { eligibility: 'M.Sc Environmental Science', pay: 'Level 7', maxAge: 40 }),
     S('Assistant Environmental Engineer', { eligibility: 'B.E. Environmental / M.Sc Environmental Science', pay: 'Level 8', maxAge: 40 }), S('Scientist B', { eligibility: 'M.Sc in Environmental Sciences / Ecology', pay: 'Level 10', maxAge: 35 }), S('Research Associate', { eligibility: 'PG in Science', pay: 'Rs 58,000 per month', maxAge: 40 }), S('Pollution Control Officer', { eligibility: 'Masters in Environmental Science or Chemistry', pay: 'Level 8', maxAge: 40 })];
-  const labels = run(env, P.envMSc).map((p: any) => matchLabel(p, P.envMSc, T).label); const firstRel = labels.indexOf('related'); assert.ok(firstRel > 0); assert.ok(labels.slice(firstRel).every((l) => l === 'related'));
+  // r6: a subject-exact science post may carry the "Related fit" label (science adjacent roles), but subject-exact posts still rank first
+  const list = run(env, P.envMSc); const exact = list.map((p: any) => subjectExact(p, P.envMSc)); const firstNon = exact.indexOf(false);
+  assert.ok(firstNon > 0); assert.ok(exact.slice(firstNon).every((x: boolean) => !x)); assert.ok(list.slice(firstNon).every((p: any) => matchLabel(p, P.envMSc, T).label === 'related'));
 });
 test('12th pass: a small Related list at their own level only (r3_v G)', () => {
   const G: [any, boolean][] = [[S('Lower Division Clerk', { eligibility: '12th pass', pay: 'Level 2' }), true], [S('Data Entry Operator', { eligibility: '12th pass', pay: 'Rs 20,000 per month' }), true], [S('Junior Court Assistant', { eligibility: '12th pass', pay: 'Level 4' }), true],

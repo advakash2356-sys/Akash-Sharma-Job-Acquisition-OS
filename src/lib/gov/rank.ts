@@ -1,7 +1,7 @@
 // Ranking and eligibility hints for live postings (playbook §2 and §6, simplified). Not legal advice. Akash Sync Agent.
 import { ageOn, type Profile } from '../govJobs';
 import { factsOf, postLevelOf, qualGate, essentialSummary, EXP_NAME, type NoticeFacts } from './notice';
-import { RELATED, directMatch, requiredPart, postDiscs, PROFESSIONAL, type Disc, disciplineGate, domicileGate, experienceGate, floorBlocks, licenceGate, payBelow, payInfo, relaxYears, userDiscs, DISC_NAME } from './gates';
+import { RELATED, directMatch, requiredPart, postDiscs, PROFESSIONAL, type Disc, disciplineGate, subjectGate, domicileGate, experienceGate, floorBlocks, licenceGate, payBelow, payInfo, relaxYears, userDiscs, DISC_NAME } from './gates';
 export interface RankInput { lastDate: string; lesserKnown: boolean; pay: string; vacancies: string; official: boolean; title: string; org: string; eligibility: string; state: string; level?: string; employmentType?: string; maxAge?: number; minAge?: number; eduTags?: string[]; facts?: NoticeFacts }
 export const daysLeft = (d: string, today = new Date().toISOString().slice(0, 10)) => Math.ceil((Date.parse(d) - Date.parse(today)) / 864e5);
 /** 0-100ish: urgency (closing within 14 days), lesser-known boost, data quality, keyword relevance. */
@@ -24,8 +24,8 @@ export const BADGE_TEXT: Record<Badge, string> = { likely: 'Likely eligible: che
  *  experience years AND type, licence / enrolment, age, domicile) is compared with the profile. A stated condition that clearly
  *  fails gives "maynot" (hidden unless "Show all levels"); any condition not stated in the notice or not answered in the profile
  *  becomes a named check (label "Check notice", never Strong or Eligible). */
-export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new Date().toISOString().slice(0, 10)): { badge: Badge; why: string[]; checks: string[]; notes: string[] } {
-  const why: string[] = []; const checks: string[] = []; const fails: string[] = []; const notes: string[] = [];
+export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new Date().toISOString().slice(0, 10)): { badge: Badge; why: string[]; checks: string[]; notes: string[]; ageConfirmed?: boolean } {
+  const why: string[] = []; const checks: string[] = []; const fails: string[] = []; const notes: string[] = []; let ageConfirmed = false;
   if (p.employmentType === 'deputation') return { badge: 'maynot', why: ['Deputation posts are only for serving government employees.'], checks, notes };
   const fit = prof ? profileFit(p, prof) : null;
   if (fit?.belowLevel) return { badge: 'maynot', why: [`${fit.floor === 'pay' ? 'Pay below your minimum pay level' : `Junior / entry-level post (${fit.floor})`}: below your ${prof!.expYears ? `${prof!.expYears} yrs experience and ` : ''}${prof!.spec === 'law' ? 'law degree' : prof!.spec ? `${prof!.spec} degree` : 'graduate'} profile. Hidden unless you tick "Show all levels".`], checks, notes };
@@ -39,7 +39,9 @@ export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new
   const gate = (g: { ok: boolean | null; why?: string }) => { if (g.ok === false) fails.push(g.why!); else if (g.ok) { if (g.why) why.push(g.why); } else if (g.why) checks.push(strip(g.why)); };
   // Essential qualification (satisfaction against the person's degrees), then discipline, licence, experience, domicile.
   gate(qualGate(f, prof));
-  const dg = disciplineGate(p, prof); if (dg.ok === true) why.push(`Degree match: ${dg.need.map((d) => DISC_NAME[d]).slice(0, 2).join(' / ')}.`); else gate(dg);
+  // Subject (whole terms, compound subjects first) before the discipline family: a specific required subject must be the profile's.
+  const sg = subjectGate(p, prof); gate(sg);
+  const dg = disciplineGate(p, prof); if (dg.ok === true) { if (sg.ok !== true) why.push(`Degree match: ${dg.need.map((d) => DISC_NAME[d]).slice(0, 2).join(' / ')}.`); } else if (!(sg.ok === true && dg.need.every((d) => !PROFESSIONAL.includes(d)))) gate(dg);
   gate(licenceGate(p, prof)); gate(experienceGate(p, prof)); gate(domicileGate(p, prof));
   // Age with statutory relaxation (category relaxation needs the recruiting state's domicile for state posts).
   // Age alone never downgrades the label (an unstated age limit is common): it becomes a sub-note on the card.
@@ -50,14 +52,14 @@ export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new
     const age = ageOn(prof.dob, p.lastDate || today);
     const stateMismatch = p.level === 'state' && prof.state && p.state && p.state !== 'All India' && p.state.toLowerCase() !== prof.state.toLowerCase();
     const r = relaxYears(prof, !stateMismatch); const relax = r.years;
-    if (f.ageMax !== null) { const cap = f.ageMax + relax; if (age > cap) fails.push(`Your age on the last date is about ${age}; stated limit ${f.ageMax}${relax ? ` (+${relax} relaxation, ${r.note} = ${cap})` : ''}.`); else why.push(`Age ${age}: ${cap - age} yr margin under ${f.ageMax}${relax ? ` + ${relax} (${r.note})` : ''}.`); }
+    if (f.ageMax !== null) { const cap = f.ageMax + relax; if (age > cap) fails.push(`Your age on the last date is about ${age}; stated limit ${f.ageMax}${relax ? ` (+${relax} relaxation, ${r.note} = ${cap})` : ''}.`); else { ageConfirmed = true; why.push(`Age ${age}: ${cap - age} yr margin under ${f.ageMax}${relax ? ` + ${relax} (${r.note})` : ''}.`); } }
     else if (!f.ageUnreadable) notes.push('Upper age limit not stated — check notice.');
     if (f.ageMin !== null && age < f.ageMin) fails.push(`Minimum age ${f.ageMin}.`);
   }
   if (fit?.field) why.push(`Matches your ${prof!.spec} background.`);
   if (fit && isExperienced(prof) && fit.tier === 'senior' && !fails.length) why.push('Officer / specialist level post: suits your experience.');
   if (fails.length) return { badge: 'maynot', why: fails, checks, notes };
-  return { badge: checks.length ? 'verify' : 'likely', why: why.length ? why : ['Age or qualification not stated in the feed text.'], checks, notes };
+  return { badge: checks.length ? 'verify' : 'likely', why: why.length ? why : ['Age or qualification not stated in the feed text.'], checks, notes, ageConfirmed };
 }
 // ---- Profile fit (t326u): experience, degree and career level drive "Best match". Uses only the posting's own text. ----
 export type Tier = 'junior' | 'mid' | 'senior';
@@ -163,7 +165,7 @@ export function relatedRole(title: string, prof: Profile | null): { d: string; r
  *  Returns the one-line reason, or null. Never offered for below-floor posts, when a hard gate fails, or (for 10th / 12th / ITI) for officer posts. */
 export function relatedFit(p: RankInput, prof: Profile | null, today?: string): string | null {
   if (!prof) return null; const fit = profileFit(p, prof); if (fit.field || fit.belowLevel) return null;
-  const school = !!SCHOOL_EDU[prof.edu]; if (!school && fit.tier === 'junior') return null; if (subjectExact(p, prof)) return null;
+  const school = !!SCHOOL_EDU[prof.edu]; if (!school && fit.tier === 'junior') return null;
   const f = factsOf(p);
   // 12th pass / 10th / ITI: only posts at their own level (pay level 5 or below, basic under Rs 35,400), never officer or degree posts.
   if (school) { const lv = f.payLevel ?? undefined; if ((lv !== undefined && lv >= 6) || (f.basic !== null && f.basic >= 35400) || /\bgrade[- ]?['"]?a\b/i.test(p.title)) return null;
@@ -193,6 +195,10 @@ export function matchLabel(p: RankInput, prof: Profile | null, today?: string): 
   // Any essential condition unknown (not in the notice text, or not answered in the profile): Check notice, naming the clause.
   if (e.checks.length) { const role = !fit?.field && prof ? relatedRole(p.title, prof) : null;
     return { label: 'check', why: [...own, ...(role ? [`Adjacent role (${role.role}) for your background, but not confirmed yet.`] : []), `Check notice: verify ${e.checks.slice(0, 3).map((c) => c.replace(/\.+$/, '')).join('; ')}.`, ...rest] }; }
+  // Strong needs every hard condition confirmed, the age limit included (spec table 7): with the age not stated in the notice (or no
+  // date of birth saved) an exact-profession post is at most "Eligible, verify age".
+  if (fit?.field && !e.ageConfirmed) { const v = prof!.dob ? 'verify age (not stated in the notice)' : 'verify age (add your date of birth)';
+    return { label: 'eligible', why: [...own, `Eligible, ${v}${trade.length ? `; ${trade.join('; ')}` : ''}.`, ...rest.filter((w) => !/^Age (?:limit|not checked)|^Upper age limit/.test(w))] }; }
   if (fit?.field) return trade.length ? { label: 'eligible', why: [...own, `Eligible: ${trade.join('; ')}.`, ...rest] } : { label: 'strong', why: [...own, ...rest] };
   const rel = relatedFit(p, prof, today);
   if (rel) return { label: 'related', why: [rel, ...(trade.length ? [`Trade-off: ${trade.join('; ')}.`] : []), ...rest] };

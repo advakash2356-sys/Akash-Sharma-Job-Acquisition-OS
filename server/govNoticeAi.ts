@@ -5,17 +5,22 @@
  * caches it per notice. Akash Sync Agent.
  */
 import { asGeminiFacts, isOfficialPdfUrl, NOTICE_PROMPT, NOTICE_SCHEMA, type GeminiFacts } from "../src/lib/gov/noticeAi.js";
+import { assertPublicHost, pinnedFetch, resolveHost, type Resolver } from "./safeFetch.js";
 
 const MAX_BYTES = 6 * 1024 * 1024;
 const MAX_HOPS = 3;
 /** Fetches an official notice PDF. Redirects are followed by hand (redirect: 'manual'), at most 3 hops, and every hop's URL is
- * re-validated with isOfficialPdfUrl, so a redirect can never take the server off an official https .gov.in / .nic.in PDF. */
-export async function fetchPdf(url: string, ms = 8000, fetchImpl: typeof fetch = fetch): Promise<Uint8Array | null> {
+ * re-validated with isOfficialPdfUrl, so a redirect can never take the server off an official https .gov.in / .nic.in PDF.
+ * Before every hop the host is resolved and refused if any address is private / loopback / link-local (v4 and v6); the default
+ * transport (pinnedFetch) re-checks the address at connect time. A caller that injects its own transport (tests) passes its own
+ * resolver; by default the DNS check runs whenever the real network transport is used. */
+export async function fetchPdf(url: string, ms = 8000, fetchImpl: typeof fetch = pinnedFetch, resolve: Resolver | null = fetchImpl === pinnedFetch ? resolveHost : null): Promise<Uint8Array | null> {
   if (!isOfficialPdfUrl(url)) return null; // official PDFs only
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
   try {
     let cur = url; let r: Response | null = null;
     for (let hop = 0; ; hop++) {
+      if (resolve) await assertPublicHost(new URL(cur).hostname, resolve);
       r = await fetchImpl(cur, { signal: ctl.signal, redirect: "manual", headers: { "User-Agent": "JAOS-gov-feed/1.0 (+https://akash-sharma-job-acquisition-os.vercel.app)", Accept: "application/pdf" } });
       if (r.status < 300 || r.status >= 400) break;
       const loc = r.headers.get("location"); if (!loc || hop >= MAX_HOPS) return null;

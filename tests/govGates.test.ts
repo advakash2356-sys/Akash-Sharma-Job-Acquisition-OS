@@ -62,7 +62,7 @@ test('level floor by tier: professionals never see constable / home guard / agni
   const low = ['Constable (Legal Cell)', 'Home Guard', 'Agniveer (General Duty)', 'Data Entry Operator', 'Lower Division Clerk', 'Peon', 'MTS', 'Staff Car Driver'].map((t) => P(t));
   for (const p of low) { assert.equal(profileFit(p, lawyer).belowLevel, true, p.title); assert.notEqual(matchLabel(p, lawyer, T).label, 'strong', p.title); }
   for (const t of ['Home Guard', 'Agniveer (General Duty)', 'Forest Guard', 'Office Attendant']) assert.equal(profileFit(P(t), grad).belowLevel, true, t);
-  assert.equal(profileFit(P('Lower Division Clerk', { eduTags: ['12TH'] }), grad).belowLevel, false, 'graduates may still take LDC');
+  assert.equal(profileFit(P('Lower Division Clerk', { eduTags: ['12TH'] }), grad).belowLevel, true, 'r6 HIGH 4: a 12th-minimum post is below a graduate\'s floor (Show all levels brings it back)');
   assert.equal(profileFit(P('Law Clerk-cum-Research Assistant', { eduTags: ['LAW'] }), lawyer).belowLevel, false);
   assert.equal(userTier(lawyer), 'professional'); assert.equal(userTier(grad), 'graduate'); assert.equal(userTier({ ...base, edu: '12' }), 'school');
   assert.equal(profileFit(P('Peon'), { ...base, edu: '10' }).belowLevel, false);

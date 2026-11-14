@@ -73,9 +73,9 @@ test('M4: engineering branch gate (CSE is not Civil / Environmental); Scientist 
   assert.equal(branchGate(je, { ...cse, subject: 'B.Tech' }).ok, null, 'unknown branch is a check, not a fail');
 });
 
-test('M5 (retest 4): an unstated age limit keeps the label and adds the sub-note "Age limit not stated — check notice"', () => {
+test('M5 (retest 6 HIGH 3): an unstated age limit caps an exact-profession post at "Eligible, verify age"; a stated one is Strong', () => {
   const lo = P('Law Officer', { org: 'Coal India Limited', level: 'psu', eligibility: 'LLB', pay: 'E2 Rs 50,000 - 1,60,000' });
-  const m = matchLabel(lo, lawyer, T); assert.equal(m.label, 'strong'); assert.match(m.why.join(' '), /Age limit not stated — check notice/);
+  const m = matchLabel(lo, lawyer, T); assert.equal(m.label, 'eligible'); assert.match(m.why.join(' '), /Eligible, verify age \(not stated in the notice\)/);
   assert.equal(matchLabel({ ...lo, maxAge: 35 }, lawyer, T).label, 'strong');
 });
 
@@ -214,11 +214,13 @@ test('retest2 M1: structural floor (Group D / Class IV / चतुर्थ श�
   // Group C / Class III / level 2-5: blocked only when the minimum is below graduation.
   const gc12 = P('Assistant (Group C)', { pay: 'Level 4', eligibility: '12th pass with typing' }); const gcGrad = P('Assistant (Group C)', { pay: 'Level 4', eligibility: 'Graduate in any discipline' });
   for (const p of DEG) { assert.equal(profileFit(gc12, p).belowLevel, true, p.subject); }
-  assert.equal(profileFit(gcGrad, { ...base, spec: '', subject: 'BA History' }).belowLevel, false, 'graduate-minimum Group C is not blocked for a general graduate');
+  assert.equal(profileFit(gcGrad, { ...base, spec: '', subject: 'BA History' }).belowLevel, true, 'r6 HIGH 4: Level 4 pay is below the graduate floor (Level 6 / Rs 35,400)');
+  assert.equal(profileFit({ ...gcGrad, pay: 'Level 6' }, { ...base, spec: '', subject: 'BA History' }).belowLevel, false, 'graduate-minimum post at Level 6 is shown');
   assert.equal(profileFit(P('तृतीय श्रेणी सहायक', { eligibility: 'इंटरमीडिएट उत्तीर्ण' }), env3).belowLevel, true);
-  // Officer posts are never blocked by the structural gate.
-  for (const x of [P('Section Officer (Group C)', { pay: 'Level 5', eligibility: '12th pass' }), P('Inspector, Class III', { eligibility: '12th pass' }), P('Assistant Engineer', { pay: 'Level 10', eligibility: 'B.E. Civil; candidates must know Hindi at matric level' })])
-    assert.equal(profileFit(x, civil).belowLevel, false, x.title);
+  // r6 HIGH 4: no title exemptions: an "officer" title with a 12th minimum or Level 5 pay is below a degree holder's floor;
+  // a subject named "at matric level" is not the post's minimum.
+  for (const x of [P('Section Officer (Group C)', { pay: 'Level 5', eligibility: '12th pass' }), P('Inspector, Class III', { eligibility: '12th pass' })]) assert.equal(profileFit(x, civil).belowLevel, true, x.title);
+  assert.equal(profileFit(P('Assistant Engineer', { pay: 'Level 10', eligibility: 'B.E. Civil; candidates must know Hindi at matric level' }), civil).belowLevel, false);
 });
 test('retest2 M2: whole-token matching: चालक never matches inside संचालक; Director posts are shown', () => {
   const dirs = [P('सहायक संचालक (कृषि)', { level: 'state', pay: 'Level 10' }), P('उप संचालक, लोक अभियोजन', { level: 'state', pay: 'Level 11' }), P('संचालक, पर्यावरण नियोजन', { level: 'state', pay: 'Level 13' })];

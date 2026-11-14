@@ -45,7 +45,7 @@ test('lawyer: every open law post appears, ranked first, and zero peon / MTS / c
   // hidden = below-level posts + posts whose stated essential the lawyer fails (BE/BTech, nursing): no false hope.
   assert.equal(r.hidden, JUNIOR.length + OTHER.length);
   assert.deepEqual(titles(r.list.slice(0, LAW.length)).sort(), titles(LAW).sort(), 'law posts rank above non-law posts');
-  for (const p of LAW) assert.notEqual(matchLabel(p, lawyer, T).label, 'eligible', p.title); // profession posts are Strong match or Check notice
+  for (const p of LAW) { const m = matchLabel(p, lawyer, T); assert.ok(m.label !== 'eligible' || /verify age/.test(m.why.join(' ')), p.title); } // profession posts: Strong, Check, or Eligible only while the age is unconfirmed (r6 HIGH 3)
   assert.equal(matchLabel(LAW[3], lawyer, T).label, 'strong'); assert.match(matchLabel(LAW[3], lawyer, T).why[0], /law post/);
   // No false hope: with 6 years the HJS post (7 years' practice, a STATED essential) is hidden, and shown with the reason under Show all levels.
   const six = { ...lawyer, expYears: 6 }; assert.ok(!titles(govResults(ALL, F, six, [], T).list).includes(LAW[1].title));
