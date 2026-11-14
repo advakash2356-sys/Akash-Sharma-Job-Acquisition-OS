@@ -3,15 +3,18 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, Select } from './ui';
 import { usePersisted } from '../lib/persist';
 import { downloadText } from '../lib/exportResult';
-import { ADV0, EMP, QUALS, SECTORS, TIERS, advCount, advFromProfile, govResults, type Adv } from '../lib/gov/filter';
+import { ADV0, EMP, QUALS, SECTORS, TIERS, advCount, advFromProfile, govResults, hasDetails, type Adv } from '../lib/gov/filter';
+import { lawStreams } from '../lib/gov/gates';
 import { LABEL_TEXT, matchLabel, profileOverlap } from '../lib/gov/rank';
 import type { Cat, Profile } from '../lib/govJobs';
 import { classify } from '../lib/onestop/category';
+import { aiReadNotice, needsAiRead } from '../lib/gov/noticeAi';
+
 /** t345u: split age-capped cadre exams from all-age lateral / consultant / Young Professional roles. */
 export const govTrack = (p: { title: string; org: string; employmentType?: string }) => (p.employmentType && /contractual|deputation|fellowship/.test(p.employmentType)) || classify({ title: p.title, company: p.org, gov: true }) === 'gov-lateral' ? 'lateral' : 'cadre';
 
 /** Live government job POSTINGS (not just exams): last date, state, pay, vacancies, official notice. Akash Sync Agent. */
-export interface GovPosting { id: string; title: string; org: string; state: string; location: string; lastDate: string; startDate?: string; pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; applyUrl?: string; postedAt: string; source: string; lesserKnown: boolean; verifiedAt: string; level?: string; employmentType?: string; trust?: string; maxAge?: number; minAge?: number; eduTags?: string[] }
+export interface GovPosting { id: string; title: string; org: string; state: string; location: string; lastDate: string; startDate?: string; pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; applyUrl?: string; postedAt: string; source: string; lesserKnown: boolean; verifiedAt: string; level?: string; employmentType?: string; trust?: string; dateKind?: 'last' | 'listing'; maxAge?: number; minAge?: number; eduTags?: string[] }
 interface Feed { postings: GovPosting[]; checkedAt: string; warnings: string[]; sources: string[] }
 const daysLeft = (d: string) => Math.ceil((Date.parse(d) - Date.parse(new Date().toISOString().slice(0, 10))) / 864e5);
 const fmt = (d: string) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '');
@@ -27,10 +30,24 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
   useEffect(() => { if (!f.auto && profile && (profile.dob || profile.state)) applyMine(); }, [profile?.dob, profile?.state]); // eslint-disable-line react-hooks/exhaustive-deps
   const load = async () => { setBusy(true); setErr(''); try { const r = await fetch('/api/gov/postings', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); setFeed(j); } catch (e: any) { setErr(`The official government portals and feeds are temporarily slow or under maintenance (${e.message}). Servers are busiest near closing hours (5 pm to midnight IST); try again in the morning. The eligibility checker below still works.`); } finally { setBusy(false); } };
   useEffect(() => { load(); }, []);
+  // Scanned / unreadable notices: read with the signed-in user's OWN Gemini key only (cached per notice in this browser).
+  // Without a key they stay "Check notice: scanned notice, verify manually".
+  const [aiRead, setAiRead] = useState(0);
+  useEffect(() => {
+    if (!feed) return; const todo = feed.postings.filter(needsAiRead).slice(0, 12); if (!todo.length) return; let stop = false;
+    (async () => {
+      const [{ getUserApiKey }, { getSession }, { callAi }] = await Promise.all([import('../lib/userApiKey'), import('../lib/googleAuth'), import('../lib/api')]);
+      if (!getUserApiKey() || !getSession()) return;
+      const deps = { key: getUserApiKey, signedIn: () => !!getSession(), call: (url: string) => callAi('read-notice', { url }, { timeoutMs: 40000 }), store: typeof localStorage === 'undefined' ? null : localStorage };
+      let n = 0; for (const p of todo) { if (stop) return; const r = await aiReadNotice(p, deps); if (r && !stop) { n++; setFeed((cur) => cur && { ...cur, postings: cur.postings.map((x) => (x.id === r.id ? r : x)) }); } } if (!stop) setAiRead(n); })();
+    return () => { stop = true; };
+  }, [feed?.checkedAt]); // eslint-disable-line react-hooks/exhaustive-deps
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
   const [track, setTrack] = useState<'all' | 'cadre' | 'lateral'>('all');
-  const res = govResults(feed?.postings || [], f, profile, keywords); const hidden = res.hidden;
-  const eff = profile ? { ...profile, cat: adv.cat || profile.cat } : null;
+  // t386u L3: a first-time visitor with no details is not silently treated as a graduate: show everything, with a prompt.
+  const mine = hasDetails(profile) ? profile! : null;
+  const res = govResults(feed?.postings || [], f, mine, keywords); const hidden = res.hidden; const far = res.far;
+  const eff = mine ? { ...mine, cat: adv.cat || mine.cat } : null;
   const list = res.list.filter((p) => track === 'all' || govTrack(p) === track);
   const chip = (on: boolean, label: string, onClick: () => void, id?: string) => <button type="button" key={label} aria-pressed={on} onClick={onClick} data-testid={id} className={`min-h-9 cursor-pointer rounded-full border px-3 py-1 text-sm ${on ? 'border-primary bg-accent text-primary' : 'border-border hover:bg-muted'}`}>{label}</button>;
   const csv = () => downloadText('gov-postings.csv', ['title,org,state,location,last_date,pay,vacancies,notice'].concat(list.map((p) => [p.title, p.org, p.state, p.location, p.lastDate, p.pay, p.vacancies, p.noticeUrl].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','))).join('\n'), 'text/csv');
@@ -82,21 +99,24 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
       </div>
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Government track" data-testid="gov-track-tabs">
         {([['all', 'All government'], ['cadre', 'Cadre exams (age-capped)'], ['lateral', 'Lateral / Consultant / Young Professional (all ages)']] as const).map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={track === k} onClick={() => setTrack(k)} className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${track === k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>{label} · {(feed?.postings || []).filter((p) => k === 'all' || govTrack(p) === k).length}</button>))}
+          <button key={k} role="tab" aria-selected={track === k} onClick={() => setTrack(k)} className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${track === k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>{label} · {res.list.filter((p) => k === 'all' || govTrack(p) === k).length}</button>))}
       </div>
-      {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} posts far below your qualification (peon, MTS, clerk, driver, Group C/D clerical) are hidden. Tick "Show all levels" in advanced search to see them.</p>}
-      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the labels:</b> they use your <b>profession</b> (professional degree), <b>education</b>, <b>date of birth</b>, <b>category</b> (and PwBD), <b>state</b> and <b>years of experience</b> from "Your details" below, saved only in this browser. <b>Strong match</b> = a post in your profession that nothing in the notice rules you out of. <b>Eligible</b> = the notice states both an age limit and a qualification and you meet them (standard OBC +3, SC/ST +5, PwBD +10 years). <b>Check notice</b> = something is missing from the notice text or you may not meet it; the reason is shown. Best match ranks by profession, then level fit, eligibility, pay, your state and days left. It is a hint, not legal advice.</p>
+      {feed && !mine && <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm" data-testid="gp-add-details">Showing <b>every</b> open post. Add your education, degree and date of birth in <a className="text-primary underline" href="#gov-details">Your details</a> below to see only posts at your level, ranked for you.</p>}
+      {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} posts are hidden: below your level or minimum pay (for example peon, MTS, driver, constable, home guard, agniveer, DEO, LDC/UDC for professional graduates; 10th / ITI-level posts for graduates), or the notice states an essential condition you do not meet (degree, years of experience, licence or age). Tick "Show all levels" in advanced search to see them with the reason.</p>}
+      {far > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-far">{far} posts in other states are left out because you ticked "Only near me". Untick it in your details to see them.</p>}
+      {feed && mine?.spec === 'law' && (() => { const st = lawStreams(res.list); const none = st.filter((x) => !x.n && !x.uncovered); const gap = st.filter((x) => !x.n && x.uncovered); return <p className="text-xs text-muted-foreground" data-testid="gp-law-streams"><b>Law posts open now:</b> {st.map((x) => `${x.name.split(' (')[0]} ${x.n}`).join(' · ')}.{none.length ? <> No open notice right now for: <b>{none.map((x) => x.name).join('; ')}</b>.</> : null}{gap.length ? <> Not yet covered by our official sources (check the PSU, bank and regulator career pages directly): <b>{gap.map((x) => x.name).join('; ')}</b>.</> : null} We do not pad this list with unrelated posts.</p>; })()}
+      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the labels:</b> they use your <b>profession</b> (professional degree), <b>education</b>, <b>date of birth</b>, <b>category</b> (and PwBD), <b>state</b>, <b>years and kind of experience</b> and licences from "Your details" below, saved only in this browser. <b>Strong match</b> = a post in your profession that nothing in the notice rules you out of, with the age limit confirmed. <b>Related fit</b> = a close, adjacent role (for example compliance, policy, research or analyst posts) that your degree and experience suit, at or above your level, and whose every essential condition the notice states you meet; the card names what the notice asks for and how you meet it. Listed after posts in your exact profession. <b>Eligible</b> = the notice states both an age limit and a qualification and you meet them (standard OBC +3, SC/ST +5, PwBD +10 / +13 / +15 years, Ex-SM service + 3; category relaxation for state posts needs that state's domicile). <b>Check notice</b> = an essential condition the notice does not state, or your details do not answer (for example "7 yrs litigation practice required; your profile shows corporate legal"), named on the card. Never Strong or Eligible while one is open. A post whose stated essential condition you clearly do not meet is hidden unless you tick "Show all levels". Strong match also needs your degree to match the post's discipline and the pay to meet your minimum pay level; Eligible names its trade-off (place, contract tenure). Best match ranks by profession, then level fit, eligibility, pay, your state and days left. With no details saved yet, cards say <b>Set up your profile to see your fit</b> (scanned or unclear notices still say Check notice). It is a hint, not legal advice.</p>
       {err && <p className="text-sm text-danger" role="alert">{err}</p>}
-      {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
+      {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{aiRead ? ` · ${aiRead} scanned notice${aiRead === 1 ? '' : 's'} read with your own Gemini key` : ''}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
       {!feed && !err && <div className="h-40 animate-pulse rounded-lg bg-muted" aria-label="Loading postings" />}
       <ul className="grid gap-3">{list.slice(0, 120).map((p) => { const left = daysLeft(p.lastDate); return (
         <li key={p.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-posting">
           <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="font-medium">{p.title}</div><div className="text-sm text-muted-foreground">{p.org}{p.location ? ` · ${p.location}` : ''}</div></div>
             <div className="flex flex-wrap gap-1">{p.lesserKnown && <Badge tone="primary">Lesser-known</Badge>}{p.level && <Badge tone="muted">{p.level}</Badge>}{p.employmentType && p.employmentType !== 'permanent' && <Badge tone="gold">{p.employmentType}</Badge>}<Badge tone={left <= 3 ? 'danger' : 'muted'}>{left <= 0 ? 'Closes today' : `${left} day${left === 1 ? '' : 's'} left`}</Badge></div></div>
           {(() => { const o = profileOverlap(p, keywords); return o.hits.length ? <p className="mt-1 text-xs text-muted-foreground" data-testid="gp-match">Matches your profile: {o.hits.join(', ')}</p> : null; })()}
-          {(() => { const e = matchLabel(p, eff); return <p className="mt-2 text-sm" data-testid="gp-elig"><Badge tone={e.label === 'strong' ? 'primary' : e.label === 'eligible' ? 'gold' : 'muted'}>{LABEL_TEXT[e.label]}</Badge> <span className="text-xs text-muted-foreground">{e.why.join(' ')}</span></p>; })()}
+          {(() => { const e = matchLabel(p, eff); return <p className="mt-2 text-sm" data-testid="gp-elig"><Badge tone={e.label === 'strong' ? 'primary' : e.label === 'eligible' || e.label === 'related' ? 'gold' : 'muted'}>{LABEL_TEXT[e.label]}</Badge> <span className="text-xs text-muted-foreground">{e.why.join(' ')}</span></p>; })()}
           <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-            <div><dt className="inline text-muted-foreground">Last date: </dt><dd className="inline font-medium" data-testid="gp-last">{fmt(p.lastDate)}</dd></div>
+            <div><dt className="inline text-muted-foreground">{p.dateKind === 'listing' ? 'Listing ends: ' : 'Last date: '}</dt><dd className="inline font-medium" data-testid="gp-last">{fmt(p.lastDate)}{p.dateKind === 'listing' ? <span className="text-muted-foreground" data-testid="gp-listing-note"> (confirm the last date in the notice)</span> : null}</dd></div>
             <div><dt className="inline text-muted-foreground">State: </dt><dd className="inline">{p.state || 'see notice'}</dd></div>
             <div><dt className="inline text-muted-foreground">Pay: </dt><dd className="inline">{p.pay || 'see notice'}</dd></div>
             <div><dt className="inline text-muted-foreground">Vacancies: </dt><dd className="inline">{p.vacancies || 'see notice'}</dd></div>

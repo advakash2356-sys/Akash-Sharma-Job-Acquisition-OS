@@ -1,5 +1,9 @@
 {
   "functions": {
+    "api/gov/postings.ts": {
+      "maxDuration": 60,
+      "regions": ["bom1"]
+    },
     "api/**/*.ts": {
       "maxDuration": 60
     }

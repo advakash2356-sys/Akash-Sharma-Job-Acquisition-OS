@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { readNoticeWithKey } from "./govNoticeAi.js";
 import { normalizeScore } from "../src/lib/matchScore.js";
 import { ACCENTS, SECTIONS, TEMPLATES, sanitizeSpec, todayIST } from "../src/lib/resumeStyle.js";
 
@@ -209,6 +210,12 @@ TRACKED JOBS:\n${tracked || "(none)"}\n\nITEMS:\n${items}`, {
       }
 
 export async function handleAction(action: string, body: Body, apiKey?: string) {
+  // Scanned government notices are read ONLY with the signed-in user's own key: never the server key.
+  if (action === "read-notice") {
+    if (!apiKey) throw new ApiError(400, "Add your own Gemini key in Settings to read scanned notices.", "NO_USER_KEY");
+    try { return { result: await readNoticeWithKey(String((body as any)?.url || ""), apiKey) }; }
+    catch (e: any) { if (e?.code === "NO_USER_KEY" || e?.code === "BAD_URL") throw new ApiError(400, e.message, e.code); throw explain(e); }
+  }
   const key = apiKey || process.env.GEMINI_API_KEY;
   if (!key) throw new ApiError(400, "No API key set. Add your free Gemini key in Settings.", "NO_API_KEY");
   if (action === "test-key") {

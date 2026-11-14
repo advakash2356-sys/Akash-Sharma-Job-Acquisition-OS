@@ -1,14 +1,18 @@
 import { CURATED_CHECKED, curatedPostings } from "./govCurated.js";
+import { EN_URL, ISRO_URL, S3_PATH, S3_SITES, fromEmploymentNews, fromIsro, fromS3waas, retireeNotice } from "./govOfficial.js";
 /**
  * Government job POSTINGS feed (public, read-only). Akash Sync Agent.
  * Sources, read on the server only (the browser talks to our own /api/gov/postings, so CSP gains no new origin):
  *  1) FreeHire public API (MIT project, keyless), Telegram-sourced Indian notices. Kept ONLY when the text carries an
  *     official .gov.in / .nic.in / s3waas.gov.in notification link AND a last date that has not passed.
  *  2) SarkariMap public RSS (documented as free for feed readers). Aggregator page, labelled as such; kept only with a future last date.
+ *  3) Official pages read directly (server/govOfficial.ts): Employment News, ISRO careers, District Courts (S3WaaS).
  * We read job facts only (title, organisation, place, dates, pay, vacancies, links). No personal contact data is kept:
  * emails and phone numbers are stripped from snippets. Nothing is invented: a missing field is shown as "see notice".
  */
 import { dmy } from "./govtFeed.js";
+import { factsOf, noticeTypeOf, parseNotice, type NoticeFacts } from "../src/lib/gov/notice.js";
+import { readNotices } from "./govNoticeRead.js";
 import { inDomain } from "../src/lib/gov/domain.js";
 
 const FH = "https://freehire.me/api/v1/jobs/search";
@@ -19,14 +23,15 @@ let cache: { at: number; out: GovFeed } | null = null;
 export interface GovPosting {
   id: string; title: string; org: string; state: string; location: string; lastDate: string; startDate?: string;
   pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; /** "site" = link is the body's careers/listing page, not the advert itself. */ linkKind?: "notice" | "site"; applyUrl?: string;
-  postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS" | "JAOS curated (official notice)"; lesserKnown: boolean; verifiedAt: string;
+  postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS" | "JAOS curated (official notice)" | "Employment News (Govt of India)" | "ISRO / Dept of Space careers (official)" | "District Courts (eCourts S3WaaS, official)"; lesserKnown: boolean; verifiedAt: string;
   /** Playbook §5 fields (best effort from the notice text; empty when not stated). */
-  level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; minAge?: number; maxAge?: number; eduTags?: string[];
+  level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; /** "listing" = the date the official page stops listing the notice (District Courts); confirm the last date in the notice. */ dateKind?: "last" | "listing"; minAge?: number; maxAge?: number; eduTags?: string[];
+  /** Structured facts read once per notice (rules and the notice PDF text; a user's own key may add more in the browser). The browser gates and ranks on these. */ facts?: NoticeFacts;
 }
 export type Level = "central" | "state" | "psu" | "autonomous" | "judiciary" | "defence" | "regulator" | "local";
 export type EmpType = "permanent" | "contractual" | "deputation" | "apprenticeship" | "fellowship";
 export function levelOf(t: string): Level {
-  if (/high court|supreme court|district court|tribunal|judicial/i.test(t)) return "judiciary";
+  if (/high court|supreme court|district court|sessions court|district & sessions|legal services authority|\bDLSA\b|tribunal|judicial/i.test(t)) return "judiciary";
   if (/\b(RBI|SEBI|IRDAI|PFRDA|NABARD|SIDBI|TRAI|CCI)\b/.test(t)) return "regulator";
   if (/\b(army|navy|air force|coast guard|territorial army|agniveer|BSF|CRPF|CISF|ITBP|SSB|assam rifles|ordnance)\b/i.test(t)) return "defence";
   if (/\b(limited|ltd|corporation|NTPC|ONGC|BHEL|IOCL|GAIL|SAIL|HAL|BEL|ECIL|NHPC|POWERGRID|BECIL|EdCIL|NPCC|bank)\b/i.test(t)) return "psu";
@@ -48,16 +53,28 @@ export function agesOf(t: string): { minAge?: number; maxAge?: number } {
   return m && +m[1] >= 18 && +m[1] <= 65 ? { maxAge: +m[1] } : {};
 }
 export function eduTagsOf(t: string): string[] {
-  const tags: [string, RegExp][] = [["10TH", /\b10th|matric|SSLC\b/i], ["12TH", /\b12th|intermediate|HSC\b/i], ["ITI", /\bITI\b/], ["DIPLOMA", /diploma/i], ["GRADUATE", /graduat|bachelor|degree\b/i], ["ENGINEERING", /B\.?\s?E\b|B\.?\s?Tech|engineering|GATE/i], ["LAW", /LL\.?B|\blaw\b|legal/i], ["MEDICAL", /MBBS|nursing|medical|B\.?Sc nursing|pharm/i], ["PG", /post ?graduat|master'?s|M\.?Sc|M\.?A\b|MBA|M\.?Tech|MCA/i], ["PHD", /Ph\.?\s?D/i]];
+  const tags: [string, RegExp][] = [["10TH", /\b10th|matric|SSLC\b/i], ["12TH", /\b12th|intermediate|HSC\b/i], ["ITI", /\bITI\b/], ["DIPLOMA", /diploma/i], ["GRADUATE", /graduat|bachelor|degree\b/i], ["ENGINEERING", /\bB\.\s?E\.?(?=[\s,/)]|$)|\bBE\b|\b[Bb]\.?\s?[Tt][Ee][Cc][Hh]\b|[Ee]ngineering|\bGATE\b(?!\s*KEEPER)/], ["LAW", /LL\.?B|\blaw\b|legal/i], ["MEDICAL", /MBBS|nursing|medical|B\.?Sc nursing|pharm/i], ["PG", /\bpost ?graduat|\bmaster'?s\b|\bM\.?\s?Sc\b|\bM\.?A\.?(?=[\s,/)]|$)|\bMBA\b|\bM\.?\s?Tech\b|\bMCA\b/i], ["PHD", /Ph\.?\s?D/i]];
   return tags.filter(([, re]) => re.test(t)).map(([k]) => k);
 }
+/** t386u M3: notices only for retired staff / re-employment of retirees are not openings for job seekers. */
+export { retireeNotice } from "./govOfficial.js";
+/** Compatibility for older harnesses: RETIREES.test(text) = a notice aimed at retired staff only. */
+export const RETIREES = { test: (t: string) => retireeNotice(t) };
 /** Playbook §7 scam heuristics: personal UPI/WhatsApp payment or fee-disguise wording. */
 export const SCAM = /@(okaxis|ybl|paytm|oksbi|okhdfcbank|okicici|upi)\b|whats ?app\s*(no|number|pe)|security deposit|training kit charge|laptop charge|confirmed (sarkari )?job without exam|joining fee/i;
 export function enrich(p: GovPosting, text: string): GovPosting | null {
   const all = `${p.title} ${p.org} ${text}`;
-  if (SCAM.test(all)) return null;
+  if (SCAM.test(all) || retireeNotice(`${p.title} ${p.eligibility}`)) return null;
+  // Not an open call by its title (a list, result, schedule or appointment letter): drop. "Recruitment of X" alone stays.
+  // S3 court rows: "unclear" (a recruitment title with no positive evidence) stays, labelled "Check notice: notice type unclear",
+  // until the PDF shows it is an open call. Other sources are official vacancy listings, so their recruitment titles are open calls.
+  const nt0 = noticeTypeOf(p.title); if (nt0 !== "open_call" && nt0 !== "other" && nt0 !== "unclear") return null;
+  const nt = nt0 === "unclear" && !p.id.startsWith("s3:") ? "open_call" : nt0;
   const tr = inDomain(p.noticeUrl).tier;
-  return { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
+  const e: GovPosting = { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
+  // Facts once per notice. A thin eligibility line falls back to the notice snippet; the PDF reader may refine S3 rows later.
+  const thin = !p.eligibility || /^qualification as stated/i.test(p.eligibility); const src = thin && text ? text.slice(0, 1500) : p.eligibility;
+  return { ...e, facts: p.facts ?? { ...factsOf({ ...e, eligibility: src, facts: undefined }), noticeType: nt } };
 }
 export interface GovFeed { postings: GovPosting[]; checkedAt: string; warnings: string[]; sources: string[] }
 
@@ -121,7 +138,7 @@ export function fromFreeHire(raw: any, today: string): GovPosting | null {
 }
 const unCdata = (s: string) => s.replace(/^<!\[CDATA\[|\]\]>$/g, "").trim();
 const tag = (it: string, t: string) => { const m = it.match(new RegExp(`<${t}>([\\s\\S]*?)</${t}>`)); return m ? unCdata(m[1]) : ""; }; // nosemgrep: detect-non-literal-regexp -- t is a fixed tag name
-const NOT_A_JOB = /\b(result|admit card|answer key|admission|time ?table|score ?card|syllabus|cut ?off|counselling|exam date|city slip)\b/i;
+export const NOT_A_JOB = /\b(result|admit card|answer key|admission|time ?table|score ?card|syllabus|cut ?off|counselling|exam date|city slip|(?:in)?eligib\w* list|merit list|select(?:ion)? list|wait(?:ing)? list|interview (?:list|schedule)|internship|intern\b|hall[- ]?tickets?|call[- ]?letters?|admit[- ]?cards?|answer[- ]?keys?)/i;
 export function fromRss(xml: string, today: string): GovPosting[] {
   return (xml.match(/<item>[\s\S]*?<\/item>/g) || []).flatMap((it) => {
     const title = tag(it, "title"), url = tag(it, "link"), d = strip(tag(it, "description"));
@@ -136,21 +153,51 @@ export function fromRss(xml: string, today: string): GovPosting[] {
   });
 }
 
-async function get(url: string, accept: string) {
-  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 9000);
-  try { const r = await fetch(url, { signal: ctl.signal, headers: { accept, "user-agent": "job-acquisition-os (gov postings reader)" } }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; }
-  catch (e: any) { throw new Error(e?.name === "AbortError" ? "no answer within 9 seconds" : e.message || "failed"); } finally { clearTimeout(timer); }
+/** Honest, identifiable user-agent with a contact page (some feeds refuse unknown bots). */
+export const UA = "Mozilla/5.0 (compatible; JobAcquisitionOS/1.0; +https://akash-sharma-job-acquisition-os.vercel.app/about)";
+async function get(url: string, accept: string, ms = 9000) {
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal, headers: { accept, "user-agent": UA, "accept-language": "en-IN,en;q=0.9" } }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; }
+  catch (e: any) { throw new Error(e?.name === "AbortError" ? `no answer within ${ms / 1000} seconds` : e.message || "failed"); } finally { clearTimeout(timer); }
+}
+/** Run tasks with at most n in flight (polite to small government servers). */
+async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
+  const out: PromiseSettledResult<R>[] = new Array(items.length); let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const k = i++; try { out[k] = { status: "fulfilled", value: await fn(items[k]) }; } catch (e: any) { out[k] = { status: "rejected", reason: e }; } } }));
+  return out;
+}
+/** District court pages change slowly: read them at most every 3 hours, so each court site gets <= 8 requests a day from us. */
+const S3_TTL = 3 * 60 * 60 * 1000; let s3cache: { at: number; posts: GovPosting[]; ok: number; failed: number; read?: { read: number; scanned: number; dropped: number } } | null = null;
+export async function officialPostings(today: string, now = Date.now()): Promise<{ posts: GovPosting[]; sources: string[]; warnings: string[] }> {
+  const posts: GovPosting[] = [], sources: string[] = [], warnings: string[] = [];
+  const [en, isro] = await Promise.allSettled([get(EN_URL, "text/html", 12000).then((r) => r.text()), get(ISRO_URL, "text/html", 12000).then((r) => r.text())]);
+  if (en.status === "fulfilled") { posts.push(...fromEmploymentNews(en.value, today)); sources.push("Employment News, Govt of India (official vacancy table)"); } else warnings.push(`Employment News: ${en.reason?.message}`);
+  if (isro.status === "fulfilled") { posts.push(...fromIsro(isro.value, today)); sources.push("ISRO / Dept of Space careers (official)"); } else warnings.push(`ISRO careers: ${isro.reason?.message}`);
+  if (!s3cache || now - s3cache.at > S3_TTL) {
+    const res = await pool(S3_SITES, 12, async (s) => fromS3waas(await (await get(`https://${s.host}${S3_PATH}`, "text/html", 8000)).text(), s, today));
+    const ok = res.filter((r) => r.status === "fulfilled"); const fresh = { at: now, posts: ok.flatMap((r) => (r as PromiseFulfilledResult<GovPosting[]>).value), ok: ok.length, failed: res.length - ok.length };
+    // Read each listed notice once (PDF text layer; no server AI key) and drop non-open notices. Scanned ones are flagged.
+    if (fresh.ok) { const r = await readNotices(fresh.posts.filter((p) => p.lastDate >= today), 25000).catch(() => null); if (r) { fresh.posts = r.posts; (fresh as any).read = { read: r.read, scanned: r.scanned, dropped: r.dropped }; } }
+    if (fresh.ok || !s3cache) s3cache = fresh;
+  }
+  const live = s3cache.posts.filter((p) => p.lastDate >= today); posts.push(...live);
+  if (s3cache.read) sources.push(`District Court notices read from the official PDF text: ${s3cache.read.read}; scanned or unreadable (Check notice): ${s3cache.read.scanned}; ${s3cache.read.dropped} non-open notices removed`);
+  if (s3cache.ok) sources.push(`District Courts recruitment pages, eCourts S3WaaS (official; ${s3cache.ok} of ${S3_SITES.length} courts read)`);
+  if (s3cache.failed) warnings.push(`District Courts: ${s3cache.failed} of ${S3_SITES.length} court sites did not answer`);
+  return { posts, sources, warnings };
 }
 
 export async function govPostings(now = Date.now()): Promise<GovFeed> {
   if (cache && now - cache.at < TTL) return cache.out;
   const today = new Date(now).toISOString().slice(0, 10); const warnings: string[] = []; const out: GovPosting[] = []; const sources: string[] = [];
+  const officialP = officialPostings(today, now).catch((e: any) => ({ posts: [] as GovPosting[], sources: [] as string[], warnings: [`Official pages: ${e?.message || "failed"}`] })); // runs alongside the feeds below
   const qs = ["Recruitment 2026", "Last Date", "Apply Online notification", "Vacancy", "Posts", "Notification"];
   const fh = await Promise.allSettled(qs.map((q) => get(`${FH}?${new URLSearchParams({ q, source: "telegram", countries: "IN", sort: "posted_at", limit: "100" })}`, "application/json").then((r) => r.json())));
   let fhOk = false;
   fh.forEach((r, i) => { if (r.status === "rejected") { warnings.push(`FreeHire "${qs[i]}": ${r.reason?.message}`); return; } fhOk = true; for (const raw of (r.value as any)?.data || []) { const p = fromFreeHire(raw, today); const e = p && enrich(p, strip(String(raw?.description || ""))); if (e) out.push(e); } });
   if (fhOk) sources.push("FreeHire public API (Telegram-sourced Indian notices with official links)");
   try { for (const p of fromRss(await (await get(RSS, "application/rss+xml")).text(), today)) { const e = enrich(p, p.eligibility); if (e) out.push(e); } sources.push("SarkariMap public RSS (aggregator)"); } catch (e: any) { warnings.push(`SarkariMap RSS: ${e.message}`); }
+  { const o = await officialP; for (const p of o.posts) { const e = enrich(p, p.eligibility); if (e) out.push(e); } sources.push(...o.sources); warnings.push(...o.warnings); }
   { const cur = curatedPostings(today); for (const p of cur) { const e = enrich(p, p.eligibility); if (e) out.push(e); } if (cur.length) sources.push(`JAOS curated lesser-known official notices (checked ${CURATED_CHECKED})`); }
   const seen = new Set<string>(); const postings = out.filter((p) => { const k = `${p.title}|${p.org}|${p.lastDate}`.toLowerCase(); if (seen.has(k) || seen.has(p.id)) return false; seen.add(k); seen.add(p.id); return true; })
     .sort((a, b) => a.lastDate.localeCompare(b.lastDate) || Number(b.official) - Number(a.official)).slice(0, 300);
