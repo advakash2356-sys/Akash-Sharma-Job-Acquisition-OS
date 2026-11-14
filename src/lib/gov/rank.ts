@@ -24,33 +24,38 @@ export const BADGE_TEXT: Record<Badge, string> = { likely: 'Likely eligible: che
  *  experience years AND type, licence / enrolment, age, domicile) is compared with the profile. A stated condition that clearly
  *  fails gives "maynot" (hidden unless "Show all levels"); any condition not stated in the notice or not answered in the profile
  *  becomes a named check (label "Check notice", never Strong or Eligible). */
-export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new Date().toISOString().slice(0, 10)): { badge: Badge; why: string[]; checks: string[] } {
-  const why: string[] = []; const checks: string[] = []; const fails: string[] = [];
-  if (p.employmentType === 'deputation') return { badge: 'maynot', why: ['Deputation posts are only for serving government employees.'], checks };
+export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new Date().toISOString().slice(0, 10)): { badge: Badge; why: string[]; checks: string[]; notes: string[] } {
+  const why: string[] = []; const checks: string[] = []; const fails: string[] = []; const notes: string[] = [];
+  if (p.employmentType === 'deputation') return { badge: 'maynot', why: ['Deputation posts are only for serving government employees.'], checks, notes };
   const fit = prof ? profileFit(p, prof) : null;
-  if (fit?.belowLevel) return { badge: 'maynot', why: [`${fit.floor === 'pay' ? 'Pay below your minimum pay level' : `Junior / entry-level post (${fit.floor})`}: below your ${prof!.expYears ? `${prof!.expYears} yrs experience and ` : ''}${prof!.spec === 'law' ? 'law degree' : prof!.spec ? `${prof!.spec} degree` : 'graduate'} profile. Hidden unless you tick "Show all levels".`], checks };
-  if (!prof) return { badge: 'verify', why: ['Add your details below to get a hint.'], checks };
+  if (fit?.belowLevel) return { badge: 'maynot', why: [`${fit.floor === 'pay' ? 'Pay below your minimum pay level' : `Junior / entry-level post (${fit.floor})`}: below your ${prof!.expYears ? `${prof!.expYears} yrs experience and ` : ''}${prof!.spec === 'law' ? 'law degree' : prof!.spec ? `${prof!.spec} degree` : 'graduate'} profile. Hidden unless you tick "Show all levels".`], checks, notes };
+  if (!prof) return { badge: 'verify', why: ['Add your details below to get a hint.'], checks, notes };
   const f = factsOf(p); const strip = (w: string) => w.replace(/^Check notice: /, '').replace(/\.$/, '');
+  // A recruitment title with no positive evidence of an open call (and no readable PDF that shows one): never an open post.
+  // A scanned / unreadable notice (no text layer, and not read with the user's own key) is never Strong / Eligible / Related.
+  if (f.pdf === 'scanned' || f.pdf === 'unreadable') checks.push('scanned notice, verify manually (the official PDF has no readable text; add your own Gemini key in Settings to have it read)');
+  else if (f.noticeType === 'unclear') checks.push('notice type unclear (the title names a recruitment but shows no application invitation, last date or vacancies; open the notice to confirm it is an open call and not a list, test or result)');
   const gate = (g: { ok: boolean | null; why?: string }) => { if (g.ok === false) fails.push(g.why!); else if (g.ok) { if (g.why) why.push(g.why); } else if (g.why) checks.push(strip(g.why)); };
   // Essential qualification (satisfaction against the person's degrees), then discipline, licence, experience, domicile.
   gate(qualGate(f, prof));
   const dg = disciplineGate(p, prof); if (dg.ok === true) why.push(`Degree match: ${dg.need.map((d) => DISC_NAME[d]).slice(0, 2).join(' / ')}.`); else gate(dg);
   gate(licenceGate(p, prof)); gate(experienceGate(p, prof)); gate(domicileGate(p, prof));
   // Age with statutory relaxation (category relaxation needs the recruiting state's domicile for state posts).
-  if (!prof.dob) checks.push('add your date of birth to check the age limit');
-  else if (f.ageMax === null && f.ageMin === null) checks.push('the age limit (not in the feed text)');
+  // Age alone never downgrades the label (an unstated age limit is common): it becomes a sub-note on the card.
+  if (!prof.dob) notes.push('Age not checked — add your date of birth.');
+  else if (f.ageMax === null && f.ageMin === null) notes.push('Age limit not stated — check notice.');
   else {
     const age = ageOn(prof.dob, p.lastDate || today);
     const stateMismatch = p.level === 'state' && prof.state && p.state && p.state !== 'All India' && p.state.toLowerCase() !== prof.state.toLowerCase();
     const r = relaxYears(prof, !stateMismatch); const relax = r.years;
     if (f.ageMax !== null) { const cap = f.ageMax + relax; if (age > cap) fails.push(`Your age on the last date is about ${age}; stated limit ${f.ageMax}${relax ? ` (+${relax} relaxation, ${r.note} = ${cap})` : ''}.`); else why.push(`Age ${age}: ${cap - age} yr margin under ${f.ageMax}${relax ? ` + ${relax} (${r.note})` : ''}.`); }
-    else checks.push('the upper age limit (not in the feed text)');
+    else notes.push('Upper age limit not stated — check notice.');
     if (f.ageMin !== null && age < f.ageMin) fails.push(`Minimum age ${f.ageMin}.`);
   }
   if (fit?.field) why.push(`Matches your ${prof!.spec} background.`);
   if (fit && isExperienced(prof) && fit.tier === 'senior' && !fails.length) why.push('Officer / specialist level post: suits your experience.');
-  if (fails.length) return { badge: 'maynot', why: fails, checks };
-  return { badge: checks.length ? 'verify' : 'likely', why: why.length ? why : ['Age or qualification not stated in the feed text.'], checks };
+  if (fails.length) return { badge: 'maynot', why: fails, checks, notes };
+  return { badge: checks.length ? 'verify' : 'likely', why: why.length ? why : ['Age or qualification not stated in the feed text.'], checks, notes };
 }
 // ---- Profile fit (t326u): experience, degree and career level drive "Best match". Uses only the posting's own text. ----
 export type Tier = 'junior' | 'mid' | 'senior';
@@ -71,7 +76,7 @@ export function payFacts(pay: string): { level?: number; basic?: number } {
 /** Senior = Group A/B, Gazetted, Level 10+ or basic >= Rs 56,100 when pay is known; otherwise only clear officer-grade titles. "Manager"/"supervisor" alone is not enough. */
 export function tierOf(p: Pick<RankInput, 'title' | 'org' | 'eligibility' | 'pay'> & { eduTags?: string[] }): Tier {
   const f = factsOf(p as RankInput); const lv = postLevelOf(f);
-  if (lv === 'support' || lv === 'subgrad') return 'junior';
+  if (lv === 'support' || lv === 'low' || lv === 'subgrad') return 'junior';
   if (f.group === 'A' || f.group === 'B') return 'senior';
   if (lv === 'officer' && ((f.payLevel ?? 0) >= 10 || (f.basic ?? 0) >= 56100)) return 'senior';
   const t = `${p.title} ${p.eligibility} ${p.pay}`;
@@ -90,7 +95,7 @@ export const isExperienced = (prof?: Profile | null) => !!prof && (prof.expYears
 export { requiredPart } from './gates';
 export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; tier: Tier; field: boolean; belowLevel: boolean; subjects?: string[]; floor?: string } {
   // org name never counts (t326u NO-GO); a menial title (e.g. "DLSA Driver", "Constable (Legal Cell)") is never a profession match, except a Law Clerk.
-  const tier = tierOf(p); const lv = postLevelOf(factsOf(p)); const menial = (lv === 'support' || lv === 'subgrad' || lv === 'clerical' || /\bpara[- ]?legal\b/i.test(p.title)) && !/law clerk|legal assistant/i.test(p.title);
+  const tier = tierOf(p); const lv = postLevelOf(factsOf(p)); const menial = (lv === 'support' || lv === 'low' || lv === 'subgrad' || lv === 'clerical' || /\bpara[- ]?legal\b/i.test(p.title)) && !/law clerk|legal assistant/i.test(p.title);
   const dg = prof ? disciplineGate(p, prof) : null;
   // Exact profession = the core title is the profession, or the notice REQUIRES the profession for a title that is not an adjacent role.
   // A degree named only as "preferred" / "desirable" never makes a post exact (it may still be a Related fit).
@@ -162,7 +167,7 @@ export function relatedFit(p: RankInput, prof: Profile | null, today?: string): 
   if (school) { const lv = f.payLevel ?? undefined; if ((lv !== undefined && lv >= 6) || (f.basic !== null && f.basic >= 35400) || /\bgrade[- ]?['"]?a\b/i.test(p.title)) return null;
     if (f.isOfficer || fit.tier === 'senior' || (f.minEdu !== null && f.minEdu > (EDU_RANK[prof.edu] || 0))) return null; }
   // Degree holders: never a 12th-pass / diploma-level post as Related fit (Data Analyst (Junior), Level 4, 12th pass).
-  if (!school) { const lv = postLevelOf(f); if (lv === 'support' || lv === 'subgrad' || lv === 'clerical') return null; }
+  if (!school) { const lv = postLevelOf(f); if (lv === 'support' || lv === 'low' || lv === 'subgrad' || lv === 'clerical') return null; }
   const r = relatedRole(p.title, prof); if (!r || (school !== (r.d === 'SCHOOL'))) return null;
   // No false hope: a Related fit must meet every ESSENTIAL condition the notice states, with nothing left unknown.
   if (eligibilityBadge(p, prof, today).badge !== 'likely') return null;
@@ -180,7 +185,7 @@ export function matchLabel(p: RankInput, prof: Profile | null, today?: string): 
   const e = eligibilityBadge(p, prof, today); const fit = prof ? profileFit(p, prof) : null; const trade = tradeOffs(p, prof);
   if (e.badge === 'maynot') return { label: 'check', why: ['May not qualify:', ...e.why] };
   const own = fit?.field ? [`${/^[aeiou]/i.test(PROF_NAME[prof!.spec || ''] || prof!.spec || '') ? 'An' : 'A'} ${PROF_NAME[prof!.spec || ''] || prof!.spec} post, your profession.`] : [];
-  const rest = e.why.filter((w) => !/^Matches your/.test(w));
+  const rest = [...e.why.filter((w) => !/^Matches your/.test(w)), ...e.notes];
   // Any essential condition unknown (not in the notice text, or not answered in the profile): Check notice, naming the clause.
   if (e.checks.length) { const role = !fit?.field && prof ? relatedRole(p.title, prof) : null;
     return { label: 'check', why: [...own, ...(role ? [`Adjacent role (${role.role}) for your background, but not confirmed yet.`] : []), `Check notice: verify ${e.checks.slice(0, 3).map((c) => c.replace(/\.+$/, '')).join('; ')}.`, ...rest] }; }

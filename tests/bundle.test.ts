@@ -178,8 +178,8 @@ test('gov rank + eligibility badge: urgency, lesser-known, three states only', (
   const p: any = { lastDate: '2026-11-05', lesserKnown: true, pay: 'Level 7', vacancies: '10', official: true, title: 'Assistant', org: 'SEBI', eligibility: '', state: 'Delhi', maxAge: 30, eduTags: ['GRADUATE'] };
   assert.ok(rankScore(p, [], '2026-11-01') > rankScore({ ...p, lesserKnown: false, lastDate: '2026-12-30' }, [], '2026-11-01'));
   const prof: any = { dob: '1995-01-01', edu: 'grad', cat: 'OBC', pwbd: false, state: 'Delhi' }; assert.equal(relaxation(prof), 3);
-  assert.equal(eligibilityBadge(p, prof, '2026-11-01').badge, 'likely'); assert.equal(eligibilityBadge({ ...p, maxAge: 25 }, prof).badge, 'maynot');
-  assert.equal(eligibilityBadge({ ...p, maxAge: undefined, eduTags: [] }, prof).badge, 'verify'); assert.equal(eligibilityBadge({ ...p, employmentType: 'deputation' }, prof).badge, 'maynot'); });
+  assert.equal(eligibilityBadge(p, prof, '2026-11-01').badge, 'verify', 'qualification only inferred from tags'); assert.equal(eligibilityBadge({ ...p, eligibility: 'Graduate' }, prof, '2026-11-01').badge, 'likely'); assert.equal(eligibilityBadge({ ...p, maxAge: 25 }, prof).badge, 'maynot');
+  assert.equal(eligibilityBadge({ ...p, title: 'Research Associate', maxAge: undefined, eduTags: [] }, prof).badge, 'verify'); assert.equal(eligibilityBadge({ ...p, eligibility: 'Graduate', maxAge: undefined }, prof, '2026-11-01').badge, 'likely', 'age alone never downgrades'); assert.equal(eligibilityBadge({ ...p, employmentType: 'deputation' }, prof).badge, 'maynot'); });
 import { filterPostings } from '../src/lib/gov/filter';
 test('gov fixtures: deputation hidden by default and shown when toggled; scam postings dropped', () => {
   const base = { title: 'Stenographer', org: 'Ministry X', location: 'Delhi', eligibility: '', state: 'Delhi', lesserKnown: false, official: true, lastDate: '2026-12-01' };

@@ -77,7 +77,9 @@ export interface Search extends Filter { sort: string; allLevels?: boolean; adv?
 export function govResults<T extends AdvPost>(list: T[], f: Search, prof?: Profile | null, keywords: string[] = [], today?: string): { list: T[]; hidden: number; far: number } {
   const pr = withCat(prof, f.adv || {});
   const showAll = !!f.allLevels || !!f.adv?.tiers?.includes('junior');
-  const base = advancedFilter(filterPostings(list, f, today), f.adv || {}, prof, today);
+  // A notice read (PDF / the user's own key) as a list, test, result, appointment or retired-only notice is never shown, even under Show all levels.
+  const open = list.filter((p) => { const t = (p as { facts?: { noticeType?: string } }).facts?.noticeType; return !t || t === 'open_call' || t === 'unclear' || t === 'other'; });
+  const base = advancedFilter(filterPostings(open, f, today), f.adv || {}, prof, today);
   // t386u L3: "Only near me" (relocate = false) really filters: posts tied to another state are left out (All India / unstated stay).
   const near = pr?.relocate === false ? base.filter((p) => placeScore(p, pr) > 0) : base;
   // Count only out-of-state posts that would otherwise be shown (not ones the level floor already hides).

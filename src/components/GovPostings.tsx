@@ -8,6 +8,8 @@ import { lawStreams } from '../lib/gov/gates';
 import { LABEL_TEXT, matchLabel, profileOverlap } from '../lib/gov/rank';
 import type { Cat, Profile } from '../lib/govJobs';
 import { classify } from '../lib/onestop/category';
+import { aiReadNotice, needsAiRead } from '../lib/gov/noticeAi';
+
 /** t345u: split age-capped cadre exams from all-age lateral / consultant / Young Professional roles. */
 export const govTrack = (p: { title: string; org: string; employmentType?: string }) => (p.employmentType && /contractual|deputation|fellowship/.test(p.employmentType)) || classify({ title: p.title, company: p.org, gov: true }) === 'gov-lateral' ? 'lateral' : 'cadre';
 
@@ -28,6 +30,18 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
   useEffect(() => { if (!f.auto && profile && (profile.dob || profile.state)) applyMine(); }, [profile?.dob, profile?.state]); // eslint-disable-line react-hooks/exhaustive-deps
   const load = async () => { setBusy(true); setErr(''); try { const r = await fetch('/api/gov/postings', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); setFeed(j); } catch (e: any) { setErr(`The official government portals and feeds are temporarily slow or under maintenance (${e.message}). Servers are busiest near closing hours (5 pm to midnight IST); try again in the morning. The eligibility checker below still works.`); } finally { setBusy(false); } };
   useEffect(() => { load(); }, []);
+  // Scanned / unreadable notices: read with the signed-in user's OWN Gemini key only (cached per notice in this browser).
+  // Without a key they stay "Check notice: scanned notice, verify manually".
+  const [aiRead, setAiRead] = useState(0);
+  useEffect(() => {
+    if (!feed) return; const todo = feed.postings.filter(needsAiRead).slice(0, 12); if (!todo.length) return; let stop = false;
+    (async () => {
+      const [{ getUserApiKey }, { getSession }, { callAi }] = await Promise.all([import('../lib/userApiKey'), import('../lib/googleAuth'), import('../lib/api')]);
+      if (!getUserApiKey() || !getSession()) return;
+      const deps = { key: getUserApiKey, signedIn: () => !!getSession(), call: (url: string) => callAi('read-notice', { url }, { timeoutMs: 40000 }), store: typeof localStorage === 'undefined' ? null : localStorage };
+      let n = 0; for (const p of todo) { if (stop) return; const r = await aiReadNotice(p, deps); if (r && !stop) { n++; setFeed((cur) => cur && { ...cur, postings: cur.postings.map((x) => (x.id === r.id ? r : x)) }); } } if (!stop) setAiRead(n); })();
+    return () => { stop = true; };
+  }, [feed?.checkedAt]); // eslint-disable-line react-hooks/exhaustive-deps
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
   const [track, setTrack] = useState<'all' | 'cadre' | 'lateral'>('all');
   // t386u L3: a first-time visitor with no details is not silently treated as a graduate: show everything, with a prompt.
@@ -93,7 +107,7 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
       {feed && mine?.spec === 'law' && (() => { const st = lawStreams(res.list); const none = st.filter((x) => !x.n && !x.uncovered); const gap = st.filter((x) => !x.n && x.uncovered); return <p className="text-xs text-muted-foreground" data-testid="gp-law-streams"><b>Law posts open now:</b> {st.map((x) => `${x.name.split(' (')[0]} ${x.n}`).join(' · ')}.{none.length ? <> No open notice right now for: <b>{none.map((x) => x.name).join('; ')}</b>.</> : null}{gap.length ? <> Not yet covered by our official sources (check the PSU, bank and regulator career pages directly): <b>{gap.map((x) => x.name).join('; ')}</b>.</> : null} We do not pad this list with unrelated posts.</p>; })()}
       <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the labels:</b> they use your <b>profession</b> (professional degree), <b>education</b>, <b>date of birth</b>, <b>category</b> (and PwBD), <b>state</b>, <b>years and kind of experience</b> and licences from "Your details" below, saved only in this browser. <b>Strong match</b> = a post in your profession that nothing in the notice rules you out of, with the age limit confirmed. <b>Related fit</b> = a close, adjacent role (for example compliance, policy, research or analyst posts) that your degree and experience suit, at or above your level, and whose every essential condition the notice states you meet; the card names what the notice asks for and how you meet it. Listed after posts in your exact profession. <b>Eligible</b> = the notice states both an age limit and a qualification and you meet them (standard OBC +3, SC/ST +5, PwBD +10 / +13 / +15 years, Ex-SM service + 3; category relaxation for state posts needs that state's domicile). <b>Check notice</b> = an essential condition the notice does not state, or your details do not answer (for example "7 yrs litigation practice required; your profile shows corporate legal"), named on the card. Never Strong or Eligible while one is open. A post whose stated essential condition you clearly do not meet is hidden unless you tick "Show all levels". Strong match also needs your degree to match the post's discipline and the pay to meet your minimum pay level; Eligible names its trade-off (place, contract tenure). Best match ranks by profession, then level fit, eligibility, pay, your state and days left. It is a hint, not legal advice.</p>
       {err && <p className="text-sm text-danger" role="alert">{err}</p>}
-      {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
+      {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{aiRead ? ` · ${aiRead} scanned notice${aiRead === 1 ? '' : 's'} read with your own Gemini key` : ''}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
       {!feed && !err && <div className="h-40 animate-pulse rounded-lg bg-muted" aria-label="Loading postings" />}
       <ul className="grid gap-3">{list.slice(0, 120).map((p) => { const left = daysLeft(p.lastDate); return (
         <li key={p.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-posting">

@@ -87,7 +87,7 @@ export function fromS3waas(html: string, site: S3Site, today: string): GovPostin
     const all = `${title} ${desc}`;
     // Only open calls: lists, interview calls, roll numbers, schedules, application status, appointment letters and
     // retired-only notices are not. "Recruitment of X" alone is weak evidence, kept only when nothing marks it as one of those.
-    if (!end || end < today || noticeTypeOf(all) !== "open_call" || NOT_OPEN.test(all)) continue;
+    if (!end || end < today || !["open_call", "unclear"].includes(noticeTypeOf(all)) || NOT_OPEN.test(all)) continue;
     // Long-running listings (e.g. a 2023 process kept up until 2034) are not current openings.
     if (start && (Date.parse(today) - Date.parse(start)) / 864e5 > 120) continue;
     if ((Date.parse(end) - Date.parse(today)) / 864e5 > 400) continue;

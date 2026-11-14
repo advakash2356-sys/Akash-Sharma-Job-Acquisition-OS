@@ -12,7 +12,7 @@ const LAW = [
   P('Civil Judge (Junior Division) / PCS-J', { org: 'Uttar Pradesh Public Service Commission', state: 'Uttar Pradesh', level: 'state', eligibility: 'LLB, enrolled as an advocate', eduTags: ['LAW'], maxAge: 35 }),
   P('Higher Judicial Service (HJS) direct recruitment', { org: 'High Court of Delhi', level: 'judiciary', eligibility: '7 years practice as an advocate', eduTags: ['LAW'] }),
   P('Assistant Public Prosecutor', { org: 'Delhi Subordinate Services Selection Board', level: 'state', state: 'Delhi', eduTags: ['LAW'], maxAge: 30 }),
-  P('Law Officer', { org: 'Coal India Limited', level: 'psu', pay: 'Rs 60,000 - 1,80,000', eduTags: ['LAW'], maxAge: 40 }),
+  P('Law Officer', { org: 'Coal India Limited', level: 'psu', pay: 'Rs 60,000 - 1,80,000', eligibility: 'Degree in Law (LLB)', eduTags: ['LAW'], maxAge: 40 }),
   P('Specialist Officer (Law) SO-Law', { org: 'Bank of Baroda', level: 'psu', eduTags: ['LAW', 'GRADUATE'] }),
   P('Legal Assistant', { org: 'Ministry of Law and Justice', level: 'central', eligibility: 'Degree in Law' }),
   P('Standing Counsel', { org: 'Income Tax Department', level: 'central', employmentType: 'contractual' }),

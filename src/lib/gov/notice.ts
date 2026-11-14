@@ -2,17 +2,20 @@
 // qualification gates and ranking read only these fields, never raw title words. Pure and deterministic: the server
 // may refine the same fields from the notice PDF (text or Gemini) and ship them with the posting. Akash Sync Agent.
 
-export type NoticeType = 'open_call' | 'result_list' | 'admit_schedule' | 'appointment' | 'retiree_only' | 'other';
+/** unclear = the title names a recruitment but shows no positive evidence of an open call (applications invited, last date, vacancies,
+ *  advertisement); shown only as "Check notice: notice type unclear", never as an open post. */
+export type NoticeType = 'open_call' | 'unclear' | 'result_list' | 'admit_schedule' | 'appointment' | 'retiree_only' | 'other';
 export type Qual = 'VIII' | 'X' | 'ITI' | 'XII' | 'DIPLOMA' | 'GRAD' | 'BA' | 'BSC' | 'BCOM' | 'LLB' | 'BE' | 'MBBS' | 'BDS' | 'NURSING' | 'PHARM' | 'CA' | 'CA_INTER' | 'CMA' | 'CS' | 'BED'
   | 'PG' | 'MA' | 'MSC' | 'MCOM' | 'MBA' | 'LLM' | 'ME' | 'MD' | 'MPH' | 'NET' | 'PHD';
 /** Kind of experience a notice asks for, and the person's own kinds (one-time profile). */
-export type ExpType = 'litigation' | 'judicial' | 'corporate_legal' | 'clinical' | 'public_health' | 'teaching' | 'research' | 'audit_accounts' | 'engineering' | 'administrative' | 'any';
-export const EXP_NAME: Record<ExpType, string> = { litigation: 'litigation / court practice', judicial: 'judicial service', corporate_legal: 'corporate / in-house legal', clinical: 'clinical (hospital)', public_health: 'public health', teaching: 'teaching', research: 'research', audit_accounts: 'audit / accounts', engineering: 'engineering (design / construction / maintenance)', administrative: 'administration', any: 'relevant' };
-export const EXP_SHORT: Record<ExpType, string> = { litigation: 'litigation', judicial: 'judicial', corporate_legal: 'corporate legal', clinical: 'clinical', public_health: 'public health', teaching: 'teaching', research: 'research', audit_accounts: 'audit / accounts', engineering: 'engineering', administrative: 'administrative', any: '' };
+export type ExpType = 'litigation' | 'judicial' | 'corporate_legal' | 'clinical' | 'public_health' | 'teaching' | 'research' | 'audit_accounts' | 'taxation' | 'engineering' | 'software' | 'administrative' | 'other' | 'any';
+export const EXP_NAME: Record<ExpType, string> = { litigation: 'litigation / court practice', judicial: 'judicial service', corporate_legal: 'corporate / in-house legal', clinical: 'clinical (hospital)', public_health: 'public health', teaching: 'teaching', research: 'research', audit_accounts: 'audit / accounts', taxation: 'taxation (direct tax / GST)', engineering: 'engineering (design / construction / maintenance)', software: 'software development / IT', administrative: 'administration', other: 'other (as stated)', any: 'relevant' };
+export const EXP_SHORT: Record<ExpType, string> = { litigation: 'litigation', judicial: 'judicial', corporate_legal: 'corporate legal', clinical: 'clinical', public_health: 'public health', teaching: 'teaching', research: 'research', audit_accounts: 'audit / accounts', taxation: 'taxation', engineering: 'engineering', software: 'software development', administrative: 'administrative', other: '', any: '' };
 export type Licence = 'bar' | 'medReg' | 'icai';
 export const LICENCE_NAME: Record<Licence, string> = { bar: 'Bar Council enrolment', medReg: 'NMC / State Medical Council registration', icai: 'ICAI membership' };
-export type TitleClass = 'officer' | 'support' | 'clerical' | 'other';
-export type PostLevel = 'support' | 'subgrad' | 'clerical' | 'grad' | 'officer' | null;
+export type TitleClass = 'officer' | 'professional' | 'support' | 'clerical' | 'other';
+/** low = the title names no officer / professional role and the notice states no minimum above 12th (degree holders: Show all levels). */
+export type PostLevel = 'support' | 'low' | 'subgrad' | 'clerical' | 'grad' | 'officer' | null;
 export interface NoticeFacts {
   v: 2; source: 'rules' | 'pdf' | 'gemini';
   noticeType: NoticeType;
@@ -22,10 +25,17 @@ export interface NoticeFacts {
   minEdu: number | null;
   group: 'A' | 'B' | 'C' | 'D' | null; payLevel: number | null; basic: number | null;
   titleClass: TitleClass; isOfficer: boolean;
-  experience: { years: number; type: ExpType } | null; licences: Licence[];
+  /** years null = experience is essential but the feed text states no years. detail = the clause as written ("drafting and vetting of contracts"). */
+  experience: { years: number | null; type: ExpType; detail?: string } | null; licences: Licence[];
   ageMin: number | null; ageMax: number | null;
   /** The feed text states some eligibility (otherwise every condition is "unknown", never "not required"). */
   stated: boolean;
+  /** The title names no post at all ("posts in National Green Tribunal", "various posts"): never classed low by the title heuristic. */
+  genericTitle?: boolean;
+  /** How the official notice PDF was read: text layer, scanned (no text), unreadable (not fetched), or ai (the user's own key). */
+  pdf?: 'text' | 'scanned' | 'unreadable' | 'ai';
+  /** The essential qualification was inferred from tags (title / notice words), not stated as eligibility in the feed text. */
+  inferred?: boolean;
 }
 
 // ---------- Devanagari-safe whole tokens ----------
@@ -48,7 +58,7 @@ const QUALS: [Qual, RegExp][] = [
   ['PHARM', /\b[BDM]\.?\s?Pharm\w*|\bpharmacy\b/i],
   ['ME', /\bM\.?\s?Tech\b|\bM\.\s?E\.?(?![\w.])|\bME\b(?=[\s,/)]|$)|\bmaster of (?:engineering|technology)\b/],
   ['BE', /\b[Bb]\.?\s?[Tt][Ee][Cc][Hh]\b|\bB\.\s?E\.?(?![\w.])|\bBE\b(?=[\s,/)]|$)|\b[Bb]achelor of (?:[Ee]ngineering|[Tt]echnology)\b|\b(?:[Dd]egree|[Gg]raduat\w*) in (?:\w+\s){0,3}[Ee]ngineering\b|\b[Ee]ngineering (?:[Dd]egree|[Gg]raduate)\b|\bAMIE\b/],
-  ['CA_INTER', /\bC\.?\s?A\.?\s*[-(]?\s*(?:inter(?:mediate)?|ipcc|foundation)\b/i],
+  ['CA_INTER', /\b(?:C\.?\s?A|CMA|ICWAI?|C\.?\s?S)\.?\s*[-(]?\s*(?:inter(?:mediate)?|ipcc|foundation|executive)\b/i],
   ['CA', /\b[Cc]hartered [Aa]ccountan(?:t|cy)\b|\bICAI\b|\bC\.A\.(?!\s*\(?\s*inter)|\bCA\b(?![- ]?\(?\s*(?:inter|foundation|ipcc))|\bCA[- ]?Final\b|\b(?:ACA|FCA)\b/],
   ['CMA', /\b(?:CMA|ICWA|ICWAI|ICMAI)\b|\bcost (?:and management )?accountant\b/i],
   ['CS', /\bcompany secretary\b|\bICSI\b/i],
@@ -73,7 +83,8 @@ export const QUAL_LEVEL: Record<Qual, number> = { VIII: 0, X: 1, ITI: 1, XII: 2,
 /** "Hindi at matric level", "Hindi as a subject in 10th": a subject clause, not the minimum qualification. */
 const SUBJECT_LEVEL = new RegExp(String.raw`\b(?:at|upto|up to|of|in|till)\s+(?:the\s+)?(?:matric\w*|10th|12th|high school|intermediate|class \w+|secondary|higher secondary|SSC|HSC)(?:\s+(?:level|standard|stage|examination))?\b|\b(?:matric\w*|10th|12th|high school|intermediate)\s+(?:level|standard)\b|as an? (?:compulsory |optional )?subject|(?:हाई ?स्कूल|इंटरमीडिएट|मैट्रिक)\s+स्तर`, 'gi');
 export function qualsIn(t: string): Qual[] {
-  const s = (t || '').replace(SUBJECT_LEVEL, ' '); const out: Qual[] = [];
+  // "CA/CMA Inter", "CA / ICWA (Inter)": the level word applies to every name in the slash list.
+  const s = (t || '').replace(SUBJECT_LEVEL, ' ').replace(/\b((?:CA|CMA|ICWAI?|CS)(?:\s*\/\s*(?:CA|CMA|ICWAI?|CS))+)\s*[-(]?\s*(inter(?:mediate)?|foundation|ipcc)\b\)?/gi, (_m, list: string, lv: string) => list.split('/').map((x) => `${x.trim()} ${lv}`).join(' / ')); const out: Qual[] = [];
   let rest = s;
   for (const [q, re] of QUALS) { const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); if (g.test(rest)) { out.push(q); if (q === 'CA_INTER' || q === 'LLM' || q === 'MPH' || q === 'MBA') rest = rest.replace(g, ' '); } }
   // a named degree makes the bare "degree / graduate" token redundant
@@ -88,10 +99,13 @@ export function minEduOf(essentialText: string): number | null {
 }
 
 // ---------- Clause parser: Essential / Desirable sections, sentences, parentheses ----------
-const BACK = /\b(?:preferred|preferable|desirable|desired|(?:would|will|shall) be (?:an? )?(?:added |big |distinct )?(?:asset|advantage|plus|preference)|is an? (?:added |big |distinct )?(?:asset|advantage|plus)|an? (?:added )?(?:advantage|asset)|added qualification|(?:will|shall|would|may) (?:get|be given|receive) (?:preference|priority|weightage)|(?:given|get) (?:preference|priority|weightage)|optional|preference)\b/i;
+/** Preferred-marker lexicon (phrase-scoped): hard wording (preferred, desirable) and soft wording (an edge, welcome, extra marks,
+ *  added weight, desirability, additional advantage, weightage, plus point, considered favourably). */
+const ADV = String.raw`(?:added|additional|big|distinct|extra|special|definite)`;
+const BACK = new RegExp(String.raw`\b(?:preferred|preferable|preferably|desirable|desired|desirability|advantageous|optional|preference|weightage|(?:would|will|shall|may|can) be (?:an? )?(?:${ADV} )?(?:asset|advantage|plus|preference|bonus|useful|welcome[d]?)|is an? (?:${ADV} )?(?:asset|advantage|plus|bonus)|an? (?:${ADV} )?(?:advantage|asset|plus(?: point)?|bonus)|${ADV} (?:qualification|advantage|weight|marks?|credit|points?)|(?:will|shall|would|may|can) (?:get|be given|receive|have|carry|earn) (?:an? )?(?:${ADV} )?(?:preference|priority|weightage|weight|edge|advantage|marks?|credit|points?|bonus)|(?:given|get|gets|getting|have|has|carry|carries|carrying) (?:an? )?(?:${ADV} )?(?:preference|priority|weightage|weight|edge|advantage|marks?|credit|bonus)|(?:an|the) edge|(?:is|are|will be|would be|shall be) (?:most |highly |also )?welcome[d]?|welcome to apply|plus point|bonus (?:marks?|points?)|considered favou?rably|favou?rably considered|favou?rable consideration)\b`, 'i');
 const FWD = /\b(?:preferably|preference (?:will |shall |would |may )?(?:be )?(?:given )?(?:to|for)|priority (?:will |shall )?(?:be )?(?:given )?(?:to|for)|weightage (?:will |shall )?(?:be )?(?:given )?(?:to|for)|ideally(?: with)?|optionally|desirable\s*[:\-–])/i;
-const HDR = /\b(essential|required|mandatory|minimum|desirable|preferred|preferable|optional|additional)\s*(?:educational\s*)?(?:qualifications?|eligibility|criteria)?\s*[:\-–]\s*/gi;
-const BOUND = /,|;|\s+with\s+|\s+along with\s+|\s+and\s+|\s+plus\s+(?=\w)/gi;
+const HDR = /\b(essential|required|mandatory|minimum|desirable|desirability|desired|preferred|preferable|preferential|optional|additional|advantage(?:ous)?)\s*(?:educational\s*)?(?:qualifications?|eligibility|criteria)?\s*[:\-–]\s*/gi;
+const BOUND = /,|;|\s+[—–]\s+|\s+-\s+|\s+with\s+|\s+along with\s+|\s+and\s+|(?<!\b(?:a|is|an?\s+added))\s+plus\s+(?=\w)/gi;
 const MARK_ONLY = /^\s*(?:is\s+)?(?:an?\s+)?(?:added\s+)?(?:preferred|preferable|desirable|desired|optional|advantage|asset|plus)\s*\.?\s*$/i;
 const ABBR = /^(?:[A-Za-z]|No|Rs|Dr|Mr|Ms|Smt|Sh|viz|etc|yrs?|Govt|Sc|Com|Tech|Ed|Pharm|Phil|Eng|Univ|approx|i\.e|e\.g)$/i;
 /** Sentences: split at ". " unless the word before the dot is an acronym fragment (LL.B., B.Sc., M.) or a short abbreviation. "Qualified CA. MBA preferred." is two sentences. */
@@ -108,7 +122,7 @@ export function splitEligibility(raw: string): { essential: string; preferred: s
   const ess: string[] = []; const pref: string[] = [];
   // 1) sections
   const secs: { kind: 'e' | 'p'; text: string }[] = []; let last = 0, kind: 'e' | 'p' = 'e'; const t = (raw || '').replace(/\s+/g, ' ');
-  for (const m of t.matchAll(HDR)) { secs.push({ kind, text: t.slice(last, m.index) }); kind = /^(desirable|preferred|preferable|optional|additional)/i.test(m[1]) ? 'p' : 'e'; last = m.index! + m[0].length; }
+  for (const m of t.matchAll(HDR)) { secs.push({ kind, text: t.slice(last, m.index) }); kind = /^(desir|prefer|optional|additional|advantage)/i.test(m[1]) ? 'p' : 'e'; last = m.index! + m[0].length; }
   secs.push({ kind, text: t.slice(last) });
   for (const sec of secs) {
     if (!sec.text.trim()) continue;
@@ -146,26 +160,45 @@ export function splitEligibility(raw: string): { essential: string; preferred: s
 }
 
 // ---------- Experience, licence, age ----------
+// Strict by default: litigation is not drafting / vetting / advisory / in-house / bank legal work; clinical is not surveillance /
+// community medicine / public health; audit is not direct tax / GST; engineering is not software development. A stated kind that
+// matches none of these is 'other' (always Check notice); only a bare "N years experience" is 'any'.
 const EXP_TYPES: [ExpType, RegExp][] = [
-  ['litigation', /\b(?:practi[cs]e as an? advocate|practi[cs]ing advocate|practice at the bar|bar practice|litigation|court practice|standing (?:at|of|in) the bar|as an advocate|advocates? with|appearing before)\b|वकालत|अधिवक्ता के रूप में/i],
+  ['litigation', /\b(?:practi[cs]e as an? advocate|practi[cs]ing advocate|practi[cs]e (?:at|in|before) (?:the )?(?:bar|courts?|high court|district courts?)|bar practice|litigation|court practice|standing (?:at|of|in) the bar|as an advocate|advocates? with|appearing before (?:the )?courts?|conduct(?:ing)? (?:of )?cases)\b|वकालत|अधिवक्ता के रूप में/i],
   ['judicial', /\bjudicial (?:service|officer|experience)\b|\bserved as (?:a )?judge\b/i],
-  ['corporate_legal', /\b(?:corporate (?:law|legal)|in-house|legal (?:department|cell|work) (?:of|in) (?:a )?(?:psu|company|bank|corporation)|legal work in (?:a )?(?:psu|company|bank)|drafting (?:and vetting )?of (?:contracts|agreements)|contract (?:drafting|management))\b/i],
-  ['clinical', /\b(?:clinical|hospital experience|house job|patient care|senior residency|junior residency|casualty)\b/i],
-  ['public_health', /\b(?:public health|epidemiolog\w*|national health (?:programmes?|mission)|community health|NHM|immuni[sz]ation programme)\b/i],
-  ['teaching', /\b(?:teaching experience|experience (?:of|in) teaching|teaching at|taught)\b/i],
-  ['research', /\b(?:research experience|post[- ]?doc\w*|research and development|R&D|publications?)\b/i],
-  ['audit_accounts', /\b(?:audit\w*|accounts|accounting|taxation|financial management|finance and accounts)\b/i],
-  ['engineering', /\b(?:design|construction|execution|maintenance|site|field) (?:experience|work)\b|\bexperience in (?:design|construction|execution|maintenance)\b/i],
+  ['corporate_legal', /\b(?:corporate (?:law|legal)|in[- ]house|legal advis\w*|advisory|drafting|vetting|contracts? (?:drafting|management|vetting)|legal (?:matters|work|department|cell|affairs|opinions?)(?: \w+){0,3} (?:of|in|for|at) (?:an? |the )?(?:\w+ )?(?:psus?|compan(?:y|ies)|banks?|corporations?|undertakings?|organi[sz]ations?|financial institutions?|firms?|ministry|department)|banking law|company law|legal officer in|compliance)\b/i],
+  ['public_health', /\b(?:public health|epidemiolog\w*|surveillance|outbreak\w*|community medicine|preventive (?:and social )?medicine|psm|disease control|national health (?:programmes?|mission)|health programmes?|community health|NHM|immuni[sz]ation)\b/i],
+  ['clinical', /\b(?:clinical|hospital|house job|internship in a hospital|patient care|senior residency|junior residency|residency|casualty|emergency medicine|treating patients|medical practice)\b/i],
+  ['teaching', /\b(?:teaching|taught|lecturer(?:ship)?|faculty)\b/i],
+  ['research', /\b(?:research|post[- ]?doc\w*|R&D|publications?)\b/i],
+  ['taxation', /\b(?:direct tax\w*|indirect tax\w*|income[- ]tax|gst|goods and services tax|taxation|tax (?:matters|laws?|assessments?|planning|compliance|audit)|customs|excise)\b/i],
+  ['audit_accounts', /\b(?:audit\w*|accounts|accounting|book[- ]?keeping|financial management|finance and accounts|finance & accounts)\b/i],
+  ['software', /\b(?:software|programming|coding|application development|web development|app development|full[- ]?stack|it (?:systems?|projects?|applications?)|data science|machine learning)\b/i],
+  ['engineering', /\b(?:design|construction|execution|maintenance|site|field|erection|commissioning|civil works?|electrical works?|project execution) (?:experience|work|works)\b|\bexperience (?:in|of) (?:the )?(?:design|construction|execution|maintenance|erection|commissioning|civil|electrical|mechanical)\b|\bengineering (?:experience|work|projects?)\b/i],
   ['administrative', /\b(?:administrative|administration|establishment matters|office management)\b/i],
 ];
+const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, fifteen: 15 };
+const N = String.raw`(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)`;
+// "6 years post-qualification experience", "06 years", "6-year experience", "post-qualification experience of 6 yrs", "experience: 6 years"
+const YEARS = new RegExp(String.raw`\b${N}\s*(?:\+\s*)?(?:\(\w+\)\s*)?-?\s*(?:years?|yrs?)\.?['’]?\s*(?:of\s*)?(?:[\w-]+\s+){0,4}?(?:practice|experience|standing|service)\b|\b(?:practice|experience|standing)\b[^.;]{0,50}?(?:for|of|minimum|at least|not less than|:)?\s*${N}\s*-?\s*(?:years?|yrs?)\b|(\d{1,2})\s*वर्ष(?:ों)?\s*(?:का|की)?\s*(?:अनुभव|वकालत|प्रैक्टिस)`, 'i');
+const NOYEARS = /\b(?:with|having|and|plus)\s+(?:\w+\s+){0,3}?(?:experience|practice)\b|\bexperience (?:as (?:stated|prescribed|specified)|as per|is (?:essential|required|mandatory|necessary))\b|\b(?:requisite|relevant|adequate|sufficient|necessary) experience\b|\bexperienced\b/i;
+const DETAIL = /\b(?:experience|practice)\s+(?:of\s+(?!\d)|in\s+|as\s+(?!stated|per|prescribed|specified)|with\s+|before\s+|at\s+)((?:(?!\b(?:and|or)\b\s+\d)[^,;.()])+)|\b(?:years?|yrs?)\.?['’]?\s+(?:of\s+)?((?:(?!experience|practice)[\w-]+\s+){1,4})(?:experience|practice)\b/i;
+const GENERIC_DETAIL = /^(?:(?:the |a |an )?(?:relevant|requisite|post[- ]?qualification|working|work|professional|total|minimum|at least|of|years?|yrs?|\d+|\s|the field|field|similar|related|concerned|area|any|adequate|sufficient|necessary|essential|required|experience|practice|with|having|and|plus|candidates?|in|on|as|cut[- ]?off|date|after|qualification|obtaining|degree|from)\b\s*)*$/i;
 /** Essential experience (largest stated years) and its type, from the essential text only. HJS / ADJ direct from Bar = 7 yrs litigation. */
-export function experienceOf(title: string, essential: string): { years: number; type: ExpType } | null {
-  let best: { years: number; type: ExpType } | null = null;
+export function experienceOf(title: string, essential: string): { years: number | null; type: ExpType; detail?: string } | null {
+  let best: { years: number | null; type: ExpType; detail?: string } | null = null;
   for (const clause of (essential || '').split(/;|\.\s+/)) {
-    const m = clause.match(/(\d{1,2})\s*(?:\+\s*)?(?:years?|yrs?)\.?\s*(?:of\s*)?(?:\w+\s+){0,4}?(?:practice|experience|standing|service)\b|(?:practice|experience|standing)[^.;]{0,40}?(?:for|of|minimum|at least)?\s*(\d{1,2})\s*(?:years?|yrs?)\b|(\d{1,2})\s*वर्ष(?:ों)?\s*(?:का|की)?\s*(?:अनुभव|वकालत|प्रैक्टिस)/i);
-    if (!m) continue; const years = Number(m[1] || m[2] || m[3]); if (!(years > 0 && years <= 30)) continue;
-    const type = (EXP_TYPES.find(([, re]) => re.test(clause))?.[0]) || 'any';
-    if (!best || years > best.years) best = { years, type };
+    const m = clause.match(YEARS); const said = !m && NOYEARS.test(clause);
+    if (!m && !said) continue;
+    const raw = m ? (m[1] || m[2] || m[3]) : null; const years = raw === null ? null : NUM[raw.toLowerCase()] ?? Number(raw);
+    if (years !== null && !(years > 0 && years <= 30)) continue;
+    // the kind is read from the experience phrase itself (a little context before it), never from the degree named earlier
+    const at = m ? m.index! : Math.max(0, clause.search(/experience|practice/i)); const seg = clause.slice(Math.max(0, at - 25));
+    const d1 = seg.match(DETAIL); const d2 = seg.match(new RegExp(DETAIL.source.split('|\\b(?:years?')[0], 'i')); const det = (d2?.[1] || d1?.[1] || d1?.[2] || '').replace(/\s+/g, ' ').trim();
+    let type: ExpType = (EXP_TYPES.find(([, re]) => re.test(seg))?.[0]) || 'any';
+    if (type === 'any' && det && !GENERIC_DETAIL.test(det) && /[a-z]{4,}/i.test(det.replace(/\b(?:years?|experience|practice|relevant|post[- ]?qualification)\b/gi, ''))) type = 'other';
+    const cand = { years, type, detail: det && !GENERIC_DETAIL.test(det) ? det.slice(0, 70) : undefined };
+    if (!best || (years ?? -1) > (best.years ?? -1)) best = cand;
   }
   if (!best && /\b(higher judicial|hjs|additional district judge|district judge \(entry|district judge)\b/i.test(title)) best = { years: 7, type: 'litigation' };
   return best;
@@ -181,10 +214,20 @@ export function agesOf(t: string): { min: number | null; max: number | null } {
   const s = t || ''; let min: number | null = null, max: number | null = null;
   const r = s.match(/\bage[^.;\d]{0,40}?(\d{2})\s*(?:-|to|–)\s*(\d{2})\s*(?:years?|yrs?)?/i) || s.match(/\bbetween\s*(\d{2})\s*(?:and|to|-)\s*(\d{2})\s*(?:years?|yrs?)/i);
   if (r) { min = Number(r[1]); max = Number(r[2]); }
-  const mx = s.match(/\b(?:not (?:be )?(?:more than|above|exceed\w*)|below|upper age(?: limit)?(?: is| of)?|maximum age(?: limit)?(?: is| of)?|age limit(?: is| of)?|under)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mx) max = Number(mx[1]);
-  const mn = s.match(/\b(?:minimum age(?: is| of)?|not (?:be )?less than|at least)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mn) min = Number(mn[1]);
+  const mx = s.match(/\b(?:not (?:be )?(?:more than|above|exceed\w*)|below|upper age(?: limit)?(?: is| of)?|maximum age(?: limit)?(?: is| of)?|age limit(?: is| of)?|under|(?:must|should) not have (?:completed|attained|crossed) (?:the )?age of)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mx) max = Number(mx[1]);
+  const mn = s.match(/\b(?:minimum age(?: is| of)?|not (?:be )?less than|at least|(?:must|should) have (?:completed|attained) (?:the )?age of)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mn) min = Number(mn[1]);
   if (max !== null && (max < 18 || max > 70)) max = null; if (min !== null && (min < 14 || min > 60)) min = null;
   return { min, max };
+}
+
+/** The qualification clauses of an official notice's text layer (verbatim), or '' when none is found. Used only when the feed row states none. */
+export function eligibilityFromText(text: string): string {
+  const t = (text || '').replace(/\s+/g, ' ').slice(0, 8000); const out: string[] = [];
+  const HEAD = /\b(?:(?:minimum |essential |educational (?:and technical )?|required )?qualifications?(?: (?:and|&) experience)?|eligibility(?: criteria| conditions)?)\s*(?:required|for the posts?[^:]{0,40})?\s*[:\-–]?\s*/gi;
+  const STOP = /\b(?:age(?: limit)?\s*[:\-–]|age limit|pay (?:scale|level|matrix)|remuneration|emoluments|salary|how to apply|last date|method of (?:selection|recruitment)|mode of selection|selection (?:process|procedure)|terms and conditions|general conditions|application fee|the filled|reservation)\b/i;
+  for (const m of t.matchAll(HEAD)) { let seg = t.slice(m.index! + m[0].length, m.index! + m[0].length + 450); const st = seg.search(STOP); if (st > 0) seg = seg.slice(0, st);
+    if (qualsIn(seg).length && !out.some((o) => o.includes(seg.slice(0, 40)))) out.push(seg.trim()); if (out.length >= 3) break; }
+  return out.join('; ').slice(0, 900);
 }
 
 // ---------- Group / class and pay ----------
@@ -209,18 +252,22 @@ export function groupOf(t: string): 'A' | 'B' | 'C' | 'D' | null {
 }
 
 // ---------- Title taxonomy (whole title; an officer head noun wins) ----------
-const OFFICER_EN = /\b(officers?|commandants?|managers?|directors?|superintendents?|inspectors?|engineers?|scientists?|judges?|magistrates?|prosecutors?|counsel|registrars?|commissioners?|controllers?|secretar(?:y|ies)|professors?|lecturers?|teachers?|principals?|doctors?|physicians?|surgeons?|specialists?|consultants?|accountants?|auditors?|wardens?|executives?|administrators?|chairm[ae]n|members? \(|advis[eo]rs?|pilots?|attorneys?|commanders?|lieutenants?|captains?|examiners?|analysts? \(senior\))\b/i;
+const OFFICER_EN = /\b(officers?|commandants?|managers?|directors?|superintendents?|inspectors?|engineers?|scientists?|judges?|magistrates?|prosecutors?|counsel|registrars?|commissioners?|controllers?|secretar(?:y|ies)|professors?|lecturers?|teachers?|principals?|doctors?|physicians?|surgeons?|specialists?|consultants?|accountants?|auditors?|wardens?|executives?|administrators?|chairm[ae]n|members? \(|advis[eo]rs?|pilots?|attorneys?|commanders?|lieutenants?|captains?|examiners?|analysts? \(senior\)|judicial(?! (?:clerks?|assistants?|staff))|hjs|pcs[- ]?\(?j\)?|munsifs?|civil services?|services? (?:exam\w*|recruitment)|gazetted|ias|ips|ifs)\b/i;
 const OFFICER_HI = hi(['अधिकारी', 'संचालक', 'निदेशक', 'प्रबंधक', 'अभियंता', 'निरीक्षक', 'अधीक्षक', 'न्यायाधीश', 'आयुक्त', 'सचिव', 'वैज्ञानिक', 'प्राध्यापक', 'व्याख्याता', 'शिक्षक', 'चिकित्सक', 'अभियोजक', 'लेखाकार', 'सलाहकार', 'कुलसचिव', 'कमांडेंट', 'मैनेजर', 'ऑफिसर', 'अध्यापक']);
 // Canonical low-level roles (support staff), as stems so morphology and compounds match: peon, attendant, messenger, sweeper,
 // guard, porter, driver, cook, watchman, gardener, daftri, record lifter, helper, labourer, waterman, orderly, MTS...
-const SUPPORT_EN = /\b(peons?|attendants?|messengers?|sweep\w*|cleaners?|sanitation (?:workers?|staff)|sanitary (?:workers?|staff)|safai\w*|scaveng\w*|mehtar|jamadars?|jamedars?|guards?|watch ?m[ae]n|watch and ward|chowkidars?|chaukidars?|gate ?(?:keepers?|m[ae]n)|porters?|coolies?|kulis?|hamals?|bearers?|helpers?|khalasis?|labou?rers?|beldars?|mazdoors?|drivers?|cooks?|kitchen (?:boys?|helpers?|staff)|mess (?:servants?|boys?|helpers?)|masalchis?|khansamas?|malis?|malees?|maalis?|gardeners?|bagwans?|daftr?(?:y|i|ies|ys|is)|daftar[iy]|record (?:lifters?|sorters?)|gestetner(?: operators?)?|duplicating (?:machine )?operators?|cyclostyle\w*|office (?:subordinates?|boys?)|subordinate staff|orderl(?:y|ies)|chaprasis?|farr?ash\w*|water ?(?:m[ae]n|carriers?)|bhistis?|lift ?(?:m[ae]n|operators?)|liftm[ae]n|washerm[ae]n|dhobis?|barbers?|multi[- ]?(?:tasking|purpose)(?: staff| workers?| employees?)?|mts|se[wv]aks?|servants?|table boys?|lab boys?|mukadd?ams?|warders?|ward ?(?:boys?|attendants?)|aayas?|ayahs?|runners?|dak runners?|process servers?|bailiffs?|constables?|home ?guards?|agniveers?|forest guards?|trackm[ae]n|track maintainers?|chainm[ae]n|lascars?|lashkars?|nightwatch\w*|night watch\w*|tradesm[ae]n|room attendants?|support staff)\b/i;
-const SUPPORT_HI = hi(['चपरासी', 'भृत्य', 'अनुसेवक', 'आदेशपाल', 'आदेशवाहक', 'संदेशवाहक', 'परिचर', 'परिचारक', 'अर्दली', 'सेवक', 'चालक', 'वाहन ?चालक', 'वाहनचालक', 'ड्राइवर', 'ड्राईवर', 'ड्रायवर', 'ड्रायव्हर', 'स्वीपर', 'झाडूवाला', 'झाड़ूवाला', 'झाडू', 'सफाई', 'सफाईवाला', 'सफाईकर्मी', 'सफाई ?कर्म', 'सफाई ?कर्मचार', 'स्वच्छता', 'स्वच्छताकर्मी', 'स्वच्छक', 'मेहतर', 'जमादार', 'रसोइया', 'रसोईया', 'रसोई', 'बावर्ची', 'खानसामा', 'कुक', 'गार्ड', 'होम ?गार्ड', 'होमगार्ड', 'सुरक्षाकर्मी', 'चौकीदार', 'पहरेदार', 'पहरेवाला', 'पहारेकरी', 'रखवालदार', 'गेटमैन', 'वॉचमैन', 'वाचमैन', 'माली', 'माळी', 'बागवान', 'हमाल', 'कुली', 'मजदूर', 'श्रमिक', 'बेलदार', 'खलासी', 'धोबी', 'नाई', 'जलवाहक', 'पानीवाला', 'पानी ?वाला', 'भिश्ती', 'लश्कर', 'मसालची', 'फर्राश', 'फराश', 'दफ्तरी', 'दफ़्तरी', 'शिपाई', 'रनर', 'बॉय', 'हेल्पर', 'मदतनीस', 'स्वयंपाकी', 'स्वयंपाक', 'पट्टेवाला', 'कामगार', 'सिपाही', 'आरक्षी', 'अग्निवीर', 'वनरक्षक', 'वन ?रक्षक', 'पत्रवाहक', 'प्रोसेस ?सर्वर', 'आदेशिका ?वाहक', 'तामील\\S*', 'आया', 'जल ?पुरुष']);
+const SUPPORT_EN = /\b(peons?|attendants?|messengers?|sweep\w*|cleaners?|sanitation (?:workers?|staff)|sanitary (?:workers?|staff)|safai\w*|scaveng\w*|mehtar|jamadars?|jamedars?|guards?|watch ?m[ae]n|watch and ward|chowkidars?|chaukidars?|gate ?(?:keepers?|m[ae]n)|porters?|coolies?|kulis?|hamals?|bearers?|helpers?|khalasis?|labou?rers?|beldars?|mazdoors?|drivers?|cooks?|kitchen (?:boys?|helpers?|staff)|mess (?:servants?|boys?|helpers?)|masalchis?|khansamas?|malis?|malees?|maalis?|gardeners?|bagwans?|daftr?(?:y|i|ies|ys|is)|daftar[iy]|record (?:lifters?|sorters?)|gestetner(?: operators?)?|duplicating (?:machine )?operators?|cyclostyle\w*|office (?:subordinates?|boys?)|subordinate staff|orderl(?:y|ies)|chaprasis?|farr?ash\w*|water ?(?:m[ae]n|carriers?)|bhistis?|lift ?(?:m[ae]n|operators?)|liftm[ae]n|washerm[ae]n|dhobis?|barbers?|multi[- ]?(?:tasking|purpose)(?: staff| workers?| employees?)?|mts|se[wv]aks?|servants?|table boys?|lab boys?|mukadd?ams?|warders?|ward ?(?:boys?|attendants?)|aayas?|ayahs?|runners?|dak runners?|process servers?|bailiffs?|constables?|home ?guards?|agniveers?|forest guards?|trackm[ae]n|track maintainers?|chainm[ae]n|lascars?|lashkars?|nightwatch\w*|night watch\w*|tradesm[ae]n|room attendants?|support staff|tea ?boys?|canteen (?:boys?|attendants?|helpers?)|dressers?|gang ?m[ae]n|boatm[ae]n|boat ?m[ae]n|syces?|packers?|loaders?|duftr(?:y|i|ies|ys|is)|dufte?r(?:y|i)s?|ushers?|pump (?:operators?|drivers?|attendants?|men)|bundle (?:lifters?|carriers?|binders?)|(?:de|di)spatch riders?|khidmatgars?|linem[ae]n|plumbers?|masons?|carpenters?|blacksmiths?|cobblers?|tailors?|electricians?|wiremen|wireman|sanitary inspectors? \(helper\)|farm (?:labou?rers?|hands?)|field (?:workers?|helpers?)|ward servants?|water (?:boys?|girls?))\b/i;
+const SUPPORT_HI = hi(['चपरासी', 'भृत्य', 'अनुसेवक', 'आदेशपाल', 'आदेशवाहक', 'संदेशवाहक', 'परिचर', 'परिचारक', 'अर्दली', 'सेवक', 'चालक', 'वाहन ?चालक', 'वाहनचालक', 'ड्राइवर', 'ड्राईवर', 'ड्रायवर', 'ड्रायव्हर', 'स्वीपर', 'झाडूवाला', 'झाड़ूवाला', 'झाडू', 'सफाई', 'सफाईवाला', 'सफाईकर्मी', 'सफाई ?कर्म', 'सफाई ?कर्मचार', 'स्वच्छता', 'स्वच्छताकर्मी', 'स्वच्छक', 'मेहतर', 'जमादार', 'रसोइया', 'रसोईया', 'रसोई', 'बावर्ची', 'खानसामा', 'कुक', 'गार्ड', 'होम ?गार्ड', 'होमगार्ड', 'सुरक्षाकर्मी', 'चौकीदार', 'पहरेदार', 'पहरेवाला', 'पहारेकरी', 'रखवालदार', 'गेटमैन', 'वॉचमैन', 'वाचमैन', 'माली', 'माळी', 'बागवान', 'हमाल', 'कुली', 'मजदूर', 'श्रमिक', 'बेलदार', 'खलासी', 'धोबी', 'नाई', 'जलवाहक', 'पानीवाला', 'पानी ?वाला', 'भिश्ती', 'लश्कर', 'मसालची', 'फर्राश', 'फराश', 'दफ्तरी', 'दफ़्तरी', 'शिपाई', 'रनर', 'बॉय', 'हेल्पर', 'मदतनीस', 'स्वयंपाकी', 'स्वयंपाक', 'पट्टेवाला', 'कामगार', 'सिपाही', 'आरक्षी', 'अग्निवीर', 'वनरक्षक', 'वन ?रक्षक', 'पत्रवाहक', 'प्रोसेस ?सर्वर', 'आदेशिका ?वाहक', 'तामील\\S*', 'आया', 'जल ?पुरुष', 'चपराशी', 'सुरक्षा ?रक्षक', 'सुरक्षारक्षक', 'मजूर', 'वाटर ?कैरियर', 'कैंटीन', 'टी ?बॉय', 'पंप ?ऑपरेटर', 'पम्प ?ऑपरेटर', 'नलकूप', 'लोडर', 'पैकर', 'दफ्तरी', 'डफ्तरी', 'प्लंबर', 'बढ़ई', 'राजमिस्त्री', 'ड्रेसर']);
 const CLERICAL_EN = /\b(clerks?|ldcs?|udcs?|lower division|upper division|typists?|steno\w*|data entry(?: operators?)?|deos?|computer operators?|copyists?|record keepers?|assistant grade|junior assistants?|office assistants?|court assistants?|junior court assistants?|receptionists?|para[- ]?legal volunteers?|plvs?|supportive staff|ministerial staff)\b/i;
 const CLERICAL_HI = hi(['लिपिक', 'टंकक', 'टंकलेखक', 'आशुलिपिक', 'लघुलेखक', 'डाटा ?एंट्री', 'डेटा ?एंट्री', 'कंप्यूटर ?ऑपरेटर', 'संगणक ?चालक', 'कनिष्ठ ?सहायक', 'कार्यालय ?सहायक', 'सहायक ?ग्रेड\\S*', 'प्रतिलिपिक', 'नाजिर', 'नाज़िर', 'पारा ?विधिक', 'विधिक ?स्वयंसेवक']);
+/** Professional head nouns: a profession, but the level still comes from the stated minimum (a Junior Data Analyst with Higher Secondary is not an officer post). */
+const PROF_EN = /\b(analysts?|counsell?ors?|researchers?|fellows?|associates?|programmers?|developers?|technologists?|statisticians?|economists?|planners?|architects?|chemists?|pharmacists?|nurses?|psychologists?|librarians?|translators?|interpreters?|editors?|journalists?|coordinators?|co-ordinators?|experts?|instructors?|trainers?|supervisors?|members?|tgts?|pgts?|prts?|young professionals?|law researchers?|law clerks?|lawyers?|advocates?|veterinar\w+|dietitians?|physiotherapists?|radiographers?|technical officers?)\b/i;
+const PROF_HI = hi(['विश्लेषक', 'परामर्शदाता', 'शोधकर्ता', 'प्रशिक्षक', 'पर्यवेक्षक', 'सदस्य', 'अनुवादक', 'नर्स', 'फार्मासिस्ट', 'अधिवक्ता']);
 export function titleClass(title: string): TitleClass {
   const t = title || '';
   if (OFFICER_EN.test(t) || new RegExp(OFFICER_HI).test(t)) return 'officer';
   if (SUPPORT_EN.test(t) || new RegExp(SUPPORT_HI).test(t)) return 'support';
+  if (PROF_EN.test(t) || new RegExp(PROF_HI).test(t)) return 'professional';
   if (CLERICAL_EN.test(t) || new RegExp(CLERICAL_HI).test(t)) return 'clerical';
   return 'other';
 }
@@ -230,37 +277,47 @@ export const CLERICAL_RE = new RegExp(`${CLERICAL_EN.source}|${CLERICAL_HI}`, 'i
 
 // ---------- Notice type ----------
 const RET_WHO = String.raw`(?:retired|retd\.?|superannuated|former|ex[- ](?!servicem[ae]n|army|defence)|सेवा[- ]?निवृत्त\S*|सेवानिवृत\S*|रिटायर्ड|निवृत्त)`;
-const RET_STAFF = String.raw`(?:\S+\s+){0,3}?(?:employees?|officers?|officials?|personnel|persons?|staff|judges?|teachers?|professors?|faculty|govt\.? servants?|government servants?|court employees?|bankers?|कर्मचारि\S*|कर्मचारी|अधिकारि\S*|अधिकारी|शिक्षक\S*|न्यायिक)`;
+const RET_STAFF = String.raw`(?:\S+\s+){0,3}?(?:employees?|officers?|officials?|personnel|persons?|staff|judges?|teachers?|professors?|faculty|govt\.? servants?|government servants?|court employees?|bankers?|कर्मचा\S*|कर्मचारि\S*|कर्मचारी|अधिकारि\S*|अधिकारी|शिक्षक\S*|न्यायिक)`;
 const RET_AIM = new RegExp(String.raw`\b(?:engagement|engaging|appointment|empanelment|hiring|hire|re-?employment|re-?engagement|inviting applications|applications? (?:are )?(?:hereby )?invited)\s+(?:\S+\s+){0,3}?(?:of|from)\s+(?:the\s+)?(?:\S+\s+){0,3}?(?:retired|retd\.?|pensioners?|superannuated|former)|${RET_WHO}\s*${RET_STAFF}|\bre-?employment\b|\bre-?engagement of\b|must be a retired|who (?:have )?retired (?:as|from)(?! (?:the )?(?:army|armed|defence|navy|air force|military|forces))|\bpension (?:notice|adalat|revision|papers?|cases?|sanction)s?\b|\bpensioners?'?\s+(?:meet|grievance|adalat|life certificates?|notice)|\blife certificates?\b|पेंशन (?:अदालत|सूचना)|पुनर्नियोजन|पुनर्नियुक्ति`, 'i');
 const RET_NEG = /\b(?:not eligible|ineligible|need not apply|should not be|must not be|shall not be|not be (?:a )?retired|other than retired|not (?:be )?considered|not allowed|are excluded|cannot apply|may also apply|can also apply|are also eligible|also eligible)\b|पात्र नहीं|आवेदन नहीं कर सकते/i;
 export function retireeOnly(t: string): boolean {
   const s = t || ''; const m = RET_AIM.exec(s); if (!m) return false;
   const near = s.slice(Math.max(0, m.index - 20), m.index + m[0].length + 80); return !RET_NEG.test(near);
 }
-const RESULT = /\b(results?|merit lists?|select(?:ed|ion)? (?:lists?|candidates?|notification)|final (?:select )?lists?|lists? of (?:applicants?|candidates?|eligible|ineligible|selected|shortlisted|provisional\w*|qualified|successful|roll numbers?)|wait(?:ing)? ?lists?|eligible (?:applications?|candidates?)|ineligible|rejected|shortlist\w*|provisional(?:ly)?|marks|roll (?:numbers?|nos?\.?)|status of (?:the )?applications?|application status|key answers?|answer[- ]?keys?|objections?|passing benchmark|seniority|cancel\w*|postpone\w*)\b|परिणाम|प्रतीक्षा|चयन सूची|सूची/i;
-const SCHEDULE = /\b(admit[- ]?cards?|hall[- ]?tickets?|call[- ]?letters?|called for (?:the )?interview|interview (?:lists?|schedules?|notices?|dates?|calls?|programme)|dates? of (?:the )?(?:exam\w*|interview|test|skill test|typing test)|exam(?:ination)? (?:schedules?|dates?|programme|time ?table)|time ?table|schedule of|skill test|typing test|driving test|written test|viva|document verification|syllabus|walk[- ]?in interview schedule)\b|प्रवेश पत्र/i;
-const APPOINT = /\b(appointment (?:orders?|letters?)|posting orders?|joining(?: report)?|receipt of appointment|selected for appointment|resolution of applications|in pursuan\w*|promotion|by way of promotion|transfer)\b|नियुक्ति पत्र|पदोन्नति/i;
-const OPEN = /\b(applications? (?:are |is )?(?:hereby )?invited|inviting applications?|invites? applications?|recruitment (?:notices?|notifications?|advertisements?|process)|advertisements?|advt\.?|employment notices?|notification (?:no\.?|for (?:the )?(?:post|recruitment))|application call\w*|walk[- ]?in|vacanc(?:y|ies)|engagement of|empanelment of|filling up of|for the posts? of|recruitment of|recruitment for|recruitment to|appointment (?:to|in) (?:the )?posts?|on contract basis)\b|आवेदन (?:पत्र )?आमंत्रित|विज्ञापन|भर्ती|रिक्ति|पदभरती|पदों पर|चयन हेतु/i;
-/** Notice type from the row text (title + description). "Recruitment of X" counts as an open call only when nothing marks it as a list, schedule, status or appointment. */
+// Open call needs POSITIVE evidence; negative signals override it. "for the post of" / "Recruitment of X" alone proves nothing (unclear).
+const NEG_APPOINT = /\b(appointment (?:orders?|letters?)|posting orders?|joining(?: report)?|receipt of appointment|selected for appointment|resolution of applications|in pursuan\w*|promotion|by way of promotion|transfer)\b|नियुक्ति पत्र|पदोन्नति|नियुक्ती आदेश/i;
+const NEG_RESULT = /\b(results?|merit(?: lists?)?|select(?:ed|ion)? (?:lists?|candidates?|notification)|selected|final (?:select )?lists?|lists?\b|wait(?:ing)? ?lists?|successful candidates?|qualified (?:in )?(?:the )?(?:written|preliminary|main|skill|typing|test|exam\w*)|candidates who (?:have )?qualified|eligible (?:applications?|candidates?)|ineligible|rejected|shortlist\w*|provisional(?:ly)?|marks|roll (?:numbers?|nos?\.?)|status of (?:the )?applications?|application status|key answers?|answer[- ]?keys?|objections?|passing benchmark|seniority|cancel\w*|postpone\w*|withdrawn|withdrawal)\b|परिणाम|प्रतीक्षा|चयन सूची|सूची|चयनित|निवड यादी|यादी/i;
+const NEG_SCHED = /\b(admit[- ]?cards?|hall[- ]?tickets?|call[- ]?letters?|(?<!walk[- ]?in[- ])interviews?(?! basis)|viva(?:[- ]voce)?|(?:computer |typing |typewriting |shorthand |speed |practical |trade |driving |written |aptitude |physical |qualifying |screening |skill |proficiency |stenography )+(?:tests?|exam\w*)|proficiency|tests? venue|venue|exam(?:ination)? cent(?:re|er)s?|cent(?:re|er)s? of (?:the )?exam\w*|exam(?:ination)? (?:schedules?|dates?|programme|time ?table)|dates? of (?:the )?(?:exam\w*|interview|test|skill test|typing test)|time ?table|schedule|revised dates?|re-?scheduled?|document verification|syllabus|counsell?ing (?:schedule|date))\b|प्रवेश पत्र|साक्षात्कार|परीक्षा केंद्र|परीक्षा केन्द्र|कौशल परीक्षा|टंकण परीक्षा|मुलाखत/i;
+const POS = /\b(applications? (?:are |is )?(?:hereby )?(?:invited|called|call\w*)|inviting applications?|invites? applications?|applications? for (?:the )?(?:posts?|engagement|appointment|recruitment|empanelment)|application call\w*|application forms?|last date|vacanc(?:y|ies)|no\.? of posts?|number of posts?|\d+ posts? of|filling up of|advertisement|advt\.?|walk[- ]?in|how to apply|apply (?:online|offline|before|by))\b|आवेदन (?:पत्र )?आमंत्रित|आवेदन|विज्ञापन|जाहिरात|रिक्ति|रिक्त पद|अर्ज मागव/i;
+const WEAK = /\b(recruitment|engagement|empanelment|notification|employment notices?|for the posts? of|on contract basis|appointment (?:to|in|of|for) (?:the )?(?:posts?|vacanc\w*)|hiring|selection of)\b|भर्ती|पदभरती|पदों पर|पद पर|चयन हेतु|नियुक्ति हेतु|नियुक्ती/i;
+/** Notice type from the row text (title + description): retiree-only, then the negative signals, then positive evidence of an open call. */
 export function noticeTypeOf(text: string): NoticeType {
   const t = text || '';
   if (retireeOnly(t)) return 'retiree_only';
-  if (APPOINT.test(t)) return 'appointment';
-  if (RESULT.test(t)) return 'result_list';
-  if (SCHEDULE.test(t)) return 'admit_schedule';
-  if (OPEN.test(t)) return 'open_call';
+  if (NEG_APPOINT.test(t)) return 'appointment';
+  if (NEG_SCHED.test(t)) return 'admit_schedule';
+  if (NEG_RESULT.test(t)) return 'result_list';
+  if (POS.test(t)) return 'open_call';
+  if (WEAK.test(t)) return 'unclear';
   return 'other';
 }
-/** Strong signals read from the notice PDF text (first pages). Only categories that a real open call never states. */
+// PDF text (first pages). A fresh-candidate track (age 18-42, "for outsiders") means the notice is NOT retired-only (Kurnool).
+const FRESH = /\bfor (?:outsiders|others|fresh(?:ers)?|general candidates|open (?:market|category)|other candidates|direct recruits?)\b|\bfresh (?:candidates|applicants)\b|\b(?:completed|attained|minimum) (?:the )?age of (?:18|19|20|21)\b|\bage[^.]{0,30}\b(?:18|21)\s*(?:-|to|–)\s*(?:3\d|4[0-5])\b/i;
+const PDF_POS = /\b(applications? (?:are |is )?(?:hereby )?(?:invited|called)|inviting applications?|last date (?:for|of) (?:the )?(?:receipt|submission)|(?:filled[- ]in |duly filled )?applications? (?:should|must|shall) (?:be )?(?:addressed|reach|submitted|sent)|application (?:form|proforma)|prescribed (?:proforma|format)|how to apply|no\.? of (?:posts?|vacanc\w*)|number of (?:posts?|vacanc\w*)|vacancy position)\b|आवेदन (?:पत्र )?आमंत्रित|अंतिम तिथि|अर्ज मागव/i;
+const PDF_NEG = /\b(list of (?:the )?(?:selected|successful|eligible|ineligible|shortlisted|qualified|provisionally)|selected candidates?|candidates? (?:are|is) (?:hereby )?(?:informed|directed|requested|called) to (?:appear|attend|report|collect)|results? of|admit cards?|interview (?:will|shall) be (?:held|conducted)|date of (?:the )?interview|(?:proficiency|skill|typing|shorthand|trade|practical) test (?:will|shall) be|appointment letters?|has been selected|have been selected|selected for appointment)\b|चयनित|परिणाम|साक्षात्कार की तिथि/i;
+/** Signals read from the notice PDF text (first pages): non-open types, or 'open_call' when it shows positive evidence. null = no verdict. */
 export function noticeTypeFromPdf(text: string): NoticeType | null {
-  const t = (text || '').slice(0, 4000);
-  if (!t.trim()) return null;
-  if (retireeOnly(t)) return 'retiree_only';
+  const t = (text || '').slice(0, 5000);
+  if (t.replace(/\s/g, '').length < 80) return null; // scanned / image-only: no verdict
+  if (retireeOnly(t) && !FRESH.test(t)) return 'retiree_only';
   if (/\b(selected for appointment|appointment letters? of the (?:selected )?candidates?|collect (?:his|her|their)?\s*(?:respective )?appointment letters?)\b/i.test(t)) return 'appointment';
-  return null;
+  const pos = PDF_POS.test(t); const neg = PDF_NEG.exec(t.slice(0, 900));
+  if (neg && !pos) return /interview|\btest|admit card|viva/i.test(t.slice(0, 900)) && !/\b(?:selected|successful|result)\b/i.test(neg[0]) ? 'admit_schedule' : 'result_list';
+  return pos ? 'open_call' : null;
 }
 
 // ---------- One-stop parse ----------
+const GENERIC_TITLE = /\b(?:posts? in|various|vacanc\w*|multiple posts|other posts|& others|and others|posts? under|posts? at)\b|विभिन्न पद/i;
 const NO_TEXT = /^\s*(?:qualification as stated in the official notice\.?|as per (?:the )?(?:official )?notice\.?|see (?:the )?notice\.?|-)?\s*$/i;
 export function parseNotice(p: { title: string; eligibility?: string; pay?: string; org?: string; maxAge?: number; minAge?: number }): NoticeFacts {
   const elig = NO_TEXT.test(p.eligibility || '') ? '' : (p.eligibility || '');
@@ -269,13 +326,13 @@ export function parseNotice(p: { title: string; eligibility?: string; pay?: stri
   const pi = payInfo(p.pay || ''); const pt = payInfo(`${p.title} ${elig}`);
   const tc = titleClass(p.title); const ages = agesOf(elig);
   return {
-    v: 2, source: 'rules', noticeType: noticeTypeOf(`${p.title} ${elig}`),
+    v: 2, source: 'rules', noticeType: noticeTypeOf(p.title), // the title decides; eligibility prose ("selection by interview") is not a notice type
     essential, preferred, essentialText: sp.essential, preferredText: sp.preferred,
     minEdu: minEduOf(sp.essential), group: groupOf(`${p.title} ${elig} ${p.pay || ''}`),
     payLevel: pi.level ?? pt.level ?? null, basic: pi.basic ?? null,
     titleClass: tc, isOfficer: tc === 'officer',
     experience: experienceOf(p.title, sp.essential), licences: licencesOf(p.title, sp.essential),
-    ageMin: p.minAge ?? ages.min, ageMax: p.maxAge ?? ages.max, stated: !!sp.essential.trim(),
+    ageMin: p.minAge ?? ages.min, ageMax: p.maxAge ?? ages.max, stated: !!sp.essential.trim(), genericTitle: GENERIC_TITLE.test(p.title || ''),
   };
 }
 /** Level of a post from its fields. Officer head nouns are never low-level; unknown stays null (shown, ranked lower). */
@@ -284,8 +341,10 @@ export function postLevelOf(f: NoticeFacts): PostLevel {
   if (f.titleClass === 'support') return 'support';
   if (f.group === 'D' || f.payLevel === 1 || (f.minEdu !== null && f.minEdu <= 1)) return 'support';
   if (f.titleClass === 'clerical') return f.minEdu !== null && f.minEdu <= 2 ? 'subgrad' : 'clerical';
-  if (f.minEdu === 2) return 'subgrad';
   if (f.minEdu !== null && f.minEdu >= 3) return 'grad';
+  // Heuristic for degree holders: no officer / professional head noun AND no stated minimum above 12th = low-level (Show all levels).
+  if (f.titleClass === 'other' && !f.genericTitle) return 'low';
+  if (f.minEdu === 2) return 'subgrad';
   return null;
 }
 export const OFFICER_RE = new RegExp(`${OFFICER_EN.source}|${OFFICER_HI}`, 'i');
@@ -299,17 +358,18 @@ export function factsOf(p: FactInput): NoticeFacts {
   let f = CACHE.get(k + (p.eduTags || []).join(','));
   if (!f) { if (CACHE.size > 5000) CACHE.clear(); f = parseNotice(p);
     // The feed text names no qualification but the server tagged the notice body (e.g. "Graduate"): use those tags as the stated minimum.
-    if (!f.stated && p.eduTags?.length) { const t = p.eduTags.map((x) => TAG_TEXT[x]).filter(Boolean).join(' or '); if (t) { const g = parseNotice({ ...p, eligibility: `${p.eligibility || ''}; ${t}` }); f = { ...f, essential: g.essential, essentialText: g.essentialText, minEdu: g.minEdu, stated: true }; } }
+    // The tags only hint at the level (minEdu, essential tokens); the qualification itself stays "not in the feed text" (inferred), so it is a Check.
+    if (!f.stated && p.eduTags?.length) { const t = p.eduTags.map((x) => TAG_TEXT[x]).filter(Boolean).join(' or '); if (t) { const g = parseNotice({ ...p, eligibility: `${p.eligibility || ''}; ${t}` }); f = { ...f, essential: g.essential, essentialText: g.essentialText, minEdu: g.minEdu, stated: true, inferred: true }; } }
     CACHE.set(k + (p.eduTags || []).join(','), f); }
   return f;
 }
 /** Plain names for the essential qualification, for reasons and check clauses. */
-export const QUAL_NAME: Record<Qual, string> = { VIII: '8th pass', X: '10th pass', ITI: 'ITI', XII: '12th pass', DIPLOMA: 'diploma', GRAD: 'graduate degree', BA: 'BA', BSC: 'BSc', BCOM: 'BCom', LLB: 'LLB', BE: 'BE / BTech', MBBS: 'MBBS', BDS: 'BDS', NURSING: 'nursing', PHARM: 'pharmacy', CA: 'CA (ICAI)', CA_INTER: 'CA Inter', CMA: 'CMA', CS: 'CS', BED: 'B.Ed', PG: 'postgraduate degree', MA: 'MA', MSC: 'MSc', MCOM: 'MCom', MBA: 'MBA / PGDM', LLM: 'LLM', ME: 'ME / MTech', MD: 'MD / MS', MPH: 'MPH', NET: 'NET', PHD: 'PhD' };
+export const QUAL_NAME: Record<Qual, string> = { VIII: '8th pass', X: '10th pass', ITI: 'ITI', XII: '12th pass', DIPLOMA: 'diploma', GRAD: 'graduate degree', BA: 'BA', BSC: 'BSc', BCOM: 'BCom', LLB: 'LLB', BE: 'BE / BTech', MBBS: 'MBBS', BDS: 'BDS', NURSING: 'nursing', PHARM: 'pharmacy', CA: 'CA (ICAI)', CA_INTER: 'CA / CMA Inter', CMA: 'CMA', CS: 'CS', BED: 'B.Ed', PG: 'postgraduate degree', MA: 'MA', MSC: 'MSc', MCOM: 'MCom', MBA: 'MBA / PGDM', LLM: 'LLM', ME: 'ME / MTech', MD: 'MD / MS', MPH: 'MPH', NET: 'NET', PHD: 'PhD' };
 export function essentialSummary(f: NoticeFacts): string {
   const named = f.essential.filter((q) => !(q === 'GRAD' && f.essential.some((x) => QUAL_LEVEL[x] >= 3 && x !== 'GRAD')));
   const q = named.length ? named.slice(0, 3).map((x) => QUAL_NAME[x]).join(' / ') : 'the stated qualification';
   const any = /\bany (?:discipline|degree|stream|subject|graduate)\b|\bgraduat\w* in any\b/i.test(f.essentialText);
-  const x = f.experience ? ` + ${f.experience.years} yrs ${f.experience.type === 'any' ? '' : `${EXP_NAME[f.experience.type]} `}${f.experience.type === 'litigation' ? 'practice' : 'experience'}` : '';
+  const x = f.experience ? ` + ${f.experience.years ?? 'stated'} yrs ${f.experience.type === 'any' || f.experience.type === 'other' ? (f.experience.detail ? `of ${f.experience.detail} ` : '') : `${EXP_NAME[f.experience.type]} `}${f.experience.type === 'litigation' ? 'practice' : 'experience'}` : '';
   return `${q}${any && named.length <= 1 ? ' in any discipline' : ''}${x}`;
 }
 
@@ -334,6 +394,7 @@ const GENERIC: Qual[] = ['VIII', 'X', 'XII', 'GRAD', 'PG', 'PHD'];
  *  specific degree named is not in the profile (or the notice states no qualification) — "Check notice" naming the clause. */
 export function qualGate(f: NoticeFacts, prof: { edu: string; spec?: string; subject?: string; icai?: boolean }): { ok: boolean | null; why?: string } {
   if (!f.stated) return { ok: null, why: 'Check notice: the essential qualification is not in the feed text.' };
+  if (f.inferred) { const g = qualGate({ ...f, inferred: false }, prof); return g.ok === false ? g : { ok: null, why: `Check notice: the essential qualification is not in the feed text (the notice mentions ${essentialSummary({ ...f, experience: null })}).` }; }
   const held = heldQuals(prof); const lv = Math.max(EDU_LEVEL[prof.edu] ?? 0, ...[...held].map((q) => QUAL_LEVEL[q]));
   const parts = f.essentialText.replace(SUBJECT_LEVEL, ' ').split(/\s+(?:with|along with|and also|plus)\s+|;|\n/i).map((x) => qualsIn(x)).filter((x) => x.length);
   if (!parts.length) return { ok: null, why: 'Check notice: the essential qualification is not clear in the feed text.' };

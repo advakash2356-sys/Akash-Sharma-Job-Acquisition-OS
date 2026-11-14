@@ -73,9 +73,9 @@ test('M4: engineering branch gate (CSE is not Civil / Environmental); Scientist 
   assert.equal(branchGate(je, { ...cse, subject: 'B.Tech' }).ok, null, 'unknown branch is a check, not a fail');
 });
 
-test('M5: no Strong match unless the age limit is confirmed', () => {
+test('M5 (retest 4): an unstated age limit keeps the label and adds the sub-note "Age limit not stated — check notice"', () => {
   const lo = P('Law Officer', { org: 'Coal India Limited', level: 'psu', eligibility: 'LLB', pay: 'E2 Rs 50,000 - 1,60,000' });
-  const m = matchLabel(lo, lawyer, T); assert.equal(m.label, 'check'); assert.match(m.why.join(' '), /verify the age limit/);
+  const m = matchLabel(lo, lawyer, T); assert.equal(m.label, 'strong'); assert.match(m.why.join(' '), /Age limit not stated — check notice/);
   assert.equal(matchLabel({ ...lo, maxAge: 35 }, lawyer, T).label, 'strong');
 });
 

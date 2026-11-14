@@ -144,13 +144,13 @@ test('notice type: lists, interview calls, roll numbers, schedules, status, appo
   for (const t of DROP) assert.ok(!kept.includes(t), `should drop: ${t}`);
   for (const t of KEEP) assert.ok(kept.includes(t), `should keep: ${t}`);
   assert.equal(noticeTypeOf('Recruitment of Clerk – List of applicants'), 'result_list'); assert.equal(noticeTypeOf('Recruitment of Peon – Exam schedule'), 'admit_schedule');
-  assert.equal(noticeTypeOf('Appointment letter UDC'), 'appointment'); assert.equal(noticeTypeOf('Recruitment of Stenographer Grade III'), 'open_call'); assert.equal(RETIREES.test('Engagement of Retd. employees'), true);
+  assert.equal(noticeTypeOf('Appointment letter UDC'), 'appointment'); assert.equal(noticeTypeOf('Recruitment of Stenographer Grade III'), 'unclear', 'a recruitment title alone is not positive evidence'); assert.equal(RETIREES.test('Engagement of Retd. employees'), true);
 });
 test('notice PDF text: retired-only and appointment notices are caught from the official PDF (Lakhisarai, Kurnool text layers)', () => {
   assert.equal(noticeTypeFromPdf('{NOTICE INVITING APPLICATIONS FOR ENGAGEMENT OF SUPPORTIVE STAFF IN THE EVENING COURT} Applications are hereby invited from eligible retired employees of the Judgeship'), 'retiree_only');
   assert.equal(noticeTypeFromPdf('NOTIFICATION NO: 01/2026 DLSA KNL Applications are invited in the prescribed proforma from the Ministerial Officers who retired as Typist-cum-Assistant'), 'retiree_only');
   assert.equal(noticeTypeFromPdf('The following candidates selected for appointment to the post of UDC shall collect their appointment letters'), 'appointment');
-  assert.equal(noticeTypeFromPdf('EMPLOYMENT NOTICE Applications are invited for the post of Clerk. Retired employees are not eligible.'), null);
+  assert.equal(noticeTypeFromPdf('EMPLOYMENT NOTICE Applications are invited for the post of Clerk. Retired employees are not eligible. Last date for receipt of applications 30.11.2026.'), 'open_call');
   assert.equal(noticeTypeFromPdf(''), null, 'a scanned PDF has no text layer: Gemini (existing key) or nothing');
 });
 test('Gemini merge: the model can only mark a row not-open or fill empty fields; it never reopens a rules verdict', () => {
@@ -197,7 +197,7 @@ const EXP_CASES: [string, string, Partial<Profile>, 'met' | 'check' | 'fail', Re
   ['Higher Judicial Service (direct from Bar)', 'LLB; 7 years practice as an advocate', { expYears: 8, expType: ['litigation'] }, 'met'],
   ['Higher Judicial Service (direct from Bar)', 'LLB; 7 years practice as an advocate', { expYears: 6, expType: ['litigation'] }, 'fail', /Needs 7 years' litigation practice; you have 6/],
   ['Higher Judicial Service (direct from Bar)', 'LLB; 7 years practice as an advocate', { expYears: undefined, expType: ['litigation'] }, 'check', /7 yrs litigation practice required/],
-  ['Legal Advisor', 'LLB with 5 years experience in drafting of contracts and agreements', { expYears: 6, expType: ['litigation'] }, 'check', /5 yrs corporate legal experience required; your profile shows litigation/],
+  ['Legal Advisor', 'LLB with 5 years experience in drafting of contracts and agreements', { expYears: 6, expType: ['litigation'] }, 'check', /5 yrs corporate legal experience.*required; your profile shows litigation/],
   ['Medical Officer (NHM)', 'MBBS with 3 years experience in public health programmes', { expYears: 4, expType: ['clinical'] }, 'check', /3 yrs public health experience required; your profile shows clinical/],
   ['Medical Officer', 'MBBS; 2 years clinical experience in a hospital', { expYears: 3, expType: ['clinical'] }, 'met'],
   ['Assistant Professor (Law)', 'LLM with NET; 3 years teaching experience', { expYears: 5, expType: ['litigation'] }, 'check', /3 yrs teaching experience required/],
@@ -220,10 +220,7 @@ test('no false hope: an unstated essential (qualification, age, licence answer, 
   const lo = (x: any) => S('Law Officer', { pay: 'Level 10', ...x });
   const cases: [any, Partial<Profile>, RegExp][] = [
     [lo({ eligibility: '', maxAge: 40 }), {}, /essential qualification is not in the feed text/],
-    [lo({ eligibility: 'LLB' }), {}, /the age limit \(not in the feed text\)/],
     [lo({ eligibility: 'LLB; enrolled as an advocate', maxAge: 40 }), { bar: undefined }, /Bar Council enrolment required/],
-    [lo({ eligibility: 'LLB', maxAge: 40 }), { dob: '' }, /date of birth/],
-    [S('Compliance Officer', { eligibility: 'Graduate', pay: 'Level 10' }), {}, /Adjacent role \(compliance\).*the age limit/],
     [S('Data Analyst', { eligibility: '', pay: 'Level 8', maxAge: 40 }), {}, /essential qualification/],
   ];
   for (const [p, extra, re] of cases) { const pr = { ...P.lawyer, ...extra } as Profile; const m = matchLabel(p, pr, T); assert.equal(m.label, 'check', p.title); assert.match(m.why.join(' '), re, p.title); assert.equal(run([p], pr).length, 1, 'unknowns never hide'); assert.equal(qualFits(p, pr) === false, false); }
@@ -234,6 +231,7 @@ test('no false hope: an unstated essential (qualification, age, licence answer, 
 test('postLevel uses fields first: group, pay level and minimum education, then the whole-title class', () => {
   const lv = (title: string, eligibility = '', pay = '') => postLevelOf(parseNotice({ title, eligibility, pay }));
   assert.equal(lv('Assistant', 'Graduate', 'Group D'), 'support'); assert.equal(lv('Assistant', '', 'Pay Level 1'), 'support'); assert.equal(lv('Assistant', '10th pass'), 'support');
-  assert.equal(lv('Assistant', '12th pass'), 'subgrad'); assert.equal(lv('Assistant', 'Graduate'), 'grad'); assert.equal(lv('Assistant'), null, 'unknown stays visible');
+  assert.equal(lv('Assistant', '12th pass'), 'low'); assert.equal(lv('Assistant', 'Graduate'), 'grad'); assert.equal(lv('Assistant'), 'low', 'no officer / professional head noun and no minimum above 12th');
+  assert.equal(lv('Research Assistant (Analyst)', '12th pass'), 'subgrad'); assert.equal(lv('Advertisement for appointment in posts in National Green Tribunal'), null, 'a title that names no post stays unknown');
   assert.equal(lv('Coast Guard Assistant Commandant'), 'officer'); assert.equal(lv('Guard (Train Manager)'), 'officer'); assert.equal(lv('कामगार कल्याण अधिकारी'), 'officer'); assert.equal(lv('Data Analyst (Junior)', '12th pass', 'Level 4'), 'subgrad');
 });

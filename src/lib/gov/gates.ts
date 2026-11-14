@@ -167,19 +167,23 @@ export function licenceGate(p: { title: string; eligibility: string; facts?: Not
   return { ok: true, why: `${req.map(([n]) => n).join(' and ')} held.` };
 }
 /** Years of practice/experience a notice asks for (largest stated); HJS / ADJ direct from Bar = 7 by Article 233. */
-export function expNeeded(p: { title: string; eligibility: string; facts?: NoticeFacts }): number | undefined { return factsOf(p).experience?.years; }
+export function expNeeded(p: { title: string; eligibility: string; facts?: NoticeFacts }): number | undefined { return factsOf(p).experience?.years ?? undefined; }
 /** Essential experience: years AND type (litigation is not corporate legal work; clinical is not public health). A type the profile does
  *  not show is never "met": it becomes Check notice naming the clause. Too few years is a clear fail. */
 export function experienceGate(p: { title: string; eligibility: string; facts?: NoticeFacts }, prof?: Profile | null): { ok: boolean | null; need?: number; type?: string; why?: string } {
   const x = factsOf(p).experience; if (!x) return { ok: null };
-  const kind = x.type === 'any' ? '' : `${EXP_SHORT[x.type]} `; const noun = x.type === 'litigation' ? 'practice' : 'experience';
-  const clause = `${x.years} yrs ${kind}${noun} required`;
-  if (prof?.expYears === undefined) return { ok: null, need: x.years, type: x.type, why: `Check notice: ${clause} on the cut-off date; add your years of experience in "Your details".` };
-  if (prof.expYears < x.years) return { ok: false, need: x.years, type: x.type, why: `Needs ${x.years} years' ${kind}${noun}; you have ${prof.expYears}.` };
-  if (x.type === 'any') return { ok: true, need: x.years, why: `${prof.expYears} yrs experience vs ${x.years} needed.` };
-  const have = prof.expType || [];
-  if (have.includes(x.type)) return { ok: true, need: x.years, type: x.type, why: `${prof.expYears} yrs ${EXP_SHORT[x.type]} ${noun} vs ${x.years} needed.` };
-  return { ok: null, need: x.years, type: x.type, why: `Check notice: ${clause}; your profile shows ${have.length ? have.map((t) => EXP_SHORT[t] || 'other').join(' / ') : 'no experience type (add it in "Your details")'}.` };
+  const named = x.type === 'any' || x.type === 'other' ? (x.detail ? `experience in ${x.detail}` : 'experience') : `${EXP_SHORT[x.type]} ${x.type === 'litigation' ? 'practice' : 'experience'}${x.detail && x.type !== 'litigation' && !x.detail.toLowerCase().includes(EXP_SHORT[x.type].toLowerCase()) ? ` (${x.detail})` : ''}`;
+  const need = x.years ?? undefined; const have = prof?.expType || [];
+  const shows = have.length ? have.map((t) => EXP_SHORT[t] || 'other').join(' / ') : 'no experience type (add it in "Your details")';
+  // "with experience" and no years in the feed text: never met, always Check notice
+  if (x.years === null) return { ok: null, type: x.type, why: `Check notice: ${named} required, years not stated in the feed text${x.type !== 'any' && !have.includes(x.type) ? `; your profile shows ${shows}` : ''}.` };
+  const clause = `${x.years} yrs ${named} required`;
+  if (prof?.expYears === undefined) return { ok: null, need, type: x.type, why: `Check notice: ${clause} on the cut-off date; add your years of experience in "Your details".` };
+  if (prof.expYears < x.years) return { ok: false, need, type: x.type, why: `Needs ${x.years} years' ${named}; you have ${prof.expYears}.` };
+  if (x.type === 'any') return { ok: true, need, why: `${prof.expYears} yrs experience vs ${x.years} needed.` };
+  // strict: only the exact kind the profile lists counts (litigation is not drafting / advisory / in-house / bank legal work)
+  if (x.type !== 'other' && have.includes(x.type)) return { ok: true, need, type: x.type, why: `${prof.expYears} yrs ${named} vs ${x.years} needed.` };
+  return { ok: null, need, type: x.type, why: `Check notice: ${clause}; your profile shows ${shows}.` };
 }
 
 // ---------- Domicile & regional language ----------
@@ -222,11 +226,11 @@ export const OFFICER_TITLE = OFFICER_RE;
 export function minQual(p: { title: string; eligibility: string; eduTags?: string[]; facts?: NoticeFacts }): 1 | 2 | 3 | null {
   const m = factsOf(p).minEdu; if (m === null) return null; return m <= 1 ? 1 : m === 2 ? 2 : 3;
 }
-const LEVEL_WHY = (f: NoticeFacts): string => f.group === 'D' ? 'Group D / Class IV post' : f.payLevel === 1 ? 'pay level 1 post' : f.titleClass === 'support' ? 'support-staff post (peon / attendant / driver / guard level)' : f.minEdu !== null && f.minEdu <= 1 ? '8th / 10th / ITI-level post' : '10th / ITI-level post';
+const LEVEL_WHY = (f: NoticeFacts): string => postLevelOf(f) === 'low' ? 'the title names no officer or professional role and the notice states no minimum above 12th' : f.group === 'D' ? 'Group D / Class IV post' : f.payLevel === 1 ? 'pay level 1 post' : f.titleClass === 'support' ? 'support-staff post (peon / attendant / driver / guard level)' : f.minEdu !== null && f.minEdu <= 1 ? '8th / 10th / ITI-level post' : '10th / ITI-level post';
 /** Structural floor reason for degree profiles, or null: support level or a below-graduate minimum. Officer posts are never blocked. */
 export function structuralFloor(p: { title: string; eligibility: string; pay?: string; eduTags?: string[]; facts?: NoticeFacts }): string | null {
   const f = factsOf(p); const lv = postLevelOf(f);
-  if (lv === 'support') return LEVEL_WHY(f);
+  if (lv === 'support' || lv === 'low') return LEVEL_WHY(f);
   if (lv === 'subgrad') return `${f.group === 'C' || (f.payLevel ?? 0) >= 2 ? 'Group C / Class III post' : 'post'} with a 12th-pass / diploma minimum`;
   return null;
 }
@@ -247,6 +251,7 @@ export function floorBlocks(p: { title: string; eligibility: string; eduTags?: s
   if (lv === 'officer') return tier === 'senior' && /\b(trainee|apprentice|graduate engineer trainee|management trainee)\b/i.test(p.title) ? 'fresh-graduate trainee post' : null;
   if (lv === 'support') return LEVEL_WHY(f);
   if (ownProfession) return null;
+  if (lv === 'low') return LEVEL_WHY(f);
   // General graduates: support / 10th-level posts, and Group C / pay level 2-5 posts whose minimum is below graduation (structural).
   if (tier === 'graduate') return lv === 'subgrad' && (f.group === 'C' || (f.payLevel !== null && f.payLevel >= 2 && f.payLevel <= 5)) ? structuralFloor(p) : null;
   if (lv === 'subgrad') return structuralFloor(p);

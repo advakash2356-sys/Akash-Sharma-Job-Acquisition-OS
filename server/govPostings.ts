@@ -26,7 +26,7 @@ export interface GovPosting {
   postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS" | "JAOS curated (official notice)" | "Employment News (Govt of India)" | "ISRO / Dept of Space careers (official)" | "District Courts (eCourts S3WaaS, official)"; lesserKnown: boolean; verifiedAt: string;
   /** Playbook §5 fields (best effort from the notice text; empty when not stated). */
   level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; /** "listing" = the date the official page stops listing the notice (District Courts); confirm the last date in the notice. */ dateKind?: "last" | "listing"; minAge?: number; maxAge?: number; eduTags?: string[];
-  /** Structured facts read once per notice (rules, the notice PDF text, or Gemini on the PDF). The browser gates and ranks on these. */ facts?: NoticeFacts;
+  /** Structured facts read once per notice (rules and the notice PDF text; a user's own key may add more in the browser). The browser gates and ranks on these. */ facts?: NoticeFacts;
 }
 export type Level = "central" | "state" | "psu" | "autonomous" | "judiciary" | "defence" | "regulator" | "local";
 export type EmpType = "permanent" | "contractual" | "deputation" | "apprenticeship" | "fellowship";
@@ -66,7 +66,10 @@ export function enrich(p: GovPosting, text: string): GovPosting | null {
   const all = `${p.title} ${p.org} ${text}`;
   if (SCAM.test(all) || retireeNotice(`${p.title} ${p.eligibility}`)) return null;
   // Not an open call by its title (a list, result, schedule or appointment letter): drop. "Recruitment of X" alone stays.
-  const nt = noticeTypeOf(p.title); if (nt !== "open_call" && nt !== "other") return null;
+  // S3 court rows: "unclear" (a recruitment title with no positive evidence) stays, labelled "Check notice: notice type unclear",
+  // until the PDF shows it is an open call. Other sources are official vacancy listings, so their recruitment titles are open calls.
+  const nt0 = noticeTypeOf(p.title); if (nt0 !== "open_call" && nt0 !== "other" && nt0 !== "unclear") return null;
+  const nt = nt0 === "unclear" && !p.id.startsWith("s3:") ? "open_call" : nt0;
   const tr = inDomain(p.noticeUrl).tier;
   const e: GovPosting = { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
   // Facts once per notice. A thin eligibility line falls back to the notice snippet; the PDF reader may refine S3 rows later.
@@ -164,7 +167,7 @@ async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Prom
   return out;
 }
 /** District court pages change slowly: read them at most every 3 hours, so each court site gets <= 8 requests a day from us. */
-const S3_TTL = 3 * 60 * 60 * 1000; let s3cache: { at: number; posts: GovPosting[]; ok: number; failed: number; read?: { read: number; gemini: number; dropped: number } } | null = null;
+const S3_TTL = 3 * 60 * 60 * 1000; let s3cache: { at: number; posts: GovPosting[]; ok: number; failed: number; read?: { read: number; scanned: number; dropped: number } } | null = null;
 export async function officialPostings(today: string, now = Date.now()): Promise<{ posts: GovPosting[]; sources: string[]; warnings: string[] }> {
   const posts: GovPosting[] = [], sources: string[] = [], warnings: string[] = [];
   const [en, isro] = await Promise.allSettled([get(EN_URL, "text/html", 12000).then((r) => r.text()), get(ISRO_URL, "text/html", 12000).then((r) => r.text())]);
@@ -173,12 +176,12 @@ export async function officialPostings(today: string, now = Date.now()): Promise
   if (!s3cache || now - s3cache.at > S3_TTL) {
     const res = await pool(S3_SITES, 12, async (s) => fromS3waas(await (await get(`https://${s.host}${S3_PATH}`, "text/html", 8000)).text(), s, today));
     const ok = res.filter((r) => r.status === "fulfilled"); const fresh = { at: now, posts: ok.flatMap((r) => (r as PromiseFulfilledResult<GovPosting[]>).value), ok: ok.length, failed: res.length - ok.length };
-    // Read each listed notice once (PDF text, then Gemini on the existing key; rules as fallback) and drop non-open notices.
-    if (fresh.ok) { const r = await readNotices(fresh.posts.filter((p) => p.lastDate >= today), 25000).catch(() => null); if (r) { fresh.posts = r.posts; (fresh as any).read = { read: r.read, gemini: r.gemini, dropped: r.dropped }; } }
+    // Read each listed notice once (PDF text layer; no server AI key) and drop non-open notices. Scanned ones are flagged.
+    if (fresh.ok) { const r = await readNotices(fresh.posts.filter((p) => p.lastDate >= today), 25000).catch(() => null); if (r) { fresh.posts = r.posts; (fresh as any).read = { read: r.read, scanned: r.scanned, dropped: r.dropped }; } }
     if (fresh.ok || !s3cache) s3cache = fresh;
   }
   const live = s3cache.posts.filter((p) => p.lastDate >= today); posts.push(...live);
-  if (s3cache.read) sources.push(`District Court notices read from the official PDF: ${s3cache.read.read} (${s3cache.read.gemini} with Gemini on the existing project key); ${s3cache.read.dropped} non-open notices removed`);
+  if (s3cache.read) sources.push(`District Court notices read from the official PDF text: ${s3cache.read.read}; scanned or unreadable (Check notice): ${s3cache.read.scanned}; ${s3cache.read.dropped} non-open notices removed`);
   if (s3cache.ok) sources.push(`District Courts recruitment pages, eCourts S3WaaS (official; ${s3cache.ok} of ${S3_SITES.length} courts read)`);
   if (s3cache.failed) warnings.push(`District Courts: ${s3cache.failed} of ${S3_SITES.length} court sites did not answer`);
   return { posts, sources, warnings };
