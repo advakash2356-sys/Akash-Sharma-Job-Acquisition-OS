@@ -5,7 +5,14 @@ export type Spec = '' | 'law' | 'engineering' | 'medical' | 'finance' | 'teachin
 export type Edu = '10' | '12' | 'iti' | 'diploma' | 'grad' | 'eng' | 'pg' | 'phd';
 export type Cat = 'GEN' | 'EWS' | 'OBC' | 'SC' | 'ST';
 export type Gender = 'male' | 'female' | 'other';
-export interface Profile { /** optional city or district, used to pre-fill the advanced search */ city?: string; dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec; /** true once the user picked education on this page themselves */ eduSet?: boolean }
+export interface Profile { /** optional city or district, used to pre-fill the advanced search */ city?: string; dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec; /** true once the user picked education on this page themselves */ eduSet?: boolean;
+  /** Spec §01 one-time fields (all optional; unknown never blocks, it becomes "Check notice"). */
+  /** Degree subjects / all degrees, free text, e.g. "BA LLB, LLM" or "MSc Environmental Science". */ subject?: string;
+  /** Bar Council enrolment, NMC/State Medical Council registration, ICAI/ICMAI membership. undefined = not answered. */ bar?: boolean; medReg?: boolean; icai?: boolean;
+  /** Holds the home state's domicile certificate; languages read/write. */ domicile?: boolean; languages?: string[];
+  /** Minimum 7th CPC pay level wanted (1-18); 0/undefined = no floor. */ minPayLevel?: number;
+  /** Open to posts outside the home state (default true). */ relocate?: boolean;
+  /** Ex-servicemen: years of military service (for the service + 3 years relaxation). */ esmYears?: number }
 export interface Exam {
   id: string; name: string; body: string; group: 'UPSC' | 'SSC' | 'Banking' | 'Railways' | 'Defence' | 'Courts' | 'PSU / Research' | 'Postal';
   minAge: number; maxAge: number; asOn: string; // age reckoning date in the notification used
@@ -56,7 +63,8 @@ export function relaxation(e: Exam, p: Profile) {
   if (e.relax === 'none') return 0;
   const c = p.cat === 'SC' || p.cat === 'ST' ? 5 : p.cat === 'OBC' ? 3 : 0;
   if (e.relax === 'obcScOnly') return c;
-  return c + (p.pwbd ? 10 : 0);
+  // DoPT: PwBD +10 over the category limit (UR 10, OBC 13, SC/ST 15); Ex-SM: military service + 3 years.
+  return Math.max(c + (p.pwbd ? 10 : 0), p.esm ? (p.esmYears ?? 0) + 3 : 0);
 }
 export function eduOk(e: Exam, p: Profile) {
   if (e.edu.includes(p.edu)) return true;

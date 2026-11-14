@@ -3,7 +3,8 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, Select } from './ui';
 import { usePersisted } from '../lib/persist';
 import { downloadText } from '../lib/exportResult';
-import { ADV0, EMP, QUALS, SECTORS, TIERS, advCount, advFromProfile, govResults, type Adv } from '../lib/gov/filter';
+import { ADV0, EMP, QUALS, SECTORS, TIERS, advCount, advFromProfile, govResults, hasDetails, type Adv } from '../lib/gov/filter';
+import { lawStreams } from '../lib/gov/gates';
 import { LABEL_TEXT, matchLabel, profileOverlap } from '../lib/gov/rank';
 import type { Cat, Profile } from '../lib/govJobs';
 import { classify } from '../lib/onestop/category';
@@ -29,8 +30,10 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
   useEffect(() => { load(); }, []);
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
   const [track, setTrack] = useState<'all' | 'cadre' | 'lateral'>('all');
-  const res = govResults(feed?.postings || [], f, profile, keywords); const hidden = res.hidden;
-  const eff = profile ? { ...profile, cat: adv.cat || profile.cat } : null;
+  // t386u L3: a first-time visitor with no details is not silently treated as a graduate: show everything, with a prompt.
+  const mine = hasDetails(profile) ? profile! : null;
+  const res = govResults(feed?.postings || [], f, mine, keywords); const hidden = res.hidden;
+  const eff = mine ? { ...mine, cat: adv.cat || mine.cat } : null;
   const list = res.list.filter((p) => track === 'all' || govTrack(p) === track);
   const chip = (on: boolean, label: string, onClick: () => void, id?: string) => <button type="button" key={label} aria-pressed={on} onClick={onClick} data-testid={id} className={`min-h-9 cursor-pointer rounded-full border px-3 py-1 text-sm ${on ? 'border-primary bg-accent text-primary' : 'border-border hover:bg-muted'}`}>{label}</button>;
   const csv = () => downloadText('gov-postings.csv', ['title,org,state,location,last_date,pay,vacancies,notice'].concat(list.map((p) => [p.title, p.org, p.state, p.location, p.lastDate, p.pay, p.vacancies, p.noticeUrl].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','))).join('\n'), 'text/csv');
@@ -82,10 +85,12 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
       </div>
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Government track" data-testid="gov-track-tabs">
         {([['all', 'All government'], ['cadre', 'Cadre exams (age-capped)'], ['lateral', 'Lateral / Consultant / Young Professional (all ages)']] as const).map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={track === k} onClick={() => setTrack(k)} className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${track === k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>{label} · {(feed?.postings || []).filter((p) => k === 'all' || govTrack(p) === k).length}</button>))}
+          <button key={k} role="tab" aria-selected={track === k} onClick={() => setTrack(k)} className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${track === k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>{label} · {res.list.filter((p) => k === 'all' || govTrack(p) === k).length}</button>))}
       </div>
-      {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} posts far below your qualification (peon, MTS, clerk, driver, Group C/D clerical) are hidden. Tick "Show all levels" in advanced search to see them.</p>}
-      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the labels:</b> they use your <b>profession</b> (professional degree), <b>education</b>, <b>date of birth</b>, <b>category</b> (and PwBD), <b>state</b> and <b>years of experience</b> from "Your details" below, saved only in this browser. <b>Strong match</b> = a post in your profession that nothing in the notice rules you out of. <b>Eligible</b> = the notice states both an age limit and a qualification and you meet them (standard OBC +3, SC/ST +5, PwBD +10 years). <b>Check notice</b> = something is missing from the notice text or you may not meet it; the reason is shown. Best match ranks by profession, then level fit, eligibility, pay, your state and days left. It is a hint, not legal advice.</p>
+      {feed && !mine && <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm" data-testid="gp-add-details">Showing <b>every</b> open post. Add your education, degree and date of birth in <a className="text-primary underline" href="#gov-details">Your details</a> below to see only posts at your level, ranked for you.</p>}
+      {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} posts below your level or minimum pay (for example peon, MTS, driver, constable, home guard, agniveer, DEO, LDC/UDC for professional graduates; 10th / ITI-level posts for graduates) are hidden. Tick "Show all levels" in advanced search to see them.</p>}
+      {feed && mine?.spec === 'law' && (() => { const st = lawStreams(res.list); const none = st.filter((x) => !x.n); return <p className="text-xs text-muted-foreground" data-testid="gp-law-streams"><b>Law posts open now:</b> {st.map((x) => `${x.name.split(' (')[0]} ${x.n}`).join(' · ')}.{none.length ? <> No open notice right now in our sources for: <b>{none.map((x) => x.name).join('; ')}</b>. We do not pad this list with unrelated posts.</> : null}</p>; })()}
+      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the labels:</b> they use your <b>profession</b> (professional degree), <b>education</b>, <b>date of birth</b>, <b>category</b> (and PwBD), <b>state</b> and <b>years of experience</b> from "Your details" below, saved only in this browser. <b>Strong match</b> = a post in your profession that nothing in the notice rules you out of. <b>Eligible</b> = the notice states both an age limit and a qualification and you meet them (standard OBC +3, SC/ST +5, PwBD +10 / +13 / +15 years, Ex-SM service + 3; category relaxation for state posts needs that state's domicile). <b>Check notice</b> = one or two clauses to verify (licence, experience, domicile, language paper, age limit), named on the card. Strong match also needs your degree to match the post's discipline and the pay to meet your minimum pay level; Eligible names its trade-off (place, contract tenure). Best match ranks by profession, then level fit, eligibility, pay, your state and days left. It is a hint, not legal advice.</p>
       {err && <p className="text-sm text-danger" role="alert">{err}</p>}
       {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
       {!feed && !err && <div className="h-40 animate-pulse rounded-lg bg-muted" aria-label="Loading postings" />}

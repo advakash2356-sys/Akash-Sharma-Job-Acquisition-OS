@@ -31,7 +31,7 @@ test('t329u subject hint: WDRA Bio/Agri post gets no officer boost for LLB and s
   const w = P('Under Secretary (Technical)', { org: 'WDRA', pay: 'Level 11 of pay matrix', eligibility: 'Masters in Biological Sciences / Agriculture with 5 years experience' });
   const legal = P('Legal Officer', { eligibility: 'LLB with 7 years experience', eduTags: ['LAW'] });
   assert.ok(profileFit(w, lawyer).pts < 0); assert.ok(profileFit(legal, lawyer).pts > profileFit(w, lawyer).pts + 40);
-  const why = eligibilityBadge(w, lawyer).why.join(' '); assert.match(why, /Check the required subject: Biological Sciences \/ Agriculture/); assert.doesNotMatch(why, /Officer \/ specialist/);
+  const why = eligibilityBadge(w, lawyer).why.join(' '); assert.match(why, /Needs Life Sciences \/ Agriculture/); // t386u: exact discipline gate wording assert.doesNotMatch(why, /Officer \/ specialist/);
   assert.equal(profileFit(w, { ...lawyer, spec: '' }).subjects, undefined); // unknown degree: no penalty
 });
 test('t329u curated niche rows: official links, future-dated filter, law rows rank for lawyer, GATE rows not', async () => {

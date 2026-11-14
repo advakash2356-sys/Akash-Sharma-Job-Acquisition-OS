@@ -12,6 +12,7 @@ export function filterPostings<T extends Filterable>(list: T[], f: Filter, today
 // Pure and fixture-tested. Uses only what the posting text states; an unknown field never hides a post unless asked.
 import { EDU_RANK, TAG_RANK, relaxation, tierOf, type RankInput } from './rank';
 import { ageOn, type Cat, type Profile } from '../govJobs';
+import { disciplineGate, experienceGate, licenceGate } from './gates';
 export const QUALS: [string, string][] = [['10TH', '10th'], ['12TH', '12th'], ['ITI', 'ITI'], ['DIPLOMA', 'Diploma'], ['GRADUATE', 'Graduate'], ['ENGINEERING', 'Engineering (BE/BTech)'], ['LAW', 'Law (LLB/LLM)'], ['MEDICAL', 'Medical / Nursing / Pharmacy'], ['PG', 'Postgraduate'], ['PHD', 'PhD']];
 export const SECTORS: [string, string][] = [['central', 'Central government'], ['state', 'State government'], ['psu', 'PSU / public bank'], ['autonomous', 'Research, universities, institutes'], ['judiciary', 'Courts / judiciary'], ['defence', 'Defence / police forces'], ['regulator', 'Regulators (RBI, SEBI…)'], ['local', 'Municipal / district']];
 export const TIERS: [string, string][] = [['junior', 'Entry (Group C/D, MTS, clerk)'], ['mid', 'Middle (assistant, technical, JE)'], ['senior', 'Officer / specialist (Group A/B)']];
@@ -26,12 +27,17 @@ export function ageFits(p: AdvPost, prof: Profile | null, today = new Date().toI
   if (!prof?.dob || (!p.maxAge && !p.minAge)) return null;
   const age = ageOn(prof.dob, p.lastDate || today);
   const stateMismatch = p.level === 'state' && prof.state && p.state && p.state !== 'All India' && p.state.toLowerCase() !== prof.state.toLowerCase();
-  const cap = (p.maxAge || 99) + (stateMismatch ? (prof.pwbd ? 10 : 0) : relaxation(prof));
+  const cap = (p.maxAge || 99) + relaxation(prof, !stateMismatch);
   return age <= cap && (!p.minAge || age >= p.minAge);
 }
 /** Lowest qualification the notice asks for is at or below the user's (null when not stated). */
-export function qualFits(p: Pick<RankInput, 'eduTags'>, prof: Profile | null): boolean | null {
-  if (!prof || !p.eduTags?.length) return null;
+/** t386u M1: subject-aware. False when the post needs a professional degree / discipline the person does not hold, a licence
+ *  they said they do not hold, or more experience than they have. Unknowns never hide (null). */
+export function qualFits(p: Pick<RankInput, 'eduTags'> & Partial<Pick<RankInput, 'title' | 'eligibility'>>, prof: Profile | null): boolean | null {
+  if (!prof) return null; const tp = { title: p.title || '', eligibility: p.eligibility || '' };
+  const gates = [disciplineGate(tp, prof).ok, licenceGate(tp, prof).ok, experienceGate(tp, prof).ok];
+  if (gates.includes(false)) return false;
+  if (!p.eduTags?.length) return gates.includes(true) ? true : null;
   return (EDU_RANK[prof.edu] || 0) >= Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3));
 }
 export function advancedFilter<T extends AdvPost>(list: T[], a: Partial<Adv>, prof?: Profile | null, today?: string): T[] {
@@ -55,6 +61,8 @@ export function advFromProfile(prof: Profile | null | undefined, cur: Partial<Ad
   // State and city are NOT hard filters here: many notices do not state a place, so your state/city lift posts in Best match instead.
   return { ...cur, cat: '', ageFit: !!prof.dob, qualFit: true };
 }
+/** True once the person has told us anything that should shape results (education picked, DOB, degree, experience, subjects). */
+export const hasDetails = (p?: Profile | null): boolean => !!p && (!!p.eduSet || !!p.dob || !!p.spec || p.expYears !== undefined || !!p.subject);
 /** Number of advanced filters in use (for the toggle label). */
 export const advCount = (a: Partial<Adv>) => { const x = { ...ADV0, ...a }; return [x.quals.length, x.sectors.length, x.tiers.length, x.emp.length, x.dept, x.city, x.cat, x.ageFit, x.qualFit].filter(Boolean).length; };
 
