@@ -12,12 +12,14 @@ export function specOf(a: Partial<AppProfile>): Spec {
   if (/\b(ll\.?b|ll\.?m|advocate|lawyer|legal|litigation|law officer|counsel|bar council)\b/i.test(t)) return 'law';
   if (/\b(chartered accountant|\bca\b|cma|icwa|company secretary|accountant|finance|audit)\b/i.test(t)) return 'finance';
   if (/\b(mbbs|doctor|nurse|pharmacist|physician|dental)\b/i.test(t)) return 'medical';
+  if (/\b(b\.?\s?ed|teacher|lecturer|assistant professor|faculty)\b/i.test(t)) return 'teaching';
   if (/\b(b\.?tech|b\.?e\.|engineer|engineering|developer|software)\b/i.test(t)) return 'engineering';
   return '';
 }
 export function eduOf(a: Partial<AppProfile>): Edu | undefined {
   const t = `${a.headline || ''} ${(a.resumeText || '').slice(0, 4000)}`;
-  if (/\b(ll\.?m|m\.?a\.?|m\.?sc|m\.?com|mba|pgdm|post[- ]?graduat\w*|master'?s|ph\.?d)\b/i.test(t)) return 'pg';
+  if (/\b(ph\.?\s?d|doctorate)\b/i.test(t)) return 'phd';
+  if (/\b(ll\.?m|m\.?a\.?|m\.?sc|m\.?com|mba|pgdm|post[- ]?graduat\w*|master'?s)\b/i.test(t)) return 'pg';
   if (/\b(b\.?tech|b\.?e\.)\b/i.test(t)) return 'eng';
   if (/\b(ll\.?b|b\.?a\.?|b\.?com|b\.?sc|bba|bca|graduat\w*|bachelor'?s)\b/i.test(t) || a.education === 'graduate') return 'grad';
   const m: Record<string, Edu> = { '10': '10', '12': '12', iti: 'iti', diploma: 'diploma' }; return a.education ? m[a.education] : undefined;

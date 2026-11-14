@@ -3,9 +3,9 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, Select } from './ui';
 import { usePersisted } from '../lib/persist';
 import { downloadText } from '../lib/exportResult';
-import { filterPostings } from '../lib/gov/filter';
-import { BADGE_TEXT, eligibilityBadge, profileFit, profileOverlap, rankScore } from '../lib/gov/rank';
-import type { Profile } from '../lib/govJobs';
+import { ADV0, EMP, QUALS, SECTORS, TIERS, advCount, advFromProfile, govResults, type Adv } from '../lib/gov/filter';
+import { LABEL_TEXT, matchLabel, profileOverlap } from '../lib/gov/rank';
+import type { Cat, Profile } from '../lib/govJobs';
 import { classify } from '../lib/onestop/category';
 /** t345u: split age-capped cadre exams from all-age lateral / consultant / Young Professional roles. */
 export const govTrack = (p: { title: string; org: string; employmentType?: string }) => (p.employmentType && /contractual|deputation|fellowship/.test(p.employmentType)) || classify({ title: p.title, company: p.org, gov: true }) === 'gov-lateral' ? 'lateral' : 'cadre';
@@ -19,15 +19,20 @@ const fmt = (d: string) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('e
 export function GovPostings({ homeState, profile, keywords = [] }: { homeState?: string; profile?: Profile | null; keywords?: string[] }) {
   const [feed, setFeed] = useState<Feed | null>(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const [ack, setAck] = usePersisted<string>('jaos_gov_postings_ack', '');
-  const [f, setF] = usePersisted('jaos_gov_postings_filter', { q: '', state: '', lesser: false, official: false, soon: false, sort: 'rank', deputation: false, allLevels: false });
+  const [f, setF] = usePersisted('jaos_gov_postings_filter', { q: '', state: '', lesser: false, official: false, soon: false, sort: 'rank', deputation: false, allLevels: false, adv: ADV0 as Partial<Adv>, advOpen: false, auto: false });
+  const adv: Adv = { ...ADV0, ...(f.adv || {}) }; const setAdv = (patch: Partial<Adv>) => setF({ ...f, adv: { ...adv, ...patch } });
+  const toggle = (k: 'quals' | 'sectors' | 'tiers' | 'emp', v: string) => setAdv({ [k]: adv[k].includes(v) ? adv[k].filter((x) => x !== v) : [...adv[k], v] });
+  const applyMine = () => { const a = advFromProfile(profile, adv); const { state, ...rest } = a; setF({ ...f, state: state ?? f.state, adv: { ...adv, ...rest }, auto: true }); };
+  // t385u: one-time details fill the search the first time they exist, so every later visit starts from the person's profile.
+  useEffect(() => { if (!f.auto && profile && (profile.dob || profile.state)) applyMine(); }, [profile?.dob, profile?.state]); // eslint-disable-line react-hooks/exhaustive-deps
   const load = async () => { setBusy(true); setErr(''); try { const r = await fetch('/api/gov/postings', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); setFeed(j); } catch (e: any) { setErr(`The official government portals and feeds are temporarily slow or under maintenance (${e.message}). Servers are busiest near closing hours (5 pm to midnight IST); try again in the morning. The eligibility checker below still works.`); } finally { setBusy(false); } };
   useEffect(() => { load(); }, []);
   const states = useMemo(() => [...new Set((feed?.postings || []).map((p) => p.state).filter(Boolean))].sort(), [feed]);
   const [track, setTrack] = useState<'all' | 'cadre' | 'lateral'>('all');
-  const list = filterPostings(feed?.postings || [], f).filter((p) => track === 'all' || govTrack(p) === track)
-    .map((p) => { const fit = profileFit(p, profile); return { p, fit, score: rankScore(p, f.q.split(/[\s,]+/)) + fit.pts + (fit.subjects ? 0 : profileOverlap(p, keywords).pts) }; })
-    .sort((a, b) => (f.sort === 'rank' ? b.score - a.score : 0) || a.p.lastDate.localeCompare(b.p.lastDate)).filter((x) => f.allLevels || !x.fit.belowLevel).map((x) => x.p);
-  const hidden = f.allLevels ? 0 : (feed?.postings || []).filter((p) => profileFit(p, profile).belowLevel).length;
+  const res = govResults(feed?.postings || [], f, profile, keywords); const hidden = res.hidden;
+  const eff = profile ? { ...profile, cat: adv.cat || profile.cat } : null;
+  const list = res.list.filter((p) => track === 'all' || govTrack(p) === track);
+  const chip = (on: boolean, label: string, onClick: () => void, id?: string) => <button type="button" key={label} aria-pressed={on} onClick={onClick} data-testid={id} className={`min-h-9 cursor-pointer rounded-full border px-3 py-1 text-sm ${on ? 'border-primary bg-accent text-primary' : 'border-border hover:bg-muted'}`}>{label}</button>;
   const csv = () => downloadText('gov-postings.csv', ['title,org,state,location,last_date,pay,vacancies,notice'].concat(list.map((p) => [p.title, p.org, p.state, p.location, p.lastDate, p.pay, p.vacancies, p.noticeUrl].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','))).join('\n'), 'text/csv');
   return (
     <Card className="mb-5 grid min-w-0 gap-3" data-testid="gov-postings">
@@ -50,16 +55,37 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.lesser} onChange={(e) => setF({ ...f, lesser: e.target.checked })} data-testid="gp-lesser" /> Lesser-known only</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.official} onChange={(e) => setF({ ...f, official: e.target.checked })} /> Official link only</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.soon} onChange={(e) => setF({ ...f, soon: e.target.checked })} /> Closing in 7 days</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={!!f.allLevels} onChange={(e) => setF({ ...f, allLevels: e.target.checked })} data-testid="gp-all-levels" /> Show all levels</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.deputation} onChange={(e) => setF({ ...f, deputation: e.target.checked })} data-testid="gp-deputation" /> Show deputation-only posts</label></div>
         <div className="min-w-0"><Label htmlFor="gpo">Sort</Label><Select id="gpo" value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value })} data-testid="gp-sort"><option value="rank">Best match (closing soon, lesser-known, clear pay)</option><option value="date">Last date first</option></Select></div>
+      </div>
+      <div className="grid gap-3 rounded-lg border border-border p-3" data-testid="gov-adv">
+        <div className="flex flex-wrap items-center justify-between gap-2"><button type="button" className="min-h-11 cursor-pointer text-left font-medium text-primary underline" aria-expanded={!!f.advOpen} onClick={() => setF({ ...f, advOpen: !f.advOpen })} data-testid="gov-adv-toggle">{f.advOpen ? 'Hide' : 'Show'} advanced search{advCount(adv) ? ` (${advCount(adv)} in use)` : ''}</button>
+          <div className="flex flex-wrap gap-2">{profile && <Button variant="outline" onClick={applyMine} data-testid="gov-adv-mine">Use my details</Button>}<Button variant="ghost" onClick={() => setF({ ...f, state: '', allLevels: false, adv: ADV0 })} data-testid="gov-adv-clear">Clear filters</Button></div></div>
+        {f.auto && profile && <p className="text-xs text-muted-foreground" data-testid="gov-adv-auto">Filled from "Your details" below (saved in this browser): {[adv.ageFit ? 'age limit with your category' : '', adv.qualFit ? 'your qualification' : ''].filter(Boolean).join(' and ') || 'your profile'}{profile.spec ? `; ${profile.spec} posts first` : ''}{profile.state || profile.city ? `; ${[profile.city, profile.state].filter(Boolean).join(', ')} ranked higher` : ''}. Posts whose notice does not state these are kept. Change any filter, or press Clear filters to search everything.</p>}
+        {f.advOpen && <div className="grid gap-3 text-sm">
+          <div><div className="mb-1 font-medium">Qualification the post asks for</div><div className="flex flex-wrap gap-2" data-testid="gov-adv-quals">{QUALS.map(([v, l]) => chip(adv.quals.includes(v), l, () => toggle('quals', v)))}</div>
+            <label className="mt-1 flex items-center gap-2"><input type="checkbox" checked={adv.unstated} onChange={(e) => setAdv({ unstated: e.target.checked })} /> Also include posts whose notice text does not state a qualification</label></div>
+          <div><div className="mb-1 font-medium">Sector</div><div className="flex flex-wrap gap-2" data-testid="gov-adv-sectors">{SECTORS.map(([v, l]) => chip(adv.sectors.includes(v), l, () => toggle('sectors', v)))}</div></div>
+          <div><div className="mb-1 font-medium">Job level</div><div className="flex flex-wrap gap-2" data-testid="gov-adv-tiers">{TIERS.map(([v, l]) => chip(adv.tiers.includes(v), l, () => toggle('tiers', v)))}</div>
+            <label className="mt-1 flex items-center gap-2"><input type="checkbox" checked={!!f.allLevels} onChange={(e) => setF({ ...f, allLevels: e.target.checked })} data-testid="gp-all-levels" /> Show all levels (includes peon, MTS, clerk and driver posts far below your qualification)</label></div>
+          <div><div className="mb-1 font-medium">Job type</div><div className="flex flex-wrap gap-2">{EMP.map(([v, l]) => chip(adv.emp.includes(v), l, () => toggle('emp', v)))}</div></div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="min-w-0"><Label htmlFor="gad">Department or organisation</Label><Input id="gad" value={adv.dept} placeholder="e.g. Railways, High Court, ISRO" onChange={(e) => setAdv({ dept: e.target.value })} data-testid="gov-adv-dept" /></div>
+            <div className="min-w-0"><Label htmlFor="gac">City or district</Label><Input id="gac" value={adv.city} placeholder="e.g. Lucknow" onChange={(e) => setAdv({ city: e.target.value })} data-testid="gov-adv-city" /></div>
+            <div className="min-w-0"><Label htmlFor="gacat" hint="for age relaxation">Category</Label><Select id="gacat" value={adv.cat} onChange={(e) => setAdv({ cat: e.target.value as '' | Cat })} data-testid="gov-adv-cat"><option value="">From my details{profile ? ` (${profile.cat})` : ''}</option>{(['GEN', 'EWS', 'OBC', 'SC', 'ST'] as Cat[]).map((c) => <option key={c} value={c}>{c === 'GEN' ? 'General' : c === 'OBC' ? 'OBC (non-creamy layer)' : c}</option>)}</Select></div>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={adv.ageFit} onChange={(e) => setAdv({ ageFit: e.target.checked })} data-testid="gov-adv-agefit" /> Only posts my age fits (with category relaxation)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={adv.qualFit} onChange={(e) => setAdv({ qualFit: e.target.checked })} data-testid="gov-adv-qualfit" /> Only posts my qualification meets</label></div>
+          <p className="text-xs text-muted-foreground">Filters use only what each notice states. A post whose notice does not state an age limit or qualification is kept, marked "Check notice".</p>
+        </div>}
       </div>
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Government track" data-testid="gov-track-tabs">
         {([['all', 'All government'], ['cadre', 'Cadre exams (age-capped)'], ['lateral', 'Lateral / Consultant / Young Professional (all ages)']] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={track === k} onClick={() => setTrack(k)} className={`min-h-11 rounded-full px-4 text-sm cursor-pointer ${track === k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>{label} · {(feed?.postings || []).filter((p) => k === 'all' || govTrack(p) === k).length}</button>))}
       </div>
-      {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} posts far below your qualification (peon, MTS, clerk, Group C/D clerical) are hidden. Tick "Show all levels" to see them.</p>}
-      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the eligibility hint:</b> it uses your <b>date of birth</b>, <b>education</b>, <b>category</b> (and PwBD) <b>state</b>, <b>years of experience</b> and <b>professional degree</b> from "Your details" below, saved only in this browser. "Likely eligible" appears only when the posting states both an age limit and a qualification level and you meet them (with standard OBC +3, SC/ST +5, PwBD +10 years). If either is missing from the notice text you see "Needs verification"; deputation-only posts and posts you seem to miss show "May not qualify". It is a hint, not legal advice.</p>
+      {hidden > 0 && <p className="text-xs text-muted-foreground" data-testid="gp-hidden">{hidden} posts far below your qualification (peon, MTS, clerk, driver, Group C/D clerical) are hidden. Tick "Show all levels" in advanced search to see them.</p>}
+      <p className="text-xs text-muted-foreground" data-testid="gp-elig-help"><b>About the labels:</b> they use your <b>profession</b> (professional degree), <b>education</b>, <b>date of birth</b>, <b>category</b> (and PwBD), <b>state</b> and <b>years of experience</b> from "Your details" below, saved only in this browser. <b>Strong match</b> = a post in your profession that nothing in the notice rules you out of. <b>Eligible</b> = the notice states both an age limit and a qualification and you meet them (standard OBC +3, SC/ST +5, PwBD +10 years). <b>Check notice</b> = something is missing from the notice text or you may not meet it; the reason is shown. Best match ranks by profession, then level fit, eligibility, pay, your state and days left. It is a hint, not legal advice.</p>
       {err && <p className="text-sm text-danger" role="alert">{err}</p>}
       {feed && <p className="text-xs text-muted-foreground" data-testid="gov-postings-meta">{list.length} of {feed.postings.length} open postings · checked {new Date(feed.checkedAt).toLocaleString('en-IN')} · sources: {feed.sources.join('; ')}{feed.warnings.length ? ` · some sources unavailable: ${feed.warnings.join('; ')}` : ''}</p>}
       {!feed && !err && <div className="h-40 animate-pulse rounded-lg bg-muted" aria-label="Loading postings" />}
@@ -68,7 +94,7 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
           <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="font-medium">{p.title}</div><div className="text-sm text-muted-foreground">{p.org}{p.location ? ` · ${p.location}` : ''}</div></div>
             <div className="flex flex-wrap gap-1">{p.lesserKnown && <Badge tone="primary">Lesser-known</Badge>}{p.level && <Badge tone="muted">{p.level}</Badge>}{p.employmentType && p.employmentType !== 'permanent' && <Badge tone="gold">{p.employmentType}</Badge>}<Badge tone={left <= 3 ? 'danger' : 'muted'}>{left <= 0 ? 'Closes today' : `${left} day${left === 1 ? '' : 's'} left`}</Badge></div></div>
           {(() => { const o = profileOverlap(p, keywords); return o.hits.length ? <p className="mt-1 text-xs text-muted-foreground" data-testid="gp-match">Matches your profile: {o.hits.join(', ')}</p> : null; })()}
-          {(() => { const e = eligibilityBadge(p, profile || null); return <p className="mt-2 text-sm" data-testid="gp-elig"><Badge tone={e.badge === 'likely' ? 'primary' : e.badge === 'maynot' ? 'danger' : 'muted'}>{BADGE_TEXT[e.badge]}</Badge> <span className="text-xs text-muted-foreground">{e.why.join(' ')}</span></p>; })()}
+          {(() => { const e = matchLabel(p, eff); return <p className="mt-2 text-sm" data-testid="gp-elig"><Badge tone={e.label === 'strong' ? 'primary' : e.label === 'eligible' ? 'gold' : 'muted'}>{LABEL_TEXT[e.label]}</Badge> <span className="text-xs text-muted-foreground">{e.why.join(' ')}</span></p>; })()}
           <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
             <div><dt className="inline text-muted-foreground">Last date: </dt><dd className="inline font-medium" data-testid="gp-last">{fmt(p.lastDate)}</dd></div>
             <div><dt className="inline text-muted-foreground">State: </dt><dd className="inline">{p.state || 'see notice'}</dd></div>
@@ -80,7 +106,7 @@ export function GovPostings({ homeState, profile, keywords = [] }: { homeState?:
             {p.applyUrl && <a className="text-primary underline" href={p.applyUrl} target="_blank" rel="noopener noreferrer">Apply link</a>}
             <span className="text-xs text-muted-foreground">via {p.source} · last verified {fmt(p.verifiedAt)}</span></div>
         </li>); })}</ul>
-      {feed && !list.length && <p className="text-sm text-muted-foreground" data-testid="gp-empty"><b>No open notifications match your exact filters right now.</b> Government bodies release notices in waves (often on Fridays and Saturdays with Employment News). Try clearing your keyword filter, turning off "Lesser-known only", or checking your category's age relaxation.</p>}
+      {feed && !list.length && <p className="text-sm text-muted-foreground" data-testid="gp-empty"><b>No open government posts match your profile and filters right now.</b> We never make up posts, so this list stays empty until an official notice is open. Government bodies release notices in waves (often on Fridays and Saturdays with Employment News). Try clearing your keyword filter, turning off "Lesser-known only", or checking your category's age relaxation.</p>}
     </Card>
   );
 }
