@@ -61,12 +61,33 @@ export const CROSS: Partial<Record<Disc, Disc[]>> = {
 /** Exact degree & discipline gate. ok=null when the post names no discipline (any graduate) or the person's degree is unknown. */
 // ---------- Related fit (adjacent roles the person's degree AND experience suit, beyond the exact profession) ----------
 /** [role regex on the post title, plain role name]. Only posts at or above the level floor are ever offered as related. */
-export const RELATED: Partial<Record<Disc, [RegExp, string][]>> = {
-  LAW: [[/\bcompliance\b/i, 'compliance'], [/\blegal (?:analyst|researcher|research)|\bresearch (?:officer|associate|fellow)\b.*\b(?:law|legal)|\blaw researcher/i, 'legal research / analysis'], [/\bpolicy\b|\bregulatory\b|\bgovernance\b/i, 'policy / regulatory'], [/\bdata analyst|\banalyst\b/i, 'data / analyst'], [/\bcompany secretary\b|\bcontract (?:manager|management|officer)|\bvigilance officer\b|\bethics\b/i, 'contracts / vigilance / secretarial'], [/\bhuman rights\b|\bconsumer (?:affairs|protection)\b/i, 'rights / consumer protection']],
-  ENV: [[/\bresearch (?:officer|associate|fellow|scientist|assistant)|\bproject (?:associate|scientist|fellow)|\bscientist\b|\bjrf\b|\bsrf\b/i, 'research'], [/\bdata analyst|\banalyst\b|\bgis\b|remote sensing|\bstatistic/i, 'data / GIS analysis'], [/\bpolicy\b|\bclimate\b|\bsustainab\w*|\besg\b|\bconsultant\b/i, 'policy / climate / sustainability'], [/\bpollution\b|\bwaste\b|\bwater quality\b|\bforest\w*|\bwildlife\b|\bbiodiversity\b|\becolog\w*/i, 'pollution / natural resources']],
-  ENGINEERING: [[/\bproject (?:manager|officer|engineer)|\bplanning officer\b/i, 'projects / planning'], [/\bdata analyst|\banalyst\b/i, 'data / analyst'], [/\btechnical officer\b|\bquality (?:assurance|control)\b|\bsafety officer\b/i, 'technical / QA / safety']],
-  CA: [[/\bcompliance\b|\brisk\b|\binternal audit/i, 'risk / compliance'], [/\bfinancial analyst|\banalyst\b|\bcredit officer\b/i, 'financial analysis / credit'], [/\bpolicy\b|\bregulatory\b/i, 'policy / regulatory']],
-  MEDICAL: [[/\bpublic health\b|\bepidemiolog\w*|\bhealth (?:officer|programme|program)\b/i, 'public health'], [/\bresearch (?:officer|associate|scientist)|\bscientist\b/i, 'medical research'], [/\bpolicy\b|\bconsultant\b/i, 'health policy / consulting']],
+export type RelatedRole = [RegExp, string, string];
+/** [title regex, role, reason]. Reason placeholders: {deg} = your degree, {exp} = " and N years of experience". First match wins, so specific roles come first
+ *  (Policy Analyst gets the policy reason, not the analyst one). Only posts at or above the level floor are ever offered as related. */
+export const RELATED: Partial<Record<Disc | 'SCHOOL', RelatedRole[]>> = {
+  LAW: [[/\bcompliance\b/i, 'compliance', 'compliance work applies the statutes and regulations you know from your {deg} degree{exp}'],
+    [/\bpolicy\b|\bregulatory\b|\bgovernance\b/i, 'policy / regulatory', 'policy and regulatory work uses your reading of laws and rules from your {deg} degree{exp}'],
+    [/\bcompany secretary\b|\bcontract (?:manager|management|officer)|\bvigilance officer\b|\bethics\b/i, 'contracts / vigilance', 'contracts and vigilance work relies on legal drafting and inquiry skills from your {deg} degree{exp}'],
+    [/\bhuman rights\b|\bconsumer (?:affairs|protection)\b/i, 'rights / consumer protection', 'rights and consumer-protection work builds on your {deg} degree{exp}'],
+    [/\bresearch (?:officer|associate|fellow)\b|\bresearch analyst\b/i, 'research', 'research posts use the legal research and writing skills of your {deg} degree{exp}'],
+    [/\bdata analyst\b|\banalyst\b/i, 'data / analysis', 'analyst posts use the analytical and research skills of your {deg} degree{exp}']],
+  ENV: [[/\bpolicy\b|\bclimate\b|\bsustainab\w*|\besg\b/i, 'policy / climate', 'climate and environment policy draws on your {deg} degree{exp}'],
+    [/\bgis\b|remote sensing/i, 'GIS / remote sensing', 'GIS and remote-sensing work uses the mapping skills of your {deg} degree{exp}'],
+    [/\bresearch (?:officer|associate|fellow|scientist|assistant)|\bproject (?:associate|scientist|fellow)|\bscientist\b|\bjrf\b|\bsrf\b/i, 'research', 'research posts match the lab and field work of your {deg} degree{exp}'],
+    [/\bpollution\b|\bwaste\b|\bwater quality\b|\bforest\w*|\bwildlife\b|\bbiodiversity\b|\becolog\w*/i, 'pollution / natural resources', 'pollution and natural-resource work is core to your {deg} degree{exp}'],
+    [/\bdata analyst\b|\banalyst\b|\bstatistic\w*|\bconsultant\b/i, 'data / analysis', 'analyst posts use the data and analytical skills of your {deg} degree{exp}']],
+  ENGINEERING: [[/\bpolicy\b|\bregulatory\b/i, 'technical policy', 'technical policy and regulation work draws on your {deg} degree{exp}'],
+    [/\bproject (?:manager|officer)|\bplanning officer\b/i, 'projects / planning', 'project and planning work uses your {deg} degree{exp}'],
+    [/\btechnical officer\b|\bquality (?:assurance|control)\b|\bqc\b|\bsafety officer\b/i, 'technical / QA / safety', 'QA, safety and technical posts use your {deg} degree{exp}'],
+    [/\bdata analyst\b|\banalyst\b/i, 'data / analysis', 'analyst posts use the quantitative skills of your {deg} degree{exp}']],
+  CA: [[/\bcompliance\b|\brisk\b|\binternal audit/i, 'risk / compliance', 'risk, audit and compliance work is close to your CA practice{exp}'],
+    [/\bpolicy\b|\bregulatory\b/i, 'policy / regulatory', 'financial policy and regulation draws on your CA training{exp}'],
+    [/\bfinancial analyst|\bcredit (?:officer|analyst)\b|\banalyst\b/i, 'financial analysis / credit', 'credit and financial analysis use your CA training{exp}']],
+  MEDICAL: [[/\bpublic health\b|\bepidemiolog\w*|\bhealth (?:officer|programme|program)\b/i, 'public health', 'public-health work builds on your {deg} degree{exp}'],
+    [/\bpolicy\b|\bconsultant\b/i, 'health policy', 'health policy and consulting draw on your {deg} degree{exp}'],
+    [/\bresearch (?:officer|associate|scientist)|\bscientist\b/i, 'medical research', 'research posts use the clinical knowledge of your {deg} degree{exp}']],
+  // 10th / 12th / ITI: adjacent office posts at their own level; never officer posts.
+  SCHOOL: [[/\b(lower division|ldc|upper division|udc|clerk|data entry|deo|computer operator|office assistant|junior assistant|typist|record keeper|store keeper|library attendant|receptionist)\b|लिपिक|टंकक|डाटा एंट्री|कंप्यूटर ऑपरेटर|कनिष्ठ सहायक/i, 'office / clerical', 'office and data-entry work at your level ({deg}){exp}']],
 };
 // ---------- Engineering branches (spec Gate 2: "specific engineering branch codes") ----------
 export type Branch = 'CIVIL' | 'MECH' | 'ELEC' | 'ECE' | 'CSE' | 'CHEM' | 'ENV' | 'INSTR' | 'MINING' | 'METAL' | 'AERO' | 'BIOTECH' | 'AGRI';
@@ -154,7 +175,7 @@ export function relaxYears(p: Pick<Profile, 'cat' | 'pwbd'> & Partial<Pick<Profi
 
 // ---------- Level floor by tier ----------
 /** 10th/ITI-level and support posts. */
-export const MENIAL_ANY = /\b(peon|sweeper|safai|chowkidar|watchman|security guard|gate ?keeper|helper|attendant|cook|mali|gardener|mts|multi[- ]?tasking|orderly|daftary|daftari|chaprasi|process server|bailiff|cleaner|sanitation|trackman|track maintainer|khalasi|driver|constable|home ?guard|agniveer|agnipath|forest guard|van rakshak|gds|gramin dak sevak|dak sevak|lab attendant|park(?:ing)? attendant|porter|dhobi|barber|tradesman)(?:s|es)?\b|चपरासी|अनुसेवक|आदेशपाल|चालक|वाहन चालक|चौकीदार|माली|सफाई|स्वच्छक|परिचारक|सिपाही|आरक्षी|होम ?गार्ड|अग्निवीर|वनरक्षक|पत्रवाहक|फर्राश|दफ्तरी|प्रोसेस सर्वर|आदेशिका वाहक/i;
+export const MENIAL_ANY = /\b(peon|sweeper|safai|chowkidar|watchman|security guard|gate ?keeper|helper|attendant|cook|mali|gardener|mts|multi[- ]?tasking|orderly|daftary|daftari|chaprasi|process server|bailiff|cleaner|sanitation|trackman|track maintainer|khalasi|driver|constable|home ?guard|agniveer|agnipath|forest guard|van rakshak|gds|gramin dak sevak|dak sevak|lab attendant|park(?:ing)? attendant|porter|dhobi|barber|tradesman)(?:s|es)?\b|चपरासी|अनुसेवक|आदेशपाल|चालक|वाहन चालक|ड्राइवर|ड्राईवर|ड्रायवर|स्वीपर|जमादार|रसोइया|रसोईया|बावर्ची|गार्ड|सुरक्षा गार्ड|सुरक्षाकर्मी|अर्दली|खलासी|धोबी|नाई|बेलदार|मजदूर|सफाईकर्मी|सफाई कर्मचारी|सफाई कर्मी|चौकीदार|माली|सफाई|स्वच्छक|परिचारक|सिपाही|आरक्षी|होम ?गार्ड|अग्निवीर|वनरक्षक|पत्रवाहक|फर्राश|दफ्तरी|प्रोसेस सर्वर|आदेशिका वाहक/i;
 /** Clerical posts: blocked for professional graduates, not for general graduates. */
 export const CLERICAL = /\b(ldc|udc|lower division|upper division|clerk|data entry|deo|typist|stenographer|steno|office assistant|junior assistant|record keeper|copyist|junior court assistant|court assistant|assistant grade|computer operator|receptionist|supportive staff|para[- ]?legal volunteer|plv)(?:s|es)?\b|पारा ?विधिक|विधिक स्वयंसेवक|लिपिक|टंकक|आशुलिपिक|डाटा एंट्री|कनिष्ठ सहायक|सहायक ग्रेड|प्रतिलिपिक|कंप्यूटर ऑपरेटर|नाजिर|नाज़िर/i;
 export type Tier = 'school' | 'graduate' | 'professional' | 'senior';

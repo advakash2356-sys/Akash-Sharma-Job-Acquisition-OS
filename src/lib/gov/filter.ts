@@ -79,7 +79,9 @@ export function govResults<T extends AdvPost>(list: T[], f: Search, prof?: Profi
   const showAll = !!f.allLevels || !!f.adv?.tiers?.includes('junior');
   const base = advancedFilter(filterPostings(list, f, today), f.adv || {}, prof, today);
   // t386u L3: "Only near me" (relocate = false) really filters: posts tied to another state are left out (All India / unstated stay).
-  const near = pr?.relocate === false ? base.filter((p) => placeScore(p, pr) > 0) : base; const far = base.length - near.length;
+  const near = pr?.relocate === false ? base.filter((p) => placeScore(p, pr) > 0) : base;
+  // Count only out-of-state posts that would otherwise be shown (not ones the level floor already hides).
+  const far = base.filter((p) => !near.includes(p) && (showAll || !profileFit(p, pr).belowLevel)).length;
   const kept = showAll ? near : near.filter((p) => !profileFit(p, pr).belowLevel);
   const score = (p: T) => { const fit = profileFit(p, pr); return rankScore(p, f.q.split(/[\s,]+/), today) + fit.pts + (fit.subjects ? 0 : profileOverlap(p, keywords).pts); };
   const sorted = kept.map((p) => ({ p, s: score(p), k: pr ? profileSortKey(p, pr, today) : [] }))

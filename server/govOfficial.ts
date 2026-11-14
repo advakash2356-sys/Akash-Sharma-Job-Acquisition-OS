@@ -8,7 +8,7 @@
  *  3) District & Sessions Courts recruitment pages on the national S3WaaS platform (<district>.dcourts.gov.in).
  *     These carry court staff posts and District Legal Services Authority (DLSA) posts such as Legal Aid Defence Counsel,
  *     panel lawyers and para-legal volunteers. Only rows that read as an OPEN call for applications are kept;
- *     results, waiting lists, joining orders, admit cards and instructions are dropped.
+ *     results, waiting lists, joining orders, admit[- ]?cards and instructions are dropped.
  * Nothing is invented: a missing field stays empty and is shown as "see notice".
  */
 import type { GovPosting } from "./govPostings.js";
@@ -71,7 +71,7 @@ export function fromIsro(html: string, today: string): GovPosting[] {
 // ---- 3) District courts (S3WaaS) ----
 /** Positive: reads as an open call. Negative: results, lists, orders, instructions, test notices, promotions. */
 const OPEN_CALL = /\b(applications? (?:are |is )?invited|inviting applications?|invites? applications?|recruit?e?ments? notice|recruitment (?:process|advertisement)|advertisement|advt\.?|employment notice|notification (?:no\.?|for (?:the )?(?:post|recruitment))|application (?:call|form)|walk[- ]?in|vacanc(?:y|ies)|engagement of|empanel(?:l)?ment|filling up|appointment (?:of|to) (?:the )?(?:post|panel))|विज्ञापन|भर्ती|रिक्ति/i;
-const NOT_OPEN = /\b(result|select(?:ed|ion)? (?:list|notification|of candidates)|wait(?:ing)? ?list|merit list|joining|appointment (?:orders?|letters?)|posting orders?|receipt of appointment|resolution of applications|application (?:form|format)s?|in pursuan\w*|reg(?:arding)? appointment letters?|instructions?|intimation|addendum|corrigendum|admit card|hall ?ticket|retired|re-?employment|call letter|answer key|interview (?:list|schedule|notice|date)|amended|typing test|skill test|qualifying test|written test|viva|document verification|provisional|shortlist|eligible candidates|ineligible|rejected|marks|cancel|postpone|promotion|by way of promotion|transfer|seniority|passing benchmark|objection|key answer)(?:s|es)?\b|पदोन्नति|परिणाम|प्रतीक्षा|चयन सूची/i;
+const NOT_OPEN = /\b(result|select(?:ed|ion)? (?:list|notification|of candidates)|wait(?:ing)? ?list|merit list|joining|appointment (?:orders?|letters?)|posting orders?|receipt of appointment|resolution of applications|application (?:form|format)s?|in pursuan\w*|reg(?:arding)? appointment letters?|instructions?|intimation|addendum|corrigendum|admit[- ]?card|hall[- ]?ticket|retired|retd|pensioner|superannuat\w*|re-?employment|call[- ]?letter|answer[- ]?key|interview (?:list|schedule|notice|date)|amended|typing test|skill test|qualifying test|written test|viva|document verification|provisional|shortlist|eligible candidates|ineligible|rejected|marks|cancel|postpone|promotion|by way of promotion|transfer|seniority|passing benchmark|objection|key answer)(?:s|es)?\b|पदोन्नति|परिणाम|प्रतीक्षा|चयन सूची/i;
 export interface S3Site { host: string; org: string; state: string; city: string }
 /** Rows: title | description | start date | end date | file. S3WaaS "end date" is the date the notice stays listed, which offices set to the application last date for recruitment notices; the UI says to confirm it in the notice. */
 export function fromS3waas(html: string, site: S3Site, today: string): GovPosting[] {

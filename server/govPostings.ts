@@ -54,7 +54,7 @@ export function eduTagsOf(t: string): string[] {
   return tags.filter(([, re]) => re.test(t)).map(([k]) => k);
 }
 /** t386u M3: notices only for retired staff / re-employment of retirees are not openings for job seekers. */
-export const RETIREES = /\b(retired (?:employees?|officers?|officials?|personnel|persons?|staff|govt|government|judicial|judges?)|re-?employment of (?:the )?retire\w*|(?:ex|former)[- ]employees? of the judicial)\b/i;
+export const RETIREES = /\b(?:retired|retd\.?)\s+(?:govt\.?\s+|government\s+|central\s+|state\s+|judicial\s+|bank\s+)?(?:employees?|officers?|officials?|personnel|persons?|staff|judges?)\b|\bre-?employment of (?:the )?retire\w*|\b(?:ex|former)[- ]employees? of the judicial\b|\bpensioners?\b|\bsuperannuat\w*|सेवानिवृत्त/i;
 /** Playbook §7 scam heuristics: personal UPI/WhatsApp payment or fee-disguise wording. */
 export const SCAM = /@(okaxis|ybl|paytm|oksbi|okhdfcbank|okicici|upi)\b|whats ?app\s*(no|number|pe)|security deposit|training kit charge|laptop charge|confirmed (sarkari )?job without exam|joining fee/i;
 export function enrich(p: GovPosting, text: string): GovPosting | null {
@@ -125,7 +125,7 @@ export function fromFreeHire(raw: any, today: string): GovPosting | null {
 }
 const unCdata = (s: string) => s.replace(/^<!\[CDATA\[|\]\]>$/g, "").trim();
 const tag = (it: string, t: string) => { const m = it.match(new RegExp(`<${t}>([\\s\\S]*?)</${t}>`)); return m ? unCdata(m[1]) : ""; }; // nosemgrep: detect-non-literal-regexp -- t is a fixed tag name
-export const NOT_A_JOB = /\b(result|admit card|answer key|admission|time ?table|score ?card|syllabus|cut ?off|counselling|exam date|city slip|(?:in)?eligib\w* list|merit list|select(?:ion)? list|wait(?:ing)? list|interview (?:list|schedule)|internship|intern\b|hall ?tickets?|call letters?)/i;
+export const NOT_A_JOB = /\b(result|admit card|answer key|admission|time ?table|score ?card|syllabus|cut ?off|counselling|exam date|city slip|(?:in)?eligib\w* list|merit list|select(?:ion)? list|wait(?:ing)? list|interview (?:list|schedule)|internship|intern\b|hall[- ]?tickets?|call[- ]?letters?|admit[- ]?cards?|answer[- ]?keys?)/i;
 export function fromRss(xml: string, today: string): GovPosting[] {
   return (xml.match(/<item>[\s\S]*?<\/item>/g) || []).flatMap((it) => {
     const title = tag(it, "title"), url = tag(it, "link"), d = strip(tag(it, "description"));
