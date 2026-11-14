@@ -125,7 +125,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
       {/* MARQUEE */}
       <section aria-hidden="true" className="overflow-hidden border-y border-border py-5">
         <div className="marquee-track flex w-max gap-10 whitespace-nowrap">
-          {Array.from({ length: 2 }).flatMap((_, k) => ['Find', 'Score', 'Tailor', 'Follow up', 'Interview', 'Prepare', 'Offer'].map((w) => (
+          {Array.from({ length: 2 }).flatMap((_, k) => ['Find', 'Job Truth Score', 'Score', 'Tailor', 'Follow up', 'Interview', 'Prepare', 'Offer'].map((w) => (
             <span key={w + k} className="display flex items-center gap-10 text-5xl sm:text-7xl">{w}<span className="text-primary">✦</span></span>
           )))}
         </div>
@@ -200,6 +200,7 @@ export default function Landing({ dark, toggleTheme, enter }: { dark: boolean; t
             <a href="/voice-practice" className="label inline-flex min-h-11 items-center hover:text-primary" data-testid="nav-voice">Voice interview practice</a>
             <a href="/gov-jobs" className="label inline-flex min-h-11 items-center hover:text-primary">Government jobs</a>
             <a href="/scam-shield" className="label inline-flex min-h-11 items-center hover:text-primary">Scam Shield</a>
+            <a href="/job-truth" className="label inline-flex min-h-11 items-center hover:text-primary" data-testid="nav-job-truth">Job Truth Score</a>
             <a href="/offer-shield" className="label inline-flex min-h-11 items-center hover:text-primary">Offer Shield</a>
             <a href="/feedback" className="label inline-flex min-h-11 items-center hover:text-primary">Share feedback</a>
             <a href="/feedback#comments" className="label inline-flex min-h-11 items-center hover:text-primary">Comments</a>
