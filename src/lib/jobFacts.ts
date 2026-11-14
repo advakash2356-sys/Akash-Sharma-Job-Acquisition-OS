@@ -2,16 +2,24 @@
 export interface JobFacts { salary: string; employment: string; experience: string; shift: string }
 const CUR = String.raw`(?:₹|rs\.?|inr|\$|usd|us\$|€|eur|£|gbp|cad|aud)`;
 const NUM = String.raw`\d[\d,]*(?:\.\d+)?\s*(?:k|lpa|lakhs?|lacs?|crore|cr|l)?`;
+const PAY_WORDS = /\b(?:salary|salaries|ctc|lpa|stipend|package|pay|compensation|wages?|remuneration|per (?:month|annum|year|hour)|a (?:month|year)|p\.?a\.?|lakhs? per annum)\b|\/\s?(?:month|mo|year|yr|hour|hr)\b/i;
+const FEE_WORDS = /\b(?:fees?|registration|deposits?|charges?|pay us|security|training cost|refundable|processing)\b/i;
 export function parseSalary(text: string): string {
   const t = text.replace(/\s+/g, ' ');
   const pats = [
   // Safe: CUR and NUM are fixed constant patterns defined in this file, never user input (semgrep regex-from-var reviewed).
     new RegExp(String.raw`${CUR}\s?${NUM}\s*(?:-|–|to)\s*${CUR}?\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
     new RegExp(String.raw`\b${NUM}\s*(?:-|–|to)\s*${NUM}\s*(?:lpa|lakhs? per annum|lakhs?|ctc)\b`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
-    new RegExp(String.raw`(?:salary|ctc|compensation|pay)[^.]{0,25}?${CUR}\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
+    new RegExp(String.raw`(?:salary|ctc|compensation|pay|stipend|package|wages?)[^.]{0,25}?${CUR}\s?${NUM}(?:\s*(?:per|/|a)\s*(?:year|annum|yr|month|mo|hour|hr))?`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
     new RegExp(String.raw`\b${NUM}\s*lpa\b`, 'i'), // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
   ];
-  for (const p of pats) { const m = t.match(p); if (m && /\d{2,}|\d\s*(?:k|lpa|l\b|lakh)/i.test(m[0])) return m[0].replace(/^(?:salary|ctc|compensation|pay)[^₹$€£\d]*/i, '').trim(); }
+  for (const p of pats) for (const m of t.matchAll(new RegExp(p.source, 'gi'))) { // nosemgrep: detect-non-literal-regexp -- reviewed: fixed constant patterns above
+    if (!/\d{2,}|\d\s*(?:k|lpa|l\b|lakh)/i.test(m[0])) continue;
+    const near = t.slice(Math.max(0, m.index! - 40), m.index! + m[0].length + 30);
+    // Count it only next to pay words, and never next to fee words ("Pay Rs 1500 registration fee" is a fee, not a salary).
+    if (!PAY_WORDS.test(near) || FEE_WORDS.test(near)) continue;
+    return m[0].replace(/^(?:salary|ctc|compensation|pay|stipend|package|wages?)[^₹$€£\d]*/i, '').trim();
+  }
   return 'Not disclosed';
 }
 export function parseEmployment(text: string): string {

@@ -14,3 +14,15 @@ test('employment, experience, shift', () => {
   assert.equal(jobFacts('2-4 years experience').experience, '2–4 years');
   assert.equal(jobFacts('Join us').employment, 'Not stated');
 });
+
+test('salary: fees are not salary', () => {
+  assert.equal(parseSalary('SAMPLE (made up): Data entry job. Pay Rs 1500 registration fee by UPI today only.'), 'Not disclosed');
+  assert.equal(parseSalary('SAMPLE (made up): Refundable security deposit of ₹2,000 - ₹5,000 for the kit.'), 'Not disclosed');
+  assert.equal(parseSalary('SAMPLE (made up): Training cost Rs 12,000. Pay us before joining.'), 'Not disclosed');
+});
+test('salary: pay words still count, fee elsewhere ignored', () => {
+  assert.equal(parseSalary('SAMPLE (made up): Sales Executive, Pune. Salary ₹4-6 LPA. Apply on the careers page.'), '₹4-6 LPA');
+  assert.equal(parseSalary('SAMPLE (made up): Stipend ₹15,000 per month for interns.'), '₹15,000 per month');
+  assert.equal(parseSalary('SAMPLE (made up): Pay Rs 999 registration fee now. Our clients offer a monthly salary of ₹25,000 - ₹30,000 per month after selection.'), '₹25,000 - ₹30,000 per month');
+  assert.equal(parseSalary('SAMPLE (made up): ₹20,000 - ₹25,000 with no context'), 'Not disclosed');
+});
