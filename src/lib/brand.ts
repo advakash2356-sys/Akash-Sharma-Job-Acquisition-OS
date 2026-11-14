@@ -17,7 +17,7 @@ export const setExportCredit = (on: boolean) => { try { localStorage.setItem(CRE
 export const GOATCOUNTER_CODE = 'akashsyncagent';
 
 /** Pages that also have a clean public URL (served by a rewrite in vercel.json). */
-export const PUBLIC_PAGES = ['about', 'terms', 'feedback', 'privacy', 'security', 'accessibility', 'scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint', 'gov-jobs', 'voice-practice'] as const;
+export const PUBLIC_PAGES = ['about', 'terms', 'feedback', 'privacy', 'security', 'accessibility', 'scam-shield', 'job-truth', 'offer-shield', 'remote-kit', 'h1b-sprint', 'gov-jobs', 'voice-practice'] as const;
 /** Launch channels. Each link carries ref=<channel>, which GoatCounter records as the source of the visit. */
 export const CHANNELS = ['instagram', 'youtube', 'facebook', 'linkedin', 'x', 'whatsapp'] as const;
 export const CAMPAIGN = 'launch-oct26';
@@ -29,6 +29,7 @@ export const PAGE_META: Record<string, [string, string]> = {
   'voice-practice': ['Voice interview practice (beta) · Job Acquisition OS', 'Free voice interview practice in your browser: hear questions, answer aloud, get content and delivery scores. Saved only in your browser.'],
   'gov-jobs': ['Government Jobs: which exams am I eligible for? · Job Acquisition OS', 'Free eligibility finder for Indian government jobs: UPSC, SSC, banking, railways, defence and lesser-known roles, with age relaxations and official notification links. Information only.'],
   'h1b-sprint': ['H-1B 60-day sprint: grace period countdown and checklist · Job Acquisition OS', 'Free countdown for the H-1B up to 60-day grace period from both possible end dates, a day-by-day checklist with official USCIS links, and an employer filter for public DOL LCA data. Information only.'],
+  'job-truth': ['Job Truth Score: is this job post worth your time? · Job Acquisition OS', 'Free check of any job post: how fresh it is, whether the link still opens, repeat postings, salary shown and your fit, scored out of 100 with every point shown. Runs in your browser. Information only.'],
   'scam-shield': ['Scam Shield: is this job offer a scam? · Job Acquisition OS', 'Free check for job-offer warning signs: fees for interviews, look-alike emails, pressure and WhatsApp-only contact, plus an overseas agent fee check against the Emigration Rules cap. Runs in your browser.'],
   landing: ['Job Acquisition OS: free job search, by Akash Sync Agent', 'Find real job postings, score them against your resume, and tailor resumes, cover letters and outreach with AI. Free during early access.'],
   about: ['About Job Acquisition OS · Made by Akash Sync Agent', 'Who made Job Acquisition OS, the licence in plain words, and the open-source parts it is built with.'],

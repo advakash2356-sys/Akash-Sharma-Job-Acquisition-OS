@@ -39,6 +39,7 @@ const Accessibility = lazy(() => import('./pages/Accessibility'));
 const Feedback = lazy(() => import('./pages/Feedback'));
 const JobPage = lazy(() => import('./pages/JobPage'));
 const ScamShield = lazy(() => import('./pages/ScamShield'));
+const JobTruthCheck = lazy(() => import('./pages/JobTruthCheck'));
 const OfferShield = lazy(() => import('./pages/OfferShield'));
 const RemoteKit = lazy(() => import('./pages/RemoteKit'));
 const H1bSprint = lazy(() => import('./pages/H1bSprint'));
@@ -47,7 +48,7 @@ const VoicePractice = lazy(() => import('./pages/VoicePractice'));
 import FlowStepper from './components/FlowStepper';
 // Dev-only: lets the launch audit prove the error boundary catches a crash.
 const Crash = (): React.ReactElement => { throw new Error('Test crash (dev only)'); };
-const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback', 'job', 'security', 'accessibility', 'prep', 'tracker', 'profilematch', 'scam-shield', 'offer-shield', 'remote-kit', 'h1b-sprint', 'gov-jobs', 'voice-practice'];
+const PAGE_IDS = ['setup', 'overview', 'jobs', 'interviews', 'resume', 'tailor', 'outreach', 'salary', 'insights', 'privacy', 'settings', 'about', 'terms', 'feedback', 'job', 'security', 'accessibility', 'prep', 'tracker', 'profilematch', 'scam-shield', 'job-truth', 'offer-shield', 'remote-kit', 'h1b-sprint', 'gov-jobs', 'voice-practice'];
 /** '#/app/<page>' deep links. Unknown page -> 404. '#/app' alone -> null (default page). */
 const isPublic = (p: string) => (PUBLIC_PAGES as readonly string[]).includes(p);
 /** Keep <title>, description, canonical and og:url in step with the visible page. */
@@ -62,7 +63,7 @@ const hashPage = (): PageId | null => { const m = location.hash.match(/^#\/app\/
 
 const NAV: { group: string; items: { id: PageId; label: string; icon: React.ElementType }[] }[] = [
   { group: 'Overview', items: [{ id: 'setup', label: 'Guided setup', icon: Wand2 }, { id: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
-  { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs (pick one)', icon: Briefcase }, { id: 'tracker', label: 'Application tracker', icon: KanbanSquare }, { id: 'scam-shield', label: 'Scam Shield', icon: ShieldAlert }, { id: 'offer-shield', label: 'Offer Shield', icon: FileSearch }, { id: 'remote-kit', label: 'Remote-Ready kit', icon: Globe }, { id: 'gov-jobs', label: 'Government Jobs', icon: Landmark }, { id: 'h1b-sprint', label: 'H-1B 60-day sprint', icon: CalendarDays }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'prep', label: 'Interview prep', icon: GraduationCap }, { id: 'voice-practice', label: 'Voice interview (beta)', icon: GraduationCap }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
+  { group: 'Pipeline', items: [{ id: 'jobs', label: 'Jobs (pick one)', icon: Briefcase }, { id: 'tracker', label: 'Application tracker', icon: KanbanSquare }, { id: 'scam-shield', label: 'Scam Shield', icon: ShieldAlert }, { id: 'job-truth', label: 'Job Truth Score', icon: ShieldCheck }, { id: 'offer-shield', label: 'Offer Shield', icon: FileSearch }, { id: 'remote-kit', label: 'Remote-Ready kit', icon: Globe }, { id: 'gov-jobs', label: 'Government Jobs', icon: Landmark }, { id: 'h1b-sprint', label: 'H-1B 60-day sprint', icon: CalendarDays }, { id: 'interviews', label: 'Interviews', icon: CalendarDays }, { id: 'prep', label: 'Interview prep', icon: GraduationCap }, { id: 'voice-practice', label: 'Voice interview (beta)', icon: GraduationCap }, { id: 'insights', label: 'Insights', icon: BarChart3 }, { id: 'salary', label: 'Salary', icon: LineChart }] },
   { group: 'Resume', items: [{ id: 'resume', label: 'My resume', icon: FileText }, { id: 'tailor', label: 'Application packs', icon: Wand2 }, { id: 'profilematch', label: 'Profile match', icon: Fingerprint }] },
   { group: 'Outreach', items: [{ id: 'outreach', label: 'Outreach studio', icon: Send }] },
   { group: 'Account', items: [{ id: 'settings', label: 'Settings', icon: Cog }, { id: 'privacy', label: 'Privacy & security', icon: ShieldCheck }, { id: 'feedback', label: 'Share feedback', icon: MessageSquare }, { id: 'about', label: 'About', icon: Info }] },
@@ -126,7 +127,7 @@ function Workspace({ uid, user }: { uid: string; user: AuthUser | null }) {
   useEffect(() => { const k = () => { if (getUserApiKey()) track('key_added'); }; k(); window.addEventListener(KEY_EVENT, k); return () => window.removeEventListener(KEY_EVENT, k); }, []);
   useEffect(() => { if (jobs.some((j) => j.found)) track('first_job_found'); }, [jobs]);
 
-  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: PrepPage, tracker: Tracker, profilematch: ProfileMatch, 'scam-shield': ScamShield, 'offer-shield': OfferShield, 'remote-kit': RemoteKit, 'h1b-sprint': H1bSprint, 'gov-jobs': GovJobs, 'voice-practice': VoicePractice, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, security: Security, accessibility: Accessibility, feedback: Feedback, job: JobPage, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
+  const Page = { setup: Setup, overview: Overview, jobs: Jobs, interviews: Interviews, resume: ResumePage, tailor: Tailor, outreach: Outreach, salary: Salary, insights: Insights, prep: PrepPage, tracker: Tracker, profilematch: ProfileMatch, 'scam-shield': ScamShield, 'job-truth': JobTruthCheck, 'offer-shield': OfferShield, 'remote-kit': RemoteKit, 'h1b-sprint': H1bSprint, 'gov-jobs': GovJobs, 'voice-practice': VoicePractice, privacy: Privacy, settings: SettingsPage, about: About, terms: Terms, security: Security, accessibility: Accessibility, feedback: Feedback, job: JobPage, notfound: () => <NotFound home={() => { location.hash = '#/app'; go('overview'); }} /> }[page];
 
   const sidebar = (
     <nav aria-label="Main" className="flex h-full flex-col gap-6 overflow-y-auto p-4">
