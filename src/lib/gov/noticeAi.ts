@@ -1,7 +1,7 @@
 // Reading a scanned / unreadable notice with the SIGNED-IN USER'S OWN Gemini key (the existing per-user key feature), from the
 // browser. No server key is used for this feature. Fixed JSON schema, cached per notice in this browser. Without a user key the
 // notice stays "Check notice: scanned notice, verify manually". Akash Sync Agent.
-import { parseNotice, type ExpType, type NoticeFacts, type NoticeType } from './notice';
+import { parseNotice, type ExpType, type NoticeFacts, type NoticeType } from './notice.js';
 
 export interface GeminiFacts {
   noticeType: NoticeType; essentialQualification: string; preferredQualification: string; minEducationLevel: number;
