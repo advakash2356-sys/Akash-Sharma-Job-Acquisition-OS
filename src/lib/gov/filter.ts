@@ -35,8 +35,13 @@ export function ageFits(p: AdvPost, prof: Profile | null, today = new Date().toI
  *  they said they do not hold, or more experience than they have. Unknowns never hide (null). */
 export function qualFits(p: Pick<RankInput, 'eduTags'> & Partial<Pick<RankInput, 'title' | 'eligibility'>>, prof: Profile | null): boolean | null {
   if (!prof) return null; const tp = { title: p.title || '', eligibility: p.eligibility || '' };
-  const gates = [disciplineGate(tp, prof).ok, licenceGate(tp, prof).ok, experienceGate(tp, prof).ok];
+  const dg = disciplineGate(tp, prof).ok; const gates = [dg, licenceGate(tp, prof).ok, experienceGate(tp, prof).ok];
   if (gates.includes(false)) return false;
+  // t386u M6: officer / degree-level posts are not open to 10th / 12th / ITI profiles.
+  const school = ['10', '12', 'iti'].includes(prof.edu);
+  if (school && (tierOf({ title: tp.title, org: '', eligibility: tp.eligibility, pay: '', eduTags: p.eduTags }) === 'senior' || (!!p.eduTags?.length && Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3)) >= 3))) return false;
+  // t386u H1: a passing professional discipline gate (e.g. CA with ICAI for "CA / CMA") overrides the coarse tag-rank check.
+  if (dg === true && !school) return true;
   if (!p.eduTags?.length) return gates.includes(true) ? true : null;
   return (EDU_RANK[prof.edu] || 0) >= Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3));
 }
@@ -67,15 +72,17 @@ export const hasDetails = (p?: Profile | null): boolean => !!p && (!!p.eduSet ||
 export const advCount = (a: Partial<Adv>) => { const x = { ...ADV0, ...a }; return [x.quals.length, x.sectors.length, x.tiers.length, x.emp.length, x.dept, x.city, x.cat, x.ageFit, x.qualFit].filter(Boolean).length; };
 
 // ---- One pipeline for the page and the tests (t385u): basic filters → advanced filters → level hiding → profession-first order. ----
-import { compareKeys, profileFit, profileOverlap, profileSortKey, rankScore } from './rank';
+import { compareKeys, placeScore, profileFit, profileOverlap, profileSortKey, rankScore } from './rank';
 export interface Search extends Filter { sort: string; allLevels?: boolean; adv?: Partial<Adv> }
-export function govResults<T extends AdvPost>(list: T[], f: Search, prof?: Profile | null, keywords: string[] = [], today?: string): { list: T[]; hidden: number } {
+export function govResults<T extends AdvPost>(list: T[], f: Search, prof?: Profile | null, keywords: string[] = [], today?: string): { list: T[]; hidden: number; far: number } {
   const pr = withCat(prof, f.adv || {});
   const showAll = !!f.allLevels || !!f.adv?.tiers?.includes('junior');
   const base = advancedFilter(filterPostings(list, f, today), f.adv || {}, prof, today);
-  const kept = showAll ? base : base.filter((p) => !profileFit(p, pr).belowLevel);
+  // t386u L3: "Only near me" (relocate = false) really filters: posts tied to another state are left out (All India / unstated stay).
+  const near = pr?.relocate === false ? base.filter((p) => placeScore(p, pr) > 0) : base; const far = base.length - near.length;
+  const kept = showAll ? near : near.filter((p) => !profileFit(p, pr).belowLevel);
   const score = (p: T) => { const fit = profileFit(p, pr); return rankScore(p, f.q.split(/[\s,]+/), today) + fit.pts + (fit.subjects ? 0 : profileOverlap(p, keywords).pts); };
   const sorted = kept.map((p) => ({ p, s: score(p), k: pr ? profileSortKey(p, pr, today) : [] }))
     .sort((a, b) => (f.sort === 'rank' ? (pr ? compareKeys(a.k, b.k) : 0) || b.s - a.s : 0) || a.p.lastDate.localeCompare(b.p.lastDate)).map((x) => x.p);
-  return { list: sorted, hidden: base.length - kept.length };
+  return { list: sorted, hidden: near.length - kept.length, far };
 }

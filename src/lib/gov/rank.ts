@@ -60,7 +60,7 @@ const NOT_SENIOR = /\b(junior|clerk|mts|gds|constable|peon|stenographer|typist|t
 const LAW_RE = /\b(law|laws|legal|llb|ll\.\s?b|llm|ll\.\s?m|advocates?|bar council|enrol(?:l)?ment as an advocate|judicial|judge|judges|judiciary|civil judge|pcs[- ]?\(?j\)?|hjs|higher judicial|munsif|magistrate|prosecutors?|prosecution|public prosecutor|standing counsel|counsel|law officer|so[- ]?\(?law\)?|legal aid|dlsa|slsa|nalsa|legal services authority|notary|solicitor|attorney|judicial member|member \(judicial\)|nclt|nclat|itat|drt|drat|cestat|consumer (?:disputes redressal )?commission|consumer forum)\b/i;
 const TEACH_RE = /\b(teachers?|tgt|pgt|prt|b\.?\s?ed|ctet|tet|lecturer|assistant professor|associate professor|professor|faculty|principal|headmaster|head master)\b/i;
 const MENIAL = /\b(constable|home ?guard|agniveer|gate ?keeper|forest guard|trackman|driver|peon|sweeper|safai|chowkidar|watchman|security guard|helper|attendant|cook|mali|gardener|mts|multi[- ]?tasking|orderly|daftary|daftari|chaprasi|process server|bailiff|typist|stenographer|steno|data entry|deo|ldc|udc|lower division|upper division|office assistant|junior assistant|record keeper|clerk|cleaner|sanitation)\b/i;
-export const SPEC_RE: Record<string, RegExp> = { law: LAW_RE, engineering: /\b(engineer|engineering|b\.?e\b|b\.?tech|technical|gate)\b/i, medical: /\b(medical|mbbs|doctor|nurse|pharmac|health|dental|ayush)\b/i, finance: /\b(accounts?|accountant|finance|financial|chartered accountant|\bca\b|cma|icwa|company secretary|audit|auditor|treasury|actuar\w*)\b/i, teaching: TEACH_RE, other: /$^/ };
+export const SPEC_RE: Record<string, RegExp> = { law: LAW_RE, engineering: /\b(engineer|engineering|b\.e\.|b\.?\s?tech|gate score)\b/i, medical: /\b(medical|mbbs|doctor|nurse|pharmac|health|dental|ayush)\b/i, finance: /\b(accounts?|accountant|finance|financial|chartered accountant|\bca\b|cma|icwa|company secretary|audit|auditor|treasury|actuar\w*)\b/i, teaching: TEACH_RE, other: /$^/ };
 /** Pay level and lowest basic stated in the pay text, if any. */
 export function payFacts(pay: string): { level?: number; basic?: number } {
   // t386u L2: a range like "Pay Level 2-10" uses its UPPER bound, so an Assistant Director post is not classed as junior.
@@ -88,9 +88,12 @@ export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; 
   const field = !!prof?.spec && !!SPEC_RE[prof.spec]?.test(`${p.title} ${p.eligibility}`) && !menial && dg?.ok !== false;
   if (!prof) return { pts: 0, tier, field, belowLevel: false };
   const exp = prof.expYears ?? 0, senior = isExperienced(prof);
+  // Floor first (t386u M1b): a clerical / menial post stays hidden even when it also fails the subject check.
+  const floor0 = floorBlocks(p, prof, field) || (tier === 'junior' && userLevel(prof) >= 4 && !field && (CLERICAL.test(p.title) || /group\s*[cd]\b/i.test(`${p.title} ${p.eligibility} ${p.pay}`)) ? 'clerical / Group C-D post' : null);
+  const lowPay0 = payBelow(p.pay || '', prof.minPayLevel) === true; const below = { belowLevel: !!floor0 || lowPay0, floor: floor0 || (lowPay0 ? 'pay' : undefined) };
   // t386u M1: exact degree & discipline gate (an engineer is not "eligible" for an APP post; a lawyer not for Medical Officer).
-  if (dg?.ok === false) return { pts: -30, tier, field: false, belowLevel: false, subjects: dg.need.map((d) => DISC_NAME[d]) };
-  const subj = subjectFit(p.eligibility, prof.spec); if (subj.fits === false && dg?.ok !== true) return { pts: -30, tier, field: false, belowLevel: false, subjects: subj.named };
+  if (dg?.ok === false) return { pts: -30, tier, field: false, ...below, subjects: dg.need.map((d) => DISC_NAME[d]) };
+  const subj = subjectFit(p.eligibility, prof.spec); if (subj.fits === false && dg?.ok !== true) return { pts: -30, tier, field: false, ...below, subjects: subj.named };
   let pts = field ? 25 : 0;
   if (senior) pts += tier === 'senior' ? 30 + Math.min(10, exp) : tier === 'mid' ? 0 : -80;
   else if (exp <= 2) pts += tier === 'junior' ? 10 : tier === 'senior' && !field ? -5 : 0;
@@ -99,9 +102,7 @@ export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; 
   // Spec rule 2: level floor by tier. Professional graduates never see peon / MTS / driver / constable / home guard / agniveer /
   // DEO / LDC-UDC posts; general graduates never see 10th / ITI-level posts. Own-profession posts (Law Clerk) stay.
   // Minimum pay level (one-time profile) hides posts whose stated pay tops out below it. "Show all levels" brings all back.
-  const floor = floorBlocks(p, prof, field) || (tier === 'junior' && userLevel(prof) >= 4 && !field && (CLERICAL.test(p.title) || /group\s*[cd]\b/i.test(`${p.title} ${p.eligibility} ${p.pay}`)) ? 'clerical / Group C-D post' : null);
-  const lowPay = payBelow(p.pay || '', prof.minPayLevel) === true;
-  return { pts, tier, field, belowLevel: !!floor || lowPay, floor: floor || (lowPay ? 'pay' : undefined) };
+  return { pts, tier, field, ...below };
 }
 
 // ---- Required-subject check (t329u): officer boost needs subject fit when the notice names subjects. ----
@@ -136,8 +137,11 @@ export function matchLabel(p: RankInput, prof: Profile | null, today?: string): 
   if (e.badge === 'maynot') return { label: 'check', why: ['May not qualify:', ...e.why] };
   const own = fit?.field ? [`${/^[aeiou]/i.test(PROF_NAME[prof!.spec || ''] || prof!.spec || '') ? 'An' : 'A'} ${PROF_NAME[prof!.spec || ''] || prof!.spec} post, your profession.`] : [];
   const rest = e.why.filter((w) => !/^Matches your/.test(w));
-  if (personal.length) return { label: 'check', why: [...own, `Check notice: verify ${personal.slice(0, 2).join('; ')}.`, ...rest] };
-  if (fit?.field && !trade.length) return { label: 'strong', why: [...own, ...rest, ...(e.checks.length ? ['Age limit: see notice.'] : [])] };
+  if (personal.length) return { label: 'check', why: [...own, `Check notice: verify ${personal.slice(0, 2).map((c) => c.replace(/\.+$/, '')).join('; ')}.`, ...rest] };
+  // t386u M5: Strong match needs the age confirmed against a stated limit. "Age: see notice" caps the label at Check notice.
+  const ageOpen = e.checks.some((c) => /age limit \(not/.test(c));
+  if (fit?.field && ageOpen) return { label: 'check', why: [...own, 'Check notice: verify the age limit (not stated in the feed text); everything else stated matches.', ...rest] };
+  if (fit?.field && !trade.length) return { label: 'strong', why: [...own, ...rest] };
   if (fit?.field || e.badge === 'likely') return { label: 'eligible', why: [...own, `Eligible: ${trade.length ? trade.join('; ') : 'meets the stated age and qualification'}.`, ...rest] };
   return { label: 'check', why: ['Check notice: verify the age limit and qualification (not stated in the feed text).', ...rest.filter((w) => !/not stated/.test(w))] };
 }

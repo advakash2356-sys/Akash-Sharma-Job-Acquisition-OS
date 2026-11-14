@@ -13,7 +13,7 @@ const POST_TITLE: [Disc, RegExp][] = [
   ['LAW', /\b(law officer|legal (?:officer|advis[eo]r|assistant|consultant|manager|counsel|retainer)|so[- ]?\(?law\)?|\(law\)|\blaw\b(?! enforcement)|prosecutor|prosecution|judge|judicial (?:magistrate|member|service|officer)|magistrate|civil judge|pcs[- ]?\(?j\)?|hjs|munsif|standing counsel|panel (?:counsel|lawyer|advocate)|legal aid (?:defen[cs]e )?counsel|ladc|government pleader|notary|oath commissioner|law clerk|drafting counsel)\b/i],
   ['MEDICAL', /\b(medical officer|gdmo|doctor|physician|surgeon|specialist \(|senior resident|junior resident|casualty medical|imo\b|radiologist|anaesthet\w*|paediatric\w*|gynae\w*|psychiatrist|pathologist|medical superintendent|chief medical|cmo\b)\b/i],
   ['DENTAL', /\b(dental surgeon|dentist|dental officer)\b/i], ['NURSING', /\b(staff nurse|nursing officer|nurse|anm\b|gnm\b|nursing tutor)\b/i], ['PHARMACY', /\b(pharmacist|drug inspector|pharmacy officer)\b/i],
-  ['ENGINEERING', /\b(engineer|engineering|\bje\b|\bae\b|\bsde\b|graduate engineer trainee|get\b|technical officer|scientist[- ]?['"‘’]?b|draughtsman|town planner)\b/i],
+  ['ENGINEERING', /\b(engineer|engineering|\bje\b|\bae\b|\bsde\b|graduate engineer trainee|technical officer|draughtsman|town planner)\b/i],
   ['CA', /\b(chartered accountant|cost accountant|company secretary|internal auditor|finance (?:officer|manager)|accounts officer)\b/i],
   ['TEACHING', /\b(teacher|tgt|pgt|prt|lecturer|assistant professor|associate professor|professor|faculty|principal(?! (?:district|secretary|scientist|judge|chief|private|accountant|magistrate))|headmaster|guest faculty)\b/i],
   ['ENV', /\b(environment\w*|pollution|ecolog\w*|climate|forest(?:ry)? (?:research|ecology)|wildlife|biodiversity)\b/i],
@@ -57,16 +57,37 @@ export const CROSS: Partial<Record<Disc, Disc[]>> = {
   ENGINEERING: ['ENGINEERING', 'COMPUTER', 'STATS'], COMPUTER: ['COMPUTER', 'STATS'], STATS: ['STATS'], CA: ['CA', 'COMMERCE'], COMMERCE: ['COMMERCE'], MEDICAL: ['MEDICAL', 'LIFE'], MGMT: ['MGMT', 'COMMERCE'],
 };
 /** Exact degree & discipline gate. ok=null when the post names no discipline (any graduate) or the person's degree is unknown. */
+// ---------- Engineering branches (spec Gate 2: "specific engineering branch codes") ----------
+export type Branch = 'CIVIL' | 'MECH' | 'ELEC' | 'ECE' | 'CSE' | 'CHEM' | 'ENV' | 'INSTR' | 'MINING' | 'METAL' | 'AERO' | 'BIOTECH' | 'AGRI';
+const BRANCH: [Branch, RegExp][] = [['CIVIL', /\bcivil\b/i], ['MECH', /\bmech\w*|production engineering|industrial engineering/i], ['ELEC', /\belectrical\b|\beee\b|electrical (?:and|&) electronics/i],
+  ['ECE', /\belectronics\b|\bece\b|telecommunication|communication engineering/i], ['CSE', /\bcse\b|computer science|computer engineering|information technology|\bit\b(?= engineering|\))|software engineering/i],
+  ['CHEM', /\bchemical engineering|\bchemical\b(?= \w*\s*engineer)/i], ['ENV', /\benvironment\w*/i], ['INSTR', /\binstrumentation\b/i], ['MINING', /\bmining\b/i], ['METAL', /\bmetallurg\w*/i], ['AERO', /\baero\w*/i], ['BIOTECH', /\bbiotech\w*/i], ['AGRI', /agricultural engineering/i]];
+/** Close branches accepted for each other. */
+const BRANCH_OK: Partial<Record<Branch, Branch[]>> = { ELEC: ['ELEC', 'ECE', 'INSTR'], ECE: ['ECE', 'ELEC', 'INSTR', 'CSE'], CSE: ['CSE', 'ECE'], INSTR: ['INSTR', 'ECE', 'ELEC'], MECH: ['MECH', 'AERO'], AERO: ['AERO', 'MECH'], CHEM: ['CHEM', 'ENV'], ENV: ['ENV', 'CIVIL', 'CHEM'], CIVIL: ['CIVIL', 'ENV'] };
+export const branchesOf = (t: string): Branch[] => BRANCH.filter(([, re]) => re.test(t)).map(([b]) => b);
+/** null = the post names no branch or the person's branch is unknown. */
+export function branchGate(p: { title: string; eligibility: string }, prof?: Profile | null): { ok: boolean | null; need: Branch[]; why?: string } {
+  const need = branchesOf(`${p.title} ${p.eligibility}`); if (!need.length) return { ok: null, need };
+  const have = branchesOf(prof?.subject || ''); if (!have.length) return { ok: null, need, why: `verify your engineering branch (post asks for ${need.join(' / ')})` };
+  const acc = new Set(have.flatMap((b) => BRANCH_OK[b] || [b]));
+  return need.some((b) => acc.has(b)) ? { ok: true, need } : { ok: false, need, why: `Needs ${need.join(' / ')} engineering; your branch is ${have.join(' / ')}.` };
+}
+const SCHOOL = new Set(['10', '12', 'iti', 'diploma']);
 export function disciplineGate(p: { title: string; eligibility: string }, prof?: Profile | null): { ok: boolean | null; need: Disc[]; have: Disc[]; why?: string } {
   const need = postDiscs(p.title, p.eligibility); const have = userDiscs(prof);
   if (!need.length) return { ok: null, need, have };
+  // M6: a degree-family post is not open to 10th / 12th / ITI profiles (diploma holders keep diploma-level engineering posts).
+  if (prof && SCHOOL.has(prof.edu) && !have.length && !(prof.edu === 'diploma' && /\bdiploma\b/i.test(p.eligibility) && need.includes('ENGINEERING')))
+    return { ok: false, need, have, why: `Needs a degree (${need.map((d) => DISC_NAME[d]).join(' / ')}); your highest education is below graduate.` };
   if (!have.length) return { ok: null, need, have, why: `Check notice: needs ${need.map((d) => DISC_NAME[d]).join(' / ')}. Add your degree subject in "Your details".` };
   const accepts = new Set<Disc>(have.flatMap((d) => CROSS[d] || [d]));
   // Professional posts need the professional degree itself; non-professional subject posts accept fair cross-fits.
   const prof_ = need.filter((d) => PROFESSIONAL.includes(d)); const subj = need.filter((d) => !PROFESSIONAL.includes(d));
   const okProf = prof_.length ? prof_.some((d) => have.includes(d)) : null; const okSubj = subj.length ? subj.some((d) => accepts.has(d)) : null;
   // A post that names both (e.g. "Environmental Engineer": ENGINEERING + ENV) is open to either.
-  const ok = okProf === true || okSubj === true ? true : okProf === false || okSubj === false ? false : null;
+  let ok = okProf === true || okSubj === true ? true : okProf === false || okSubj === false ? false : null;
+  // Branch gate: an engineering match counts only for the right branch (CSE is not Civil or Environmental).
+  if (ok && need.includes('ENGINEERING') && have.includes('ENGINEERING')) { const bg = branchGate(p, prof); if (bg.ok === false) return { ok: false, need, have, why: bg.why }; }
   return { ok, need, have, why: ok === false ? `Needs ${need.map((d) => DISC_NAME[d]).join(' / ')}; your degree (${have.map((d) => DISC_NAME[d]).join(', ')}) does not match.` : undefined };
 }
 
@@ -122,9 +143,9 @@ export function relaxYears(p: Pick<Profile, 'cat' | 'pwbd'> & Partial<Pick<Profi
 
 // ---------- Level floor by tier ----------
 /** 10th/ITI-level and support posts. */
-export const MENIAL_ANY = /\b(peon|sweeper|safai|chowkidar|watchman|security guard|gate ?keeper|helper|attendant|cook|mali|gardener|mts|multi[- ]?tasking|orderly|daftary|daftari|chaprasi|process server|bailiff|cleaner|sanitation|trackman|track maintainer|khalasi|driver|constable|home ?guard|agniveer|agnipath|forest guard|van rakshak|gds|gramin dak sevak|dak sevak|lab attendant|park(?:ing)? attendant|porter|dhobi|barber|tradesman)(?:s|es)?\b/i;
+export const MENIAL_ANY = /\b(peon|sweeper|safai|chowkidar|watchman|security guard|gate ?keeper|helper|attendant|cook|mali|gardener|mts|multi[- ]?tasking|orderly|daftary|daftari|chaprasi|process server|bailiff|cleaner|sanitation|trackman|track maintainer|khalasi|driver|constable|home ?guard|agniveer|agnipath|forest guard|van rakshak|gds|gramin dak sevak|dak sevak|lab attendant|park(?:ing)? attendant|porter|dhobi|barber|tradesman)(?:s|es)?\b|चपरासी|अनुसेवक|आदेशपाल|चालक|वाहन चालक|चौकीदार|माली|सफाई|स्वच्छक|परिचारक|सिपाही|आरक्षी|होम ?गार्ड|अग्निवीर|वनरक्षक|पत्रवाहक|फर्राश|दफ्तरी|प्रोसेस सर्वर|आदेशिका वाहक/i;
 /** Clerical posts: blocked for professional graduates, not for general graduates. */
-export const CLERICAL = /\b(ldc|udc|lower division|upper division|clerk|data entry|deo|typist|stenographer|steno|office assistant|junior assistant|record keeper|copyist|junior court assistant|court assistant|assistant grade|computer operator|receptionist|supportive staff|para[- ]?legal volunteer|plv)(?:s|es)?\b/i;
+export const CLERICAL = /\b(ldc|udc|lower division|upper division|clerk|data entry|deo|typist|stenographer|steno|office assistant|junior assistant|record keeper|copyist|junior court assistant|court assistant|assistant grade|computer operator|receptionist|supportive staff|para[- ]?legal volunteer|plv)(?:s|es)?\b|पारा ?विधिक|विधिक स्वयंसेवक|लिपिक|टंकक|आशुलिपिक|डाटा एंट्री|कनिष्ठ सहायक|सहायक ग्रेड|प्रतिलिपिक|कंप्यूटर ऑपरेटर|नाजिर|नाज़िर/i;
 export type Tier = 'school' | 'graduate' | 'professional' | 'senior';
 /** Spec table: senior professional (PhD, or PG/professional + 5 yrs), professional graduate (LLB, BTech, MBBS, CA, PG), general graduate, school. */
 export function userTier(prof?: Profile | null): Tier | null {
@@ -164,11 +185,20 @@ export function payBelow(pay: string, minLevel?: number): boolean | null {
 }
 
 // ---------- Lawyer completeness ----------
-export const LAW_STREAMS: [string, RegExp][] = [
-  ['Judicial (Civil Judge / HJS / Magistrate / Law Clerk)', /\b(civil judge|judicial (?:service|magistrate|officer|member)|magistrate|hjs|higher judicial|district judge|munsif|pcs[- ]?\(?j\)?|law clerk)\b/i],
-  ['Prosecutor (APP / PP / Special PP)', /\b(prosecutor|prosecution)\b/i],
-  ['Law Officer / Legal Adviser / Counsel (courts, ministries, PSUs, banks, regulators)', /\b(law officer|legal (?:officer|advis[eo]r|assistant|consultant|manager|counsel|retainer)|so[- ]?\(?law\)?|\(law\)|standing counsel|panel (?:counsel|lawyer|advocate)|legal aid (?:defen[cs]e )?counsel|ladc|government pleader|drafting counsel|oath commissioner)\b/i],
+const LAW_POST = /\b(law officer|legal (?:officer|advis[eo]r|assistant|consultant|manager|counsel|retainer)|so[- ]?\(?law\)?|\(law\)|standing counsel|panel (?:counsel|lawyer|advocate)|legal aid (?:defen[cs]e )?counsel|ladc|government pleader|drafting counsel|oath commissioner|judicial member|member \(judicial\))\b/i;
+const BANK = /\b(bank|sbi|ibps|nabard|sidbi|exim|nhb)\b/i; const REG = /\b(rbi|reserve bank|sebi|irdai|pfrda|ifsca|cci|trai|nclt|nclat|itat|drt|drat|cestat|tribunal|commission(?! for)|aptel|ngt|green tribunal)\b/i;
+const PSU = /\b(limited|ltd|corporation|ntpc|ongc|iocl|gail|bhel|powergrid|coal india|sail|hal|bel)\b/i;
+/** Spec QA2: judicial, prosecutor, and law-officer posts across courts & ministries, PSUs, banks and regulators/tribunals, each counted separately. */
+export const LAW_STREAMS: [string, (p: { title: string; org?: string }) => boolean][] = [
+  ['Judicial (Civil Judge / HJS / Magistrate / Law Clerk)', (p) => /\b(civil judge|judicial (?:service|magistrate|officer)|magistrate|hjs|higher judicial|district judge|munsif|pcs[- ]?\(?j\)?|law clerk)\b/i.test(p.title)],
+  ['Prosecutor (APP / PP / Special PP)', (p) => /\b(prosecutor|prosecution)\b/i.test(p.title)],
+  ['Law officer / counsel: courts & ministries', (p) => LAW_POST.test(p.title) && !BANK.test(`${p.title} ${p.org || ''}`) && !REG.test(`${p.title} ${p.org || ''}`) && !PSU.test(p.org || '')],
+  ['Law officer: PSUs', (p) => LAW_POST.test(p.title) && PSU.test(p.org || '') && !BANK.test(`${p.title} ${p.org || ''}`)],
+  ['Law officer: public sector banks', (p) => LAW_POST.test(p.title) && BANK.test(`${p.title} ${p.org || ''}`)],
+  ['Legal: regulators & tribunals', (p) => LAW_POST.test(p.title) && REG.test(`${p.title} ${p.org || ''}`)],
 ];
-export function lawStreams(list: { title: string; eligibility?: string }[]): { name: string; n: number }[] {
-  return LAW_STREAMS.map(([name, re]) => ({ name, n: list.filter((p) => re.test(p.title)).length }));
+/** Streams our sources do not read yet, named so an empty count is not mistaken for "nothing open anywhere". */
+export const LAW_UNCOVERED = ['Law officer: PSUs', 'Law officer: public sector banks', 'Legal: regulators & tribunals'];
+export function lawStreams(list: { title: string; org?: string; eligibility?: string }[]): { name: string; n: number; uncovered: boolean }[] {
+  return LAW_STREAMS.map(([name, f]) => ({ name, n: list.filter(f).length, uncovered: LAW_UNCOVERED.includes(name) }));
 }

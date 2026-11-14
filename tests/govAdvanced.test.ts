@@ -12,7 +12,7 @@ const LAW = [
   P('Civil Judge (Junior Division) / PCS-J', { org: 'Uttar Pradesh Public Service Commission', state: 'Uttar Pradesh', level: 'state', eligibility: 'LLB, enrolled as an advocate', eduTags: ['LAW'], maxAge: 35 }),
   P('Higher Judicial Service (HJS) direct recruitment', { org: 'High Court of Delhi', level: 'judiciary', eligibility: '7 years practice as an advocate', eduTags: ['LAW'] }),
   P('Assistant Public Prosecutor', { org: 'Delhi Subordinate Services Selection Board', level: 'state', state: 'Delhi', eduTags: ['LAW'], maxAge: 30 }),
-  P('Law Officer', { org: 'Coal India Limited', level: 'psu', pay: 'Rs 60,000 - 1,80,000', eduTags: ['LAW'] }),
+  P('Law Officer', { org: 'Coal India Limited', level: 'psu', pay: 'Rs 60,000 - 1,80,000', eduTags: ['LAW'], maxAge: 40 }),
   P('Specialist Officer (Law) SO-Law', { org: 'Bank of Baroda', level: 'psu', eduTags: ['LAW', 'GRADUATE'] }),
   P('Legal Assistant', { org: 'Ministry of Law and Justice', level: 'central', eligibility: 'Degree in Law' }),
   P('Standing Counsel', { org: 'Income Tax Department', level: 'central', employmentType: 'contractual' }),
@@ -69,7 +69,7 @@ test('advanced filters: qualification, sector, department, city, category age re
 });
 test('one-time details pre-fill the search; empty feed stays empty (nothing invented)', () => {
   const a = advFromProfile({ ...lawyer, city: 'Saket' }); assert.equal(a.state, undefined, 'place ranks, never hides'); assert.ok(a.ageFit && a.qualFit);
-  assert.deepEqual(govResults([], F, lawyer, [], T), { list: [], hidden: 0 });
+  assert.deepEqual(govResults([], F, lawyer, [], T), { list: [], hidden: 0, far: 0 });
 });
 test('PhD is a qualification level: counts as postgraduate for exams and is read from the shared profile', () => {
   const phd: Profile = { ...grad, edu: 'phd' }; assert.ok(eduOk(EXAMS.find((e) => e.id === 'upsc-cse')!, phd));

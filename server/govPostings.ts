@@ -23,7 +23,7 @@ export interface GovPosting {
   pay: string; vacancies: string; eligibility: string; noticeUrl: string; official: boolean; /** "site" = link is the body's careers/listing page, not the advert itself. */ linkKind?: "notice" | "site"; applyUrl?: string;
   postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS" | "JAOS curated (official notice)" | "Employment News (Govt of India)" | "ISRO / Dept of Space careers (official)" | "District Courts (eCourts S3WaaS, official)"; lesserKnown: boolean; verifiedAt: string;
   /** Playbook §5 fields (best effort from the notice text; empty when not stated). */
-  level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; minAge?: number; maxAge?: number; eduTags?: string[];
+  level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; /** "listing" = the date the official page stops listing the notice (District Courts); confirm the last date in the notice. */ dateKind?: "last" | "listing"; minAge?: number; maxAge?: number; eduTags?: string[];
 }
 export type Level = "central" | "state" | "psu" | "autonomous" | "judiciary" | "defence" | "regulator" | "local";
 export type EmpType = "permanent" | "contractual" | "deputation" | "apprenticeship" | "fellowship";
@@ -50,14 +50,16 @@ export function agesOf(t: string): { minAge?: number; maxAge?: number } {
   return m && +m[1] >= 18 && +m[1] <= 65 ? { maxAge: +m[1] } : {};
 }
 export function eduTagsOf(t: string): string[] {
-  const tags: [string, RegExp][] = [["10TH", /\b10th|matric|SSLC\b/i], ["12TH", /\b12th|intermediate|HSC\b/i], ["ITI", /\bITI\b/], ["DIPLOMA", /diploma/i], ["GRADUATE", /graduat|bachelor|degree\b/i], ["ENGINEERING", /B\.?\s?E\b|B\.?\s?Tech|engineering|GATE/i], ["LAW", /LL\.?B|\blaw\b|legal/i], ["MEDICAL", /MBBS|nursing|medical|B\.?Sc nursing|pharm/i], ["PG", /post ?graduat|master'?s|M\.?Sc|M\.?A\b|MBA|M\.?Tech|MCA/i], ["PHD", /Ph\.?\s?D/i]];
+  const tags: [string, RegExp][] = [["10TH", /\b10th|matric|SSLC\b/i], ["12TH", /\b12th|intermediate|HSC\b/i], ["ITI", /\bITI\b/], ["DIPLOMA", /diploma/i], ["GRADUATE", /graduat|bachelor|degree\b/i], ["ENGINEERING", /\bB\.\s?E\.?(?=[\s,/)]|$)|\bBE\b|\b[Bb]\.?\s?[Tt][Ee][Cc][Hh]\b|[Ee]ngineering|\bGATE\b(?!\s*KEEPER)/], ["LAW", /LL\.?B|\blaw\b|legal/i], ["MEDICAL", /MBBS|nursing|medical|B\.?Sc nursing|pharm/i], ["PG", /\bpost ?graduat|\bmaster'?s\b|\bM\.?\s?Sc\b|\bM\.?A\.?(?=[\s,/)]|$)|\bMBA\b|\bM\.?\s?Tech\b|\bMCA\b/i], ["PHD", /Ph\.?\s?D/i]];
   return tags.filter(([, re]) => re.test(t)).map(([k]) => k);
 }
+/** t386u M3: notices only for retired staff / re-employment of retirees are not openings for job seekers. */
+export const RETIREES = /\b(retired (?:employees?|officers?|officials?|personnel|persons?|staff|govt|government|judicial|judges?)|re-?employment of (?:the )?retire\w*|(?:ex|former)[- ]employees? of the judicial)\b/i;
 /** Playbook §7 scam heuristics: personal UPI/WhatsApp payment or fee-disguise wording. */
 export const SCAM = /@(okaxis|ybl|paytm|oksbi|okhdfcbank|okicici|upi)\b|whats ?app\s*(no|number|pe)|security deposit|training kit charge|laptop charge|confirmed (sarkari )?job without exam|joining fee/i;
 export function enrich(p: GovPosting, text: string): GovPosting | null {
   const all = `${p.title} ${p.org} ${text}`;
-  if (SCAM.test(all)) return null;
+  if (SCAM.test(all) || RETIREES.test(`${p.title} ${p.eligibility}`)) return null;
   const tr = inDomain(p.noticeUrl).tier;
   return { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
 }
@@ -123,7 +125,7 @@ export function fromFreeHire(raw: any, today: string): GovPosting | null {
 }
 const unCdata = (s: string) => s.replace(/^<!\[CDATA\[|\]\]>$/g, "").trim();
 const tag = (it: string, t: string) => { const m = it.match(new RegExp(`<${t}>([\\s\\S]*?)</${t}>`)); return m ? unCdata(m[1]) : ""; }; // nosemgrep: detect-non-literal-regexp -- t is a fixed tag name
-const NOT_A_JOB = /\b(result|admit card|answer key|admission|time ?table|score ?card|syllabus|cut ?off|counselling|exam date|city slip|(?:in)?eligib\w* list|merit list|select(?:ion)? list|wait(?:ing)? list|interview (?:list|schedule)|internship|intern\b)/i;
+export const NOT_A_JOB = /\b(result|admit card|answer key|admission|time ?table|score ?card|syllabus|cut ?off|counselling|exam date|city slip|(?:in)?eligib\w* list|merit list|select(?:ion)? list|wait(?:ing)? list|interview (?:list|schedule)|internship|intern\b|hall ?tickets?|call letters?)/i;
 export function fromRss(xml: string, today: string): GovPosting[] {
   return (xml.match(/<item>[\s\S]*?<\/item>/g) || []).flatMap((it) => {
     const title = tag(it, "title"), url = tag(it, "link"), d = strip(tag(it, "description"));

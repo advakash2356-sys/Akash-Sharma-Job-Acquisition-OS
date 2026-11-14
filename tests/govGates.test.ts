@@ -42,7 +42,7 @@ test('licence + experience gates (Bar / NMC, years of practice to cut-off)', () 
   assert.equal(matchLabel(cj, { ...lawyer, bar: undefined }, T).label, 'check'); assert.match(matchLabel(cj, { ...lawyer, bar: undefined }, T).why.join(' '), /Bar Council enrolment/);
   const hjs = P('Higher Judicial Service (direct from Bar)'); assert.equal(experienceGate(hjs, lawyer).ok, false); assert.equal(experienceGate(hjs, { ...lawyer, expYears: 8 }).ok, true);
   assert.equal(qualFits(hjs, lawyer), false);
-  const lo = P('Law Officer', { org: 'Coal India Limited', level: 'psu', eligibility: 'LLB with 2 years post qualification experience', pay: 'E2 Rs 50,000 - 1,60,000' });
+  const lo = P('Law Officer', { org: 'Coal India Limited', level: 'psu', eligibility: 'LLB with 2 years post qualification experience', pay: 'E2 Rs 50,000 - 1,60,000', maxAge: 40 });
   assert.equal(matchLabel(lo, lawyer, T).label, 'strong');
 });
 test('domicile + regional language: Punjab PCS-J for a Delhi lawyer asks to check domicile and Punjabi', () => {
@@ -87,7 +87,7 @@ test('nearby first: with "only near me", same-state posts outrank far-away ones'
   assert.match(matchLabel(a, { ...lawyer, languages: ['Malayalam'] }, T).why.join(' '), /domicile|posting in Kerala/);
 });
 test('lawyer completeness: counts each sub-stream so empty ones can be stated plainly', () => {
-  const s = lawStreams([P('Spl. Judicial Magistrate'), P('Assistant Public Prosecutor')]); assert.deepEqual(s.map((x) => x.n), [1, 1, 0]);
+  const s = lawStreams([P('Spl. Judicial Magistrate'), P('Assistant Public Prosecutor')]); assert.deepEqual(s.map((x) => x.n), [1, 1, 0, 0, 0, 0]);
 });
 test('official parsers on real page fixtures: Employment News, ISRO, District Courts', () => {
   const f = (n: string) => readFileSync(new URL(`./fixtures/gov/${n}`, import.meta.url), 'utf8');
