@@ -29,12 +29,13 @@ export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new
   if (p.employmentType === 'deputation') return { badge: 'maynot', why: ['Deputation posts are only for serving government employees.'], checks, notes };
   const fit = prof ? profileFit(p, prof) : null;
   if (fit?.belowLevel) return { badge: 'maynot', why: [`${fit.floor === 'pay' ? 'Pay below your minimum pay level' : `Junior / entry-level post (${fit.floor})`}: below your ${prof!.expYears ? `${prof!.expYears} yrs experience and ` : ''}${prof!.spec === 'law' ? 'law degree' : prof!.spec ? `${prof!.spec} degree` : 'graduate'} profile. Hidden unless you tick "Show all levels".`], checks, notes };
-  if (!prof) return { badge: 'verify', why: ['Add your details below to get a hint.'], checks, notes };
   const f = factsOf(p); const strip = (w: string) => w.replace(/^Check notice: /, '').replace(/\.$/, '');
-  // A recruitment title with no positive evidence of an open call (and no readable PDF that shows one): never an open post.
-  // A scanned / unreadable notice (no text layer, and not read with the user's own key) is never Strong / Eligible / Related.
+  // Before anything else (and with no profile too): a scanned / unreadable notice (no text layer, not read with the user's own
+  // key) is never Strong / Eligible / Related; a recruitment title with no positive evidence of an open call is never an open post.
   if (f.pdf === 'scanned' || f.pdf === 'unreadable') checks.push('scanned notice, verify manually (the official PDF has no readable text; add your own Gemini key in Settings to have it read)');
   else if (f.noticeType === 'unclear') checks.push('notice type unclear (the title names a recruitment but shows no application invitation, last date or vacancies; open the notice to confirm it is an open call and not a list, test or result)');
+  if (f.ageUnreadable && f.ageMax === null) checks.push('age: unreadable in PDF (the notice states an age limit that could not be read)');
+  if (!prof) return { badge: 'verify', why: ['Set up your profile to see your fit.'], checks, notes };
   const gate = (g: { ok: boolean | null; why?: string }) => { if (g.ok === false) fails.push(g.why!); else if (g.ok) { if (g.why) why.push(g.why); } else if (g.why) checks.push(strip(g.why)); };
   // Essential qualification (satisfaction against the person's degrees), then discipline, licence, experience, domicile.
   gate(qualGate(f, prof));
@@ -43,13 +44,14 @@ export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new
   // Age with statutory relaxation (category relaxation needs the recruiting state's domicile for state posts).
   // Age alone never downgrades the label (an unstated age limit is common): it becomes a sub-note on the card.
   if (!prof.dob) notes.push('Age not checked — add your date of birth.');
+  else if (f.ageUnreadable && f.ageMax === null) { /* already a Check: verify age, unreadable in PDF */ }
   else if (f.ageMax === null && f.ageMin === null) notes.push('Age limit not stated — check notice.');
   else {
     const age = ageOn(prof.dob, p.lastDate || today);
     const stateMismatch = p.level === 'state' && prof.state && p.state && p.state !== 'All India' && p.state.toLowerCase() !== prof.state.toLowerCase();
     const r = relaxYears(prof, !stateMismatch); const relax = r.years;
     if (f.ageMax !== null) { const cap = f.ageMax + relax; if (age > cap) fails.push(`Your age on the last date is about ${age}; stated limit ${f.ageMax}${relax ? ` (+${relax} relaxation, ${r.note} = ${cap})` : ''}.`); else why.push(`Age ${age}: ${cap - age} yr margin under ${f.ageMax}${relax ? ` + ${relax} (${r.note})` : ''}.`); }
-    else notes.push('Upper age limit not stated — check notice.');
+    else if (!f.ageUnreadable) notes.push('Upper age limit not stated — check notice.');
     if (f.ageMin !== null && age < f.ageMin) fails.push(`Minimum age ${f.ageMin}.`);
   }
   if (fit?.field) why.push(`Matches your ${prof!.spec} background.`);
@@ -140,8 +142,8 @@ export function profileOverlap(p: Pick<RankInput, 'title' | 'eligibility'>, kws:
 }
 
 // ---- t385u: one label per result and profession-first ordering. ----
-export type Label = 'strong' | 'eligible' | 'related' | 'check';
-export const LABEL_TEXT: Record<Label, string> = { strong: 'Strong match', eligible: 'Eligible', related: 'Related fit', check: 'Check notice' };
+export type Label = 'strong' | 'eligible' | 'related' | 'check' | 'setup';
+export const LABEL_TEXT: Record<Label, string> = { strong: 'Strong match', eligible: 'Eligible', related: 'Related fit', check: 'Check notice', setup: 'Set up your profile to see your fit' };
 /** Related fit: an adjacent role (not the exact profession) that the person's degree AND experience suit, at or above their level floor.
  *  Returns the one-line reason, or null. Never offered for junior / below-floor posts or when a hard gate fails. */
 /** A no-profession profile (e.g. MSc Env Sci) whose own subject the post asks for: that is its exact bucket, ranked above Related fit. */
@@ -184,6 +186,8 @@ const PROF_NAME: Record<string, string> = { law: 'law', engineering: 'engineerin
 export function matchLabel(p: RankInput, prof: Profile | null, today?: string): { label: Label; why: string[] } {
   const e = eligibilityBadge(p, prof, today); const fit = prof ? profileFit(p, prof) : null; const trade = tradeOffs(p, prof);
   if (e.badge === 'maynot') return { label: 'check', why: ['May not qualify:', ...e.why] };
+  // No profile: never Eligible / Related / Strong. Scanned or unclear notices still say Check notice.
+  if (!prof) return e.checks.length ? { label: 'check', why: [`Check notice: verify ${e.checks.slice(0, 3).map((c) => c.replace(/\.+$/, '')).join('; ')}.`, 'Set up your profile to see your fit.'] } : { label: 'setup', why: ['Add your details below (saved only in this browser) to see whether you meet the notice\'s conditions.'] };
   const own = fit?.field ? [`${/^[aeiou]/i.test(PROF_NAME[prof!.spec || ''] || prof!.spec || '') ? 'An' : 'A'} ${PROF_NAME[prof!.spec || ''] || prof!.spec} post, your profession.`] : [];
   const rest = [...e.why.filter((w) => !/^Matches your/.test(w)), ...e.notes];
   // Any essential condition unknown (not in the notice text, or not answered in the profile): Check notice, naming the clause.

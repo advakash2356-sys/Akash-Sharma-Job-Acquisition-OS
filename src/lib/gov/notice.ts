@@ -28,6 +28,8 @@ export interface NoticeFacts {
   /** years null = experience is essential but the feed text states no years. detail = the clause as written ("drafting and vetting of contracts"). */
   experience: { years: number | null; type: ExpType; detail?: string } | null; licences: Licence[];
   ageMin: number | null; ageMax: number | null;
+  /** the official PDF text mentions an age limit but no upper limit could be read (OCR noise): Check, never "not stated" */
+  ageUnreadable?: boolean;
   /** The feed text states some eligibility (otherwise every condition is "unknown", never "not required"). */
   stated: boolean;
   /** The title names no post at all ("posts in National Green Tribunal", "various posts"): never classed low by the title heuristic. */
@@ -102,9 +104,9 @@ export function minEduOf(essentialText: string): number | null {
 /** Preferred-marker lexicon (phrase-scoped): hard wording (preferred, desirable) and soft wording (an edge, welcome, extra marks,
  *  added weight, desirability, additional advantage, weightage, plus point, considered favourably). */
 const ADV = String.raw`(?:added|additional|big|distinct|extra|special|definite)`;
-const BACK = new RegExp(String.raw`\b(?:preferred|preferable|preferably|desirable|desired|desirability|advantageous|optional|preference|weightage|(?:would|will|shall|may|can) be (?:an? )?(?:${ADV} )?(?:asset|advantage|plus|preference|bonus|useful|welcome[d]?)|is an? (?:${ADV} )?(?:asset|advantage|plus|bonus)|an? (?:${ADV} )?(?:advantage|asset|plus(?: point)?|bonus)|${ADV} (?:qualification|advantage|weight|marks?|credit|points?)|(?:will|shall|would|may|can) (?:get|be given|receive|have|carry|earn) (?:an? )?(?:${ADV} )?(?:preference|priority|weightage|weight|edge|advantage|marks?|credit|points?|bonus)|(?:given|get|gets|getting|have|has|carry|carries|carrying) (?:an? )?(?:${ADV} )?(?:preference|priority|weightage|weight|edge|advantage|marks?|credit|bonus)|(?:an|the) edge|(?:is|are|will be|would be|shall be) (?:most |highly |also )?welcome[d]?|welcome to apply|plus point|bonus (?:marks?|points?)|considered favou?rably|favou?rably considered|favou?rable consideration)\b`, 'i');
+const BACK = new RegExp(String.raw`\b(?:preferred|preferable|preferably|desirable|desired|desirability|advantageous|optional|preference|weightage|(?:would|will|shall|may|can) be (?:an? )?(?:${ADV} )?(?:asset|advantage|plus|preference|bonus|useful|welcome[d]?)|is an? (?:${ADV} )?(?:asset|advantage|plus|bonus)|an? (?:${ADV} )?(?:advantage|asset|plus(?: point)?|bonus)|${ADV} (?:qualification|advantage|weight|marks?|credit|points?)|(?:will|shall|would|may|can) (?:get|be given|receive|have|carry|earn) (?:an? )?(?:${ADV} )?(?:preference|priority|weightage|weight|edge|advantage|marks?|credit|points?|bonus)|(?:given|get|gets|getting|have|has|carry|carries|carrying) (?:an? )?(?:${ADV} )?(?:preference|priority|weightage|weight|edge|advantage|marks?|credit|bonus)|(?:an|the) edge|(?:is|are|will be|would be|shall be) (?:most |highly |also )?welcome[d]?|welcome to apply|plus point|bonus (?:marks?|points?)|(?:good|nice)[- ]to[- ]have|considered favou?rably|favou?rably considered|favou?rable consideration)\b`, 'i');
 const FWD = /\b(?:preferably|preference (?:will |shall |would |may )?(?:be )?(?:given )?(?:to|for)|priority (?:will |shall )?(?:be )?(?:given )?(?:to|for)|weightage (?:will |shall )?(?:be )?(?:given )?(?:to|for)|ideally(?: with)?|optionally|desirable\s*[:\-–])/i;
-const HDR = /\b(essential|required|mandatory|minimum|desirable|desirability|desired|preferred|preferable|preferential|optional|additional|advantage(?:ous)?)\s*(?:educational\s*)?(?:qualifications?|eligibility|criteria)?\s*[:\-–]\s*/gi;
+const HDR = /\b(essential|required|mandatory|minimum|(?:good|nice)[- ]to[- ]have|desirable|desirability|desired|preferred|preferable|preferential|optional|additional|advantage(?:ous)?)\s*(?:educational\s*)?(?:qualifications?|eligibility|criteria)?\s*[:\-–]\s*/gi;
 const BOUND = /,|;|\s+[—–]\s+|\s+-\s+|\s+with\s+|\s+along with\s+|\s+and\s+|(?<!\b(?:a|is|an?\s+added))\s+plus\s+(?=\w)/gi;
 const MARK_ONLY = /^\s*(?:is\s+)?(?:an?\s+)?(?:added\s+)?(?:preferred|preferable|desirable|desired|optional|advantage|asset|plus)\s*\.?\s*$/i;
 const ABBR = /^(?:[A-Za-z]|No|Rs|Dr|Mr|Ms|Smt|Sh|viz|etc|yrs?|Govt|Sc|Com|Tech|Ed|Pharm|Phil|Eng|Univ|approx|i\.e|e\.g)$/i;
@@ -122,7 +124,7 @@ export function splitEligibility(raw: string): { essential: string; preferred: s
   const ess: string[] = []; const pref: string[] = [];
   // 1) sections
   const secs: { kind: 'e' | 'p'; text: string }[] = []; let last = 0, kind: 'e' | 'p' = 'e'; const t = (raw || '').replace(/\s+/g, ' ');
-  for (const m of t.matchAll(HDR)) { secs.push({ kind, text: t.slice(last, m.index) }); kind = /^(desir|prefer|optional|additional|advantage)/i.test(m[1]) ? 'p' : 'e'; last = m.index! + m[0].length; }
+  for (const m of t.matchAll(HDR)) { secs.push({ kind, text: t.slice(last, m.index) }); kind = /^(desir|prefer|optional|additional|advantage|good|nice)/i.test(m[1]) ? 'p' : 'e'; last = m.index! + m[0].length; }
   secs.push({ kind, text: t.slice(last) });
   for (const sec of secs) {
     if (!sec.text.trim()) continue;
@@ -164,7 +166,7 @@ export function splitEligibility(raw: string): { essential: string; preferred: s
 // community medicine / public health; audit is not direct tax / GST; engineering is not software development. A stated kind that
 // matches none of these is 'other' (always Check notice); only a bare "N years experience" is 'any'.
 const EXP_TYPES: [ExpType, RegExp][] = [
-  ['litigation', /\b(?:practi[cs]e as an? advocate|practi[cs]ing advocate|practi[cs]e (?:at|in|before) (?:the )?(?:bar|courts?|high court|district courts?)|bar practice|litigation|court practice|standing (?:at|of|in) the bar|as an advocate|advocates? with|appearing before (?:the )?courts?|conduct(?:ing)? (?:of )?cases)\b|वकालत|अधिवक्ता के रूप में/i],
+  ['litigation', /\b(?:practi[cs]e as an? advocate|practi[cs]ing advocate|practi[cs]e (?:at|in|before) (?:the )?(?:bar|courts?|high court|district courts?)|bar practice|litigation|court practice|standing (?:at|of|in) the bar|as an advocate|advocates? with|appear(?:ed|ing|ance) (?:before|in) (?:the )?(?:civil |criminal |district |high |subordinate )?courts?|conduct(?:ed|ing)? (?:of )?cases|argu(?:e|es|ed|ing) (?:of )?cases|(?:civil|criminal) (?:and (?:civil|criminal) )?(?:courts?|cases|side)|trial courts?)\b|वकालत|अधिवक्ता के रूप में/i],
   ['judicial', /\bjudicial (?:service|officer|experience)\b|\bserved as (?:a )?judge\b/i],
   ['corporate_legal', /\b(?:corporate (?:law|legal)|in[- ]house|legal advis\w*|advisory|drafting|vetting|contracts? (?:drafting|management|vetting)|legal (?:matters|work|department|cell|affairs|opinions?)(?: \w+){0,3} (?:of|in|for|at) (?:an? |the )?(?:\w+ )?(?:psus?|compan(?:y|ies)|banks?|corporations?|undertakings?|organi[sz]ations?|financial institutions?|firms?|ministry|department)|banking law|company law|legal officer in|compliance)\b/i],
   ['public_health', /\b(?:public health|epidemiolog\w*|surveillance|outbreak\w*|community medicine|preventive (?:and social )?medicine|psm|disease control|national health (?:programmes?|mission)|health programmes?|community health|NHM|immuni[sz]ation)\b/i],
@@ -177,23 +179,36 @@ const EXP_TYPES: [ExpType, RegExp][] = [
   ['engineering', /\b(?:design|construction|execution|maintenance|site|field|erection|commissioning|civil works?|electrical works?|project execution) (?:experience|work|works)\b|\bexperience (?:in|of) (?:the )?(?:design|construction|execution|maintenance|erection|commissioning|civil|electrical|mechanical)\b|\bengineering (?:experience|work|projects?)\b/i],
   ['administrative', /\b(?:administrative|administration|establishment matters|office management)\b/i],
 ];
-const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, fifteen: 15 };
-const N = String.raw`(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)`;
-// "6 years post-qualification experience", "06 years", "6-year experience", "post-qualification experience of 6 yrs", "experience: 6 years"
-const YEARS = new RegExp(String.raw`\b${N}\s*(?:\+\s*)?(?:\(\w+\)\s*)?-?\s*(?:years?|yrs?)\.?['’]?\s*(?:of\s*)?(?:[\w-]+\s+){0,4}?(?:practice|experience|standing|service)\b|\b(?:practice|experience|standing)\b[^.;]{0,50}?(?:for|of|minimum|at least|not less than|:)?\s*${N}\s*-?\s*(?:years?|yrs?)\b|(\d{1,2})\s*वर्ष(?:ों)?\s*(?:का|की)?\s*(?:अनुभव|वकालत|प्रैक्टिस)`, 'i');
-const NOYEARS = /\b(?:with|having|and|plus)\s+(?:\w+\s+){0,3}?(?:experience|practice)\b|\bexperience (?:as (?:stated|prescribed|specified)|as per|is (?:essential|required|mandatory|necessary))\b|\b(?:requisite|relevant|adequate|sufficient|necessary) experience\b|\bexperienced\b/i;
-const DETAIL = /\b(?:experience|practice)\s+(?:of\s+(?!\d)|in\s+|as\s+(?!stated|per|prescribed|specified)|with\s+|before\s+|at\s+)((?:(?!\b(?:and|or)\b\s+\d)[^,;.()])+)|\b(?:years?|yrs?)\.?['’]?\s+(?:of\s+)?((?:(?!experience|practice)[\w-]+\s+){1,4})(?:experience|practice)\b/i;
-const GENERIC_DETAIL = /^(?:(?:the |a |an )?(?:relevant|requisite|post[- ]?qualification|working|work|professional|total|minimum|at least|of|years?|yrs?|\d+|\s|the field|field|similar|related|concerned|area|any|adequate|sufficient|necessary|essential|required|experience|practice|with|having|and|plus|candidates?|in|on|as|cut[- ]?off|date|after|qualification|obtaining|degree|from)\b\s*)*$/i;
+const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20 };
+const N = String.raw`(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)`;
+// "6 (six)", "six (6)", "6+", "06", "6-year"; units "years", "yrs.", "yr", "year's"
+const NMOD = String.raw`\s*(?:\(\s*\w+\s*\)\s*)?(?:\+|plus)?\s*-?\s*`;
+const UNIT = String.raw`(?:years?|yrs?|yr|saal|sal|varsh|varsha)\.?['’]{0,2}s?`;
+// experience nouns: experience, exp. / exp, PQE, standing (at the Bar), practice, post-qualification, service
+const EXPN = String.raw`(?:experience|exp(?:\.|\b)|p\.?\s?q\.?\s?e\b\.?|standing|practi[cs]e|practi[cs]ing|post[- ]?qualification|service)`;
+const LIT_ACTS = String.raw`argu(?:e|es|ed|ing) (?:of )?cases|conduct(?:ed|ing)? (?:of )?cases|appear(?:ed|ing|ance) (?:before|in) (?:the )?(?:civil |criminal |district |high |subordinate )?courts?`;
+const EXPB = EXPN.replace('|service', '').replace(/\)$/, `|${LIT_ACTS})`);
+// "6 years post-qualification experience", "6 yrs. exp.", "6 years PQE", "5 yrs. standing at the Bar", "experience: 6 years",
+// "post-qualification experience of 6 yrs", "experience of not less than 6 years", Hindi "5 वर्ष का अनुभव"
+const YEARS = new RegExp(String.raw`\b${N}${NMOD}${UNIT}\s*(?:of\s*)?(?:[\w()/&-]+\s+){0,5}?${EXPN}|\b${EXPB}(?:(?!\b(?:age|aged|probation|period|tenure|contract)\b)[^.;]){0,60}?\b${N}${NMOD}${UNIT}(?![\w])|(\d{1,2})\s*वर्ष(?:ों)?\s*(?:का|की|के)?\s*(?:अनुभव|वकालत|प्रैक्टिस)`, 'i');
+// Fail-closed: any mention of an experience requirement (when no years can be parsed) gives years: null, which is always Check.
+const MENTION = /\b(?:argu(?:e|es|ed|ing) (?:of )?cases|conduct(?:ed|ing)? (?:of )?cases|experience[ds]?|exp(?:\.|\b)|p\.?\s?q\.?\s?e\b|standing (?:at|in|of|before) the bar|bar (?:standing|practice)|practi[cs]e (?:as|at|in|before|of law)|practi[cs]ing (?:advocate|lawyer|at|in)|post[- ]?qualification)|अनुभव|वकालत/i;
+// fail-closed fallback: a number of years and an experience noun in the same clause, in a form YEARS can't read -> years: null
+const YEARS_LOOSE = new RegExp(String.raw`(?=[^;]*\b${N}\s*\S{0,6}\s*(?:years?|yrs?|yr|saal|sal|varsh)\b)(?=[^;]*\b${EXPB})`, 'i');
+const DETAIL = /\b(?:experience|practice)\s+(?:of\s+(?!\d|not\b|at\b|minimum\b)|in\s+|as\s+(?!stated|per|prescribed|specified)|with\s+|before\s+|at\s+)((?:(?!\b(?:and|or)\b\s+\d)[^,;.()])+)|\b(?:years?|yrs?)\.?['’]?\s+(?:of\s+)?((?:(?!experience|practice)[\w-]+\s+){1,4})(?:experience|practice)\b/i;
+const GENERIC_DETAIL = /^(?:(?:the |a |an )?(?:relevant|requisite|post[- ]?qualification|working|work|professional|total|minimum|at least|not less than|not below|no less than|of|years?|yrs?|\d+|\s|the field|field|similar|related|concerned|area|any|adequate|sufficient|necessary|essential|required|experience|practice|with|having|and|plus|candidates?|in|on|as|cut[- ]?off|date|after|qualification|obtaining|degree|from|pqe|exp)\b\s*)*$/i;
+// Clauses split on ";" and on sentence stops, but never after an abbreviation ("6 yrs. experience", "exp. of", "B. Tech").
+const CLAUSE = /;|(?<!\b(?:yrs?|yr|exp|no|nos|viz|etc|approx|min|max|govt|dept|e\.g|i\.e|b|m|ph|d|sc|a|com|tech|ed|st|sr|jr|dr|mr|smt|shri|p\.q\.e|pqe))\.\s+/i;
 /** Essential experience (largest stated years) and its type, from the essential text only. HJS / ADJ direct from Bar = 7 yrs litigation. */
 export function experienceOf(title: string, essential: string): { years: number | null; type: ExpType; detail?: string } | null {
   let best: { years: number | null; type: ExpType; detail?: string } | null = null;
-  for (const clause of (essential || '').split(/;|\.\s+/)) {
-    const m = clause.match(YEARS); const said = !m && NOYEARS.test(clause);
+  for (const clause of (essential || '').split(CLAUSE)) {
+    const m = clause.match(YEARS); const said = !m && (MENTION.test(clause) || YEARS_LOOSE.test(clause));
     if (!m && !said) continue;
-    const raw = m ? (m[1] || m[2] || m[3]) : null; const years = raw === null ? null : NUM[raw.toLowerCase()] ?? Number(raw);
+    const raw = m ? (m[1] || m[2] || m[3]) : null; if (m && raw === null) continue; const years = raw === null ? null : NUM[raw.toLowerCase()] ?? Number(raw);
     if (years !== null && !(years > 0 && years <= 30)) continue;
     // the kind is read from the experience phrase itself (a little context before it), never from the degree named earlier
-    const at = m ? m.index! : Math.max(0, clause.search(/experience|practice/i)); const seg = clause.slice(Math.max(0, at - 25));
+    const at = m ? m.index! : Math.max(0, clause.search(MENTION)); const seg = clause.slice(Math.max(0, at - 25));
     const d1 = seg.match(DETAIL); const d2 = seg.match(new RegExp(DETAIL.source.split('|\\b(?:years?')[0], 'i')); const det = (d2?.[1] || d1?.[1] || d1?.[2] || '').replace(/\s+/g, ' ').trim();
     let type: ExpType = (EXP_TYPES.find(([, re]) => re.test(seg))?.[0]) || 'any';
     if (type === 'any' && det && !GENERIC_DETAIL.test(det) && /[a-z]{4,}/i.test(det.replace(/\b(?:years?|experience|practice|relevant|post[- ]?qualification)\b/gi, ''))) type = 'other';
@@ -214,11 +229,16 @@ export function agesOf(t: string): { min: number | null; max: number | null } {
   const s = t || ''; let min: number | null = null, max: number | null = null;
   const r = s.match(/\bage[^.;\d]{0,40}?(\d{2})\s*(?:-|to|–)\s*(\d{2})\s*(?:years?|yrs?)?/i) || s.match(/\bbetween\s*(\d{2})\s*(?:and|to|-)\s*(\d{2})\s*(?:years?|yrs?)/i);
   if (r) { min = Number(r[1]); max = Number(r[2]); }
-  const mx = s.match(/\b(?:not (?:be )?(?:more than|above|exceed\w*)|below|upper age(?: limit)?(?: is| of)?|maximum age(?: limit)?(?: is| of)?|age limit(?: is| of)?|under|(?:must|should) not have (?:completed|attained|crossed) (?:the )?age of)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mx) max = Number(mx[1]);
-  const mn = s.match(/\b(?:minimum age(?: is| of)?|not (?:be )?less than|at least|(?:must|should) have (?:completed|attained) (?:the )?age of)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mn) min = Number(mn[1]);
+  const mx = s.match(/\b(?:not (?:be )?(?:more than|above|exceed\w*)|below|upper age(?: limit)?(?: is| of)?|maximum age(?: limit)?(?: is| of)?|age limit(?: is| of)?|under|(?:must|should) not have (?:complet\S*|attain\S*|cross\S*) (?:\S{1,4}\s+)?a\S?ge of)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mx) max = Number(mx[1]);
+  const mn = s.match(/\b(?:minimum age(?: is| of)?|not (?:be )?less than|at least|(?<!not )(?:must|should) have (?:complet\S*|attain\S*) (?:\S{1,4}\s+)?a\S?ge of)\s*:?\s*(\d{2})\s*(?:years?|yrs?)/i); if (mn) min = Number(mn[1]);
+  const hi = s.match(/(?:आयु|उम्र|वय)[^.;\d]{0,40}?(\d{2})\s*(?:से|ते|-|–)\s*(\d{2})\s*(?:वर्ष|साल|वर्षे)/); if (hi && max === null) { min = min ?? Number(hi[1]); max = Number(hi[2]); }
+  const hm = s.match(/(?:अधिकतम|कमाल)\s*(?:आयु|उम्र|वय)(?:\s*सीमा)?\s*[:\-–]?\s*(\d{2})/); if (hm && max === null) max = Number(hm[1]);
   if (max !== null && (max < 18 || max > 70)) max = null; if (min !== null && (min < 14 || min > 60)) min = null;
   return { min, max };
 }
+
+/** The notice text talks about an age limit (English / Hindi / Marathi), whether or not a number could be read. */
+export function ageWordsIn(t: string): boolean { return /\b(?:age|aged)\b|आयु|उम्र|वय/i.test(t || ''); }
 
 /** The qualification clauses of an official notice's text layer (verbatim), or '' when none is found. Used only when the feed row states none. */
 export function eligibilityFromText(text: string): string {

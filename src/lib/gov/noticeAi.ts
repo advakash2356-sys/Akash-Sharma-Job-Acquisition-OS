@@ -56,7 +56,18 @@ export function mergeFacts(rules: NoticeFacts, g: GeminiFacts | null, pdfType: N
 }
 
 /** Notices the browser may read with the user's key: an official PDF that the server could not read (scanned / unreadable). */
-export const needsAiRead = (p: { noticeUrl?: string; facts?: NoticeFacts }) => !!p.facts && (p.facts.pdf === 'scanned' || p.facts.pdf === 'unreadable') && /^https:\/\/[^/]*(?:\.gov\.in|\.nic\.in)\/.+\.pdf(?:$|\?)/i.test(p.noticeUrl || '');
+/** SSRF guard: an official government notice PDF only. Parsed with URL (never a regex on the raw string): https, the default
+ * port, no user name or password, a hostname that is gov.in / nic.in or ends in ".gov.in" / ".nic.in" (a real suffix check),
+ * and a path ending in .pdf. */
+export function isOfficialPdfUrl(raw: string | undefined | null): boolean {
+  if (!raw || typeof raw !== 'string' || raw.length > 2000 || /[\\\s]/.test(raw)) return false;
+  let u: URL; try { u = new URL(raw); } catch { return false; }
+  if (u.protocol !== 'https:' || u.username || u.password || u.port !== '') return false;
+  const h = u.hostname.toLowerCase(); if (!/^[a-z0-9.-]+$/.test(h) || h.includes('..')) return false;
+  if (!(h === 'gov.in' || h === 'nic.in' || h.endsWith('.gov.in') || h.endsWith('.nic.in'))) return false;
+  return /\.pdf$/i.test(u.pathname);
+}
+export const needsAiRead = (p: { noticeUrl?: string; facts?: NoticeFacts }) => !!p.facts && (p.facts.pdf === 'scanned' || p.facts.pdf === 'unreadable') && isOfficialPdfUrl(p.noticeUrl || '');
 export interface AiDeps { key: () => string | null | undefined; signedIn: () => boolean; call: (url: string) => Promise<unknown>; store?: Pick<Storage, 'getItem' | 'setItem'> | null }
 const CK = 'jaos_notice_ai_v1:';
 /** Read one notice with the user's key, once per notice URL per browser (cached). null = no key, not signed in, or no answer:

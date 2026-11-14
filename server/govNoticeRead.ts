@@ -9,13 +9,13 @@
  *     it (src/lib/gov/noticeAi.ts). Cached per PDF URL for 24 hours (per instance) on top of the 3-hour S3 cache.
  */
 import type { GovPosting } from "./govPostings.js";
-import { agesOf, eligibilityFromText, noticeTypeFromPdf, parseNotice, type NoticeFacts, type NoticeType } from "../src/lib/gov/notice.js";
+import { ageWordsIn, agesOf, eligibilityFromText, noticeTypeFromPdf, parseNotice, type NoticeFacts, type NoticeType } from "../src/lib/gov/notice.js";
 import { mergeFacts } from "../src/lib/gov/noticeAi.js";
 import { fetchPdf } from "./govNoticeAi.js";
 export { mergeFacts };
 
 const DAY = 24 * 3600 * 1000;
-export interface NoticeRead { at: number; type: NoticeType | null; text: boolean; elig?: string; ages?: { min: number | null; max: number | null }; unreadable?: boolean }
+export interface NoticeRead { at: number; type: NoticeType | null; text: boolean; elig?: string; ages?: { min: number | null; max: number | null }; ageWords?: boolean; unreadable?: boolean }
 const cache = new Map<string, NoticeRead>();
 let pdfjsP: Promise<any> | null = null;
 export async function pdfText(data: Uint8Array, pages = 3): Promise<string> {
@@ -32,14 +32,16 @@ async function readOne(url: string, deadline: number): Promise<NoticeRead> {
   const data = await fetchPdf(url, Math.min(8000, Math.max(1000, deadline - Date.now())));
   if (!data) return { at: Date.now(), type: null, text: false, unreadable: true }; // not cached: retry next round
   const text = await pdfText(data); const type = noticeTypeFromPdf(text);
-  const r: NoticeRead = { at: Date.now(), type, text: text.replace(/\s/g, '').length >= 80, elig: eligibilityFromText(text), ages: agesOf(text.slice(0, 8000)) };
+  const r: NoticeRead = { at: Date.now(), type, text: text.replace(/\s/g, '').length >= 80, elig: eligibilityFromText(text), ages: agesOf(text.slice(0, 8000)), ageWords: ageWordsIn(text.slice(0, 8000)) };
   if (cache.size > 2000) cache.clear(); cache.set(url, r); return r;
 }
 /** The feed row states no qualification: use the qualification clauses printed in the official PDF's text layer (verbatim). */
-export function withPdfText(p: GovPosting, rules: NoticeFacts, r: Pick<NoticeRead, 'elig' | 'ages'>): NoticeFacts {
+export function withPdfText(p: GovPosting, rules: NoticeFacts, r: Pick<NoticeRead, 'elig' | 'ages' | 'ageWords'>): NoticeFacts {
   let f = rules;
   if (!f.stated && r.elig) { const q = parseNotice({ ...p, eligibility: r.elig }); if (q.stated) f = { ...f, essential: q.essential, preferred: q.preferred, essentialText: q.essentialText, preferredText: q.preferredText, minEdu: q.minEdu, experience: q.experience, licences: [...new Set([...f.licences, ...q.licences])], stated: true, source: "pdf" }; }
   if (f.ageMax === null && f.ageMin === null && r.ages && (r.ages.max !== null || r.ages.min !== null)) f = { ...f, ageMax: r.ages.max, ageMin: r.ages.min, source: "pdf" };
+  // the PDF talks about age but no upper limit could be read (OCR noise): "verify age: unreadable in PDF", never "not stated"
+  if (f.ageMax === null && r.ageWords) f = { ...f, ageUnreadable: true };
   return f;
 }
 /** Reads each S3 row's notice (concurrency 5, total budget). Returns the rows that stay open calls or unclear, with facts attached. */
