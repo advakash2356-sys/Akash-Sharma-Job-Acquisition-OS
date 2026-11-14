@@ -13,6 +13,7 @@ import { Badge, Button, Card, Input, Label, PageHeader, Select } from '../compon
 import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile , type Spec, RANK} from '../lib/govJobs';
 import { userLevel } from '../lib/gov/rank';
 import { LEVEL_PAY } from '../lib/gov/gates';
+import { EXP_NAME, type ExpType } from '../lib/gov/notice';
 import { CREDIT } from '../lib/brand';
 
 const STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu & Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Other UT'];
@@ -60,6 +61,9 @@ export default function GovJobs() {
           {([['bar', 'Bar Council enrolment', 'for judicial, prosecutor, counsel posts'], ['medReg', 'NMC / State Medical Council registration', 'for doctor posts'], ['icai', 'ICAI / ICMAI membership', 'for CA / CMA posts']] as const).map(([k, l, h]) => (
             <div key={k} className="min-w-0"><Label htmlFor={`gl-${k}`} hint={h}>{l}</Label><Select id={`gl-${k}`} className="w-full" value={p[k] === undefined ? '' : p[k] ? 'yes' : 'no'} onChange={(e) => setP({ ...p, [k]: e.target.value === '' ? undefined : e.target.value === 'yes' })} data-testid={`gov-lic-${k}`}><option value="">Not answered</option><option value="yes">Yes, I hold it</option><option value="no">No</option></Select></div>))}
           <div className="min-w-0"><Label htmlFor="glang" hint="comma separated">Languages you read and write</Label><Input id="glang" value={(p.languages || []).join(', ')} onChange={(e) => setP({ ...p, languages: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} placeholder="e.g. Hindi, English, Marathi" data-testid="gov-langs" /></div>
+          <fieldset className="min-w-0 sm:col-span-2" data-testid="gov-exp-type"><legend className="text-sm font-medium">Kind of experience <span className="text-xs text-muted-foreground">(a notice that asks for another kind shows "Check notice")</span></legend>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">{(Object.entries(EXP_NAME) as [ExpType, string][]).filter(([k]) => k !== 'any').map(([k, l]) => (
+              <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!p.expType?.includes(k)} onChange={(e) => setP({ ...p, expType: e.target.checked ? [...(p.expType || []), k] : (p.expType || []).filter((x) => x !== k) })} data-testid={`gov-exp-type-${k}`} /> {l}</label>))}</div></fieldset>
           {p.esm && <div className="min-w-0"><Label htmlFor="gesy" hint="for age relaxation">Years of military service</Label><Input id="gesy" type="number" min={0} max={40} value={p.esmYears ?? ''} onChange={(e) => setP({ ...p, esmYears: e.target.value === '' ? undefined : Math.max(0, Math.min(40, Number(e.target.value))) })} data-testid="gov-esm-years" /></div>}
         </div>
         <div className="flex flex-wrap gap-4 text-sm">

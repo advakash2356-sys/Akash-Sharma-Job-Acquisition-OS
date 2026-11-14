@@ -40,7 +40,8 @@ test('licence + experience gates (Bar / NMC, years of practice to cut-off)', () 
   const cj = P('Civil Judge (Junior Division)', { eligibility: 'LLB; enrolled as an advocate', state: 'Delhi', level: 'judiciary' });
   assert.equal(licenceGate(cj, lawyer).ok, true); assert.equal(licenceGate(cj, { ...lawyer, bar: false }).ok, false); assert.equal(licenceGate(cj, { ...lawyer, bar: undefined }).ok, null);
   assert.equal(matchLabel(cj, { ...lawyer, bar: undefined }, T).label, 'check'); assert.match(matchLabel(cj, { ...lawyer, bar: undefined }, T).why.join(' '), /Bar Council enrolment/);
-  const hjs = P('Higher Judicial Service (direct from Bar)'); assert.equal(experienceGate(hjs, lawyer).ok, false); assert.equal(experienceGate(hjs, { ...lawyer, expYears: 8 }).ok, true);
+  const hjs = P('Higher Judicial Service (direct from Bar)'); assert.equal(experienceGate(hjs, lawyer).ok, false); assert.equal(experienceGate(hjs, { ...lawyer, expYears: 8, expType: ['litigation'] }).ok, true);
+  assert.equal(experienceGate(hjs, { ...lawyer, expYears: 8, expType: ['corporate_legal'] }).ok, null); assert.match(experienceGate(hjs, { ...lawyer, expYears: 8, expType: ['corporate_legal'] }).why!, /7 yrs litigation practice required; your profile shows corporate legal/);
   assert.equal(qualFits(hjs, lawyer), false);
   const lo = P('Law Officer', { org: 'Coal India Limited', level: 'psu', eligibility: 'LLB with 2 years post qualification experience', pay: 'E2 Rs 50,000 - 1,60,000', maxAge: 40 });
   assert.equal(matchLabel(lo, lawyer, T).label, 'strong');

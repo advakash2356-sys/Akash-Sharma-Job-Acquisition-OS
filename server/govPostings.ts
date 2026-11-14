@@ -11,6 +11,8 @@ import { EN_URL, ISRO_URL, S3_PATH, S3_SITES, fromEmploymentNews, fromIsro, from
  * emails and phone numbers are stripped from snippets. Nothing is invented: a missing field is shown as "see notice".
  */
 import { dmy } from "./govtFeed.js";
+import { factsOf, noticeTypeOf, parseNotice, type NoticeFacts } from "../src/lib/gov/notice.js";
+import { readNotices } from "./govNoticeRead.js";
 import { inDomain } from "../src/lib/gov/domain.js";
 
 const FH = "https://freehire.me/api/v1/jobs/search";
@@ -24,6 +26,7 @@ export interface GovPosting {
   postedAt: string; source: "FreeHire (Telegram notices)" | "SarkariMap RSS" | "JAOS curated (official notice)" | "Employment News (Govt of India)" | "ISRO / Dept of Space careers (official)" | "District Courts (eCourts S3WaaS, official)"; lesserKnown: boolean; verifiedAt: string;
   /** Playbook §5 fields (best effort from the notice text; empty when not stated). */
   level?: Level; employmentType?: EmpType; trust?: "GOV_TLD" | "WHITELIST_PSU" | "UNTRUSTED"; /** "listing" = the date the official page stops listing the notice (District Courts); confirm the last date in the notice. */ dateKind?: "last" | "listing"; minAge?: number; maxAge?: number; eduTags?: string[];
+  /** Structured facts read once per notice (rules, the notice PDF text, or Gemini on the PDF). The browser gates and ranks on these. */ facts?: NoticeFacts;
 }
 export type Level = "central" | "state" | "psu" | "autonomous" | "judiciary" | "defence" | "regulator" | "local";
 export type EmpType = "permanent" | "contractual" | "deputation" | "apprenticeship" | "fellowship";
@@ -55,13 +58,20 @@ export function eduTagsOf(t: string): string[] {
 }
 /** t386u M3: notices only for retired staff / re-employment of retirees are not openings for job seekers. */
 export { retireeNotice } from "./govOfficial.js";
+/** Compatibility for older harnesses: RETIREES.test(text) = a notice aimed at retired staff only. */
+export const RETIREES = { test: (t: string) => retireeNotice(t) };
 /** Playbook §7 scam heuristics: personal UPI/WhatsApp payment or fee-disguise wording. */
 export const SCAM = /@(okaxis|ybl|paytm|oksbi|okhdfcbank|okicici|upi)\b|whats ?app\s*(no|number|pe)|security deposit|training kit charge|laptop charge|confirmed (sarkari )?job without exam|joining fee/i;
 export function enrich(p: GovPosting, text: string): GovPosting | null {
   const all = `${p.title} ${p.org} ${text}`;
   if (SCAM.test(all) || retireeNotice(`${p.title} ${p.eligibility}`)) return null;
+  // Not an open call by its title (a list, result, schedule or appointment letter): drop. "Recruitment of X" alone stays.
+  const nt = noticeTypeOf(p.title); if (nt !== "open_call" && nt !== "other") return null;
   const tr = inDomain(p.noticeUrl).tier;
-  return { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
+  const e: GovPosting = { ...p, level: levelOf(`${p.org} ${p.title}`), employmentType: empTypeOf(all), trust: tr, official: p.official && tr !== "UNTRUSTED", ...agesOf(all), eduTags: eduTagsOf(`${p.title} ${p.eligibility} ${text}`) };
+  // Facts once per notice. A thin eligibility line falls back to the notice snippet; the PDF reader may refine S3 rows later.
+  const thin = !p.eligibility || /^qualification as stated/i.test(p.eligibility); const src = thin && text ? text.slice(0, 1500) : p.eligibility;
+  return { ...e, facts: p.facts ?? { ...factsOf({ ...e, eligibility: src, facts: undefined }), noticeType: nt } };
 }
 export interface GovFeed { postings: GovPosting[]; checkedAt: string; warnings: string[]; sources: string[] }
 
@@ -154,7 +164,7 @@ async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): Prom
   return out;
 }
 /** District court pages change slowly: read them at most every 3 hours, so each court site gets <= 8 requests a day from us. */
-const S3_TTL = 3 * 60 * 60 * 1000; let s3cache: { at: number; posts: GovPosting[]; ok: number; failed: number } | null = null;
+const S3_TTL = 3 * 60 * 60 * 1000; let s3cache: { at: number; posts: GovPosting[]; ok: number; failed: number; read?: { read: number; gemini: number; dropped: number } } | null = null;
 export async function officialPostings(today: string, now = Date.now()): Promise<{ posts: GovPosting[]; sources: string[]; warnings: string[] }> {
   const posts: GovPosting[] = [], sources: string[] = [], warnings: string[] = [];
   const [en, isro] = await Promise.allSettled([get(EN_URL, "text/html", 12000).then((r) => r.text()), get(ISRO_URL, "text/html", 12000).then((r) => r.text())]);
@@ -163,9 +173,12 @@ export async function officialPostings(today: string, now = Date.now()): Promise
   if (!s3cache || now - s3cache.at > S3_TTL) {
     const res = await pool(S3_SITES, 12, async (s) => fromS3waas(await (await get(`https://${s.host}${S3_PATH}`, "text/html", 8000)).text(), s, today));
     const ok = res.filter((r) => r.status === "fulfilled"); const fresh = { at: now, posts: ok.flatMap((r) => (r as PromiseFulfilledResult<GovPosting[]>).value), ok: ok.length, failed: res.length - ok.length };
+    // Read each listed notice once (PDF text, then Gemini on the existing key; rules as fallback) and drop non-open notices.
+    if (fresh.ok) { const r = await readNotices(fresh.posts.filter((p) => p.lastDate >= today), 25000).catch(() => null); if (r) { fresh.posts = r.posts; (fresh as any).read = { read: r.read, gemini: r.gemini, dropped: r.dropped }; } }
     if (fresh.ok || !s3cache) s3cache = fresh;
   }
   const live = s3cache.posts.filter((p) => p.lastDate >= today); posts.push(...live);
+  if (s3cache.read) sources.push(`District Court notices read from the official PDF: ${s3cache.read.read} (${s3cache.read.gemini} with Gemini on the existing project key); ${s3cache.read.dropped} non-open notices removed`);
   if (s3cache.ok) sources.push(`District Courts recruitment pages, eCourts S3WaaS (official; ${s3cache.ok} of ${S3_SITES.length} courts read)`);
   if (s3cache.failed) warnings.push(`District Courts: ${s3cache.failed} of ${S3_SITES.length} court sites did not answer`);
   return { posts, sources, warnings };

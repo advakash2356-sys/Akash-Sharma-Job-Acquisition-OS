@@ -1,3 +1,4 @@
+import type { ExpType } from './gov/notice';
 // Government Jobs eligibility finder (India). Hand-curated from official notifications; every entry carries
 // its source and the date it was last checked. Information only, not legal advice. Akash Sync Agent.
 /** Professional field of the degree (e.g. LLB = law). Used only to rank live postings. */
@@ -12,7 +13,8 @@ export interface Profile { /** optional city or district, used to pre-fill the a
   /** Holds the home state's domicile certificate; languages read/write. */ domicile?: boolean; languages?: string[];
   /** Minimum 7th CPC pay level wanted (1-18); 0/undefined = no floor. */ minPayLevel?: number;
   /** Open to posts outside the home state (default true). */ relocate?: boolean;
-  /** Ex-servicemen: years of military service (for the service + 3 years relaxation). */ esmYears?: number }
+  /** Ex-servicemen: years of military service (for the service + 3 years relaxation). */ esmYears?: number;
+  /** Kinds of work experience (litigation, corporate legal, clinical, public health...). A notice that asks for a kind not listed here is "Check notice", never Eligible. */ expType?: ExpType[] }
 export interface Exam {
   id: string; name: string; body: string; group: 'UPSC' | 'SSC' | 'Banking' | 'Railways' | 'Defence' | 'Courts' | 'PSU / Research' | 'Postal';
   minAge: number; maxAge: number; asOn: string; // age reckoning date in the notification used

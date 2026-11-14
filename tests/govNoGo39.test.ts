@@ -115,9 +115,10 @@ test('L4: District Court cards say "listing ends" unless a real last date is par
 test('Related fit: a lawyer sees compliance, legal-analyst, policy and data-analyst posts at their level, after law posts', async () => {
   const { relatedFit, profileSortKey, compareKeys } = await import('../src/lib/gov/rank');
   const law5: Profile = { ...lawyer, expYears: 5 };
-  const rel = [P('Compliance Officer', { org: 'SEBI', pay: 'Level 10', eligibility: 'Any graduate with 3 years experience', maxAge: 35 }), P('Research Analyst (Regulatory)', { org: 'IFSCA', pay: 'Rs 60,000 per month', eligibility: 'Graduate' }),
-    P('Policy Officer', { org: 'Ministry of Consumer Affairs', pay: 'Level 10', eligibility: 'Any degree' }), P('Data Analyst', { org: 'NHAI', pay: 'Level 8', eligibility: 'Graduate in any discipline' })];
-  for (const p of rel) { const m = matchLabel(p, law5, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /^Related fit: .*your Law degree and 5 years of experience\.$/, p.title); assert.ok(relatedFit(p, law5)); }
+  const rel = [P('Compliance Officer', { org: 'SEBI', pay: 'Level 10', eligibility: 'Any graduate with 3 years experience', maxAge: 35 }), P('Research Analyst (Regulatory)', { org: 'IFSCA', pay: 'Rs 60,000 per month', eligibility: 'Graduate', maxAge: 40 }),
+    P('Policy Officer', { org: 'Ministry of Consumer Affairs', pay: 'Level 10', eligibility: 'Any degree', maxAge: 40 }), P('Data Analyst', { org: 'NHAI', pay: 'Level 8', eligibility: 'Graduate in any discipline', maxAge: 40 })];
+  for (const p of rel) { const m = matchLabel(p, law5, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /^Related fit: the notice asks for .+; your BA LLB and 5 yrs of work experience meet it\. \S/, p.title); assert.ok(relatedFit(p, law5)); }
+  assert.match(matchLabel(rel[0], law5, T).why[0], /asks for graduate degree in any discipline \+ 3 yrs experience/);
   // A legal-analyst post is already a law post (exact profession), so it is shown and ranks with law posts.
   const la = P('Legal Analyst', { org: 'NITI Aayog', pay: 'Rs 60,000 per month', eligibility: 'Graduate' }); assert.equal(profileFit(la, law5).field, true); assert.equal(govResults([la], F, law5, [], T).list.length, 1);
   // Stays above the floor: clerical / menial "compliance" or data-entry posts are never Related fit.
@@ -133,8 +134,8 @@ test('Related fit: a lawyer sees compliance, legal-analyst, policy and data-anal
 test('Related fit: an MSc Env Sci sees research, data and policy posts', async () => {
   const { relatedFit } = await import('../src/lib/gov/rank');
   const env: Profile = { ...base, edu: 'pg', spec: '', subject: 'MSc Environmental Science', expYears: 3 };
-  for (const p of [P('Research Associate', { org: 'CSIR-NEERI', pay: 'Rs 58,000 per month', eligibility: 'PG in Science' }), P('GIS Analyst', { org: 'Forest Survey of India', pay: 'Level 7', eligibility: 'Post graduate' }), P('Policy Consultant', { org: 'MoEFCC', pay: 'Rs 80,000 per month', eligibility: 'Masters degree' })]) {
-    const m = matchLabel(p, env, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /Environmental Science degree and 3 years of experience/, p.title);
+  for (const p of [P('Research Associate', { org: 'CSIR-NEERI', pay: 'Rs 58,000 per month', eligibility: 'PG in Science', maxAge: 40 }), P('GIS Analyst', { org: 'Forest Survey of India', pay: 'Level 7', eligibility: 'Post graduate', maxAge: 40 }), P('Policy Consultant', { org: 'MoEFCC', pay: 'Rs 80,000 per month', eligibility: 'Masters degree', maxAge: 40 })]) {
+    const m = matchLabel(p, env, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /your MSc Environmental Science and 3 yrs of work experience meet it/, p.title);
   }
   assert.equal(relatedFit(P('Field Attendant (Forest)', { eligibility: '10th pass', eduTags: ['10TH'] }), env), null, 'below the floor');
   assert.equal(relatedFit(P('Research Associate (Law)', { pay: 'Rs 58,000', eligibility: 'LLM' }), env), null, 'law research needs a law degree');
@@ -156,7 +157,7 @@ test('retest M2: CA badge for "Risk Officer, CA / MBA Finance" is not "May not q
 test('retest M3: a degree named as "preferred" never makes a post exact; every Related fit ranks after every exact match', async () => {
   const { profileSortKey, compareKeys } = await import('../src/lib/gov/rank');
   const law5: Profile = { ...lawyer, expYears: 5 };
-  const pc = P('Policy Consultant', { org: 'NITI Aayog', pay: 'Rs 1,00,000 per month', eligibility: 'Masters in Public Policy. LLB preferred.', maxAge: 45 });
+  const pc = P('Policy Consultant', { org: 'NITI Aayog', pay: 'Rs 1,00,000 per month', eligibility: 'Graduate in any discipline. LLB preferred.', maxAge: 45 });
   const co = P('Compliance Officer', { org: 'SEBI', pay: 'Level 10', eligibility: 'Graduate; LLB (desirable)', maxAge: 35 });
   const comp = P('Compliance Manager', { org: 'IFSCA', pay: 'Level 11', eligibility: 'LLB with 3 years experience', maxAge: 40 });
   for (const p of [pc, co, comp]) { assert.equal(profileFit(p, law5).field, false, p.title); assert.equal(matchLabel(p, law5, T).label, 'related', p.title); }
@@ -191,7 +192,7 @@ test('retest Low: near-me left-out count counts only posts that pass the other f
 test('retest Low: 12th pass gets a small Related list of clerk / DEO / assistant posts at their level, never officer posts', async () => {
   const { relatedFit } = await import('../src/lib/gov/rank');
   for (const p of [P('Lower Division Clerk', { eligibility: '12th pass with typing', eduTags: ['12TH'] }), P('Data Entry Operator', { eligibility: '12th pass', eduTags: ['12TH'] }), P('Office Assistant', { eligibility: 'Intermediate (12th)', eduTags: ['12TH'] })]) {
-    const m = matchLabel({ ...p, maxAge: 30 }, twelfth, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /Related fit: office and data-entry work at your level \(12th pass\)/, p.title);
+    const m = matchLabel({ ...p, maxAge: 30 }, twelfth, T); assert.equal(m.label, 'related', p.title); assert.match(m.why[0], /Related fit: the notice asks for 12th pass; your 12th pass( and \d+ yrs of work experience)? meets? it\. Office and data-entry work at your level \(12th pass\)/, p.title);
   }
   for (const p of [P('Assistant Section Officer', { eligibility: '12th pass', eduTags: ['12TH'] }), P('Data Entry Operator', { eligibility: 'Graduate', eduTags: ['GRADUATE'] }), P('Junior Assistant', { pay: 'Level 10', eligibility: 'Any graduate', eduTags: ['GRADUATE'] }), P('Peon', { eduTags: ['10TH'] })])
     assert.equal(relatedFit(p, twelfth), null, p.title);
@@ -258,8 +259,8 @@ test('retest2 Low: generic analyst narrowed: GIS / Credit Analyst are not Relate
   const law5: Profile = { ...lawyer, expYears: 5 };
   for (const t of ['GIS Analyst', 'Credit Analyst']) for (const p of [law5, civil]) assert.equal(relatedFit(P(t, { pay: 'Level 8', eligibility: 'Any graduate' }), p), null, `${t} / ${p.subject}`);
   assert.equal(relatedFit(P('GIS Analyst', { pay: 'Level 8', eligibility: 'Any graduate' }), ca), null, 'GIS is not credit analysis');
-  assert.match(relatedFit(P('Data Analyst', { pay: 'Level 8', eligibility: 'Graduate in any discipline' }), law5) || '', /analytical and research skills/);
-  assert.match(relatedFit(P('Credit Analyst', { pay: 'Level 8', eligibility: 'Any graduate' }), ca) || '', /credit/);
+  assert.match(relatedFit(P('Data Analyst', { pay: 'Level 8', eligibility: 'Graduate in any discipline', maxAge: 40 }), law5) || '', /analytical and research skills/);
+  assert.match(relatedFit(P('Credit Analyst', { pay: 'Level 8', eligibility: 'Any graduate', maxAge: 40 }), ca) || '', /credit/i);
 });
 test('retest2 Low: MSc Env Sci exact-subject posts rank above Related posts', async () => {
   const { profileSortKey, compareKeys, subjectExact } = await import('../src/lib/gov/rank');
@@ -277,12 +278,12 @@ test('retest2 Low: 12th-pass Related list excludes posts above their level (Leve
   assert.equal(relatedFit(P('Clerk (Grade A)', { pay: 'Level 7', eligibility: '12th pass', eduTags: ['12TH'] }), twelfth), null);
   assert.equal(relatedFit(P('Lower Division Clerk', { pay: 'Level 6', eligibility: '12th pass', eduTags: ['12TH'] }), twelfth), null);
   assert.equal(relatedFit(P('Data Entry Operator', { pay: 'Rs 35,400 - 1,12,400', eligibility: '12th pass', eduTags: ['12TH'] }), twelfth), null);
-  assert.ok(relatedFit(P('Lower Division Clerk', { pay: 'Level 2', eligibility: '12th pass', eduTags: ['12TH'] }), twelfth));
+  assert.ok(relatedFit(P('Lower Division Clerk', { pay: 'Level 2', eligibility: '12th pass', eduTags: ['12TH'], maxAge: 30 }), twelfth));
 });
 test('retest2 Low: "should not be retired" clauses keep the post; plain "Recruitment of X" rows are open calls; CA Data Analyst gets its own reason', async () => {
   const { relatedFit } = await import('../src/lib/gov/rank');
   const one = (t: string) => fromS3waas(`<table class="data-table-1"><tbody><tr><td>${t}</td><td></td><td>10/11/2026</td><td>30/11/2026</td><td><a href="https://cdn.s3waas.gov.in/a.pdf">pdf</a></td></tr></tbody></table>`, site('ernakulam'), T).length;
   assert.equal(one('Recruitment of Junior Assistant (applicants should not be retired from service)'), 1); assert.equal(one('Recruitment of Stenographer Grade III'), 1);
   assert.equal(one('Retired Judges as Mediators – empanelment'), 0); assert.equal(one('Final list of eligible applications for the recruitment of vacant posts of Stenographer Grade-3 (English)'), 0, 'a list is not an opening'); assert.equal(one('Engagement of Pension Assistant / Pension Clerk'), 1, 'a Pension Assistant post is a real post');
-  assert.match(relatedFit(P('Data Analyst', { pay: 'Level 8', eligibility: 'Graduate in any discipline' }), ca) || '', /financial-analysis and audit skills/);
+  assert.match(relatedFit(P('Data Analyst', { pay: 'Level 8', eligibility: 'Graduate in any discipline', maxAge: 40 }), ca) || '', /financial-analysis and audit skills/);
 });

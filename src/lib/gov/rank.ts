@@ -1,7 +1,8 @@
 // Ranking and eligibility hints for live postings (playbook §2 and §6, simplified). Not legal advice. Akash Sync Agent.
 import { ageOn, type Profile } from '../govJobs';
-import { CLERICAL, MENIAL_ANY, OFFICER_TITLE, RELATED, directMatch, requiredPart, postDiscs, PROFESSIONAL, type Disc, disciplineGate, domicileGate, experienceGate, floorBlocks, licenceGate, payBelow, payInfo, relaxYears, userDiscs, DISC_NAME } from './gates';
-export interface RankInput { lastDate: string; lesserKnown: boolean; pay: string; vacancies: string; official: boolean; title: string; org: string; eligibility: string; state: string; level?: string; employmentType?: string; maxAge?: number; minAge?: number; eduTags?: string[] }
+import { factsOf, postLevelOf, qualGate, essentialSummary, EXP_NAME, type NoticeFacts } from './notice';
+import { RELATED, directMatch, requiredPart, postDiscs, PROFESSIONAL, type Disc, disciplineGate, domicileGate, experienceGate, floorBlocks, licenceGate, payBelow, payInfo, relaxYears, userDiscs, DISC_NAME } from './gates';
+export interface RankInput { lastDate: string; lesserKnown: boolean; pay: string; vacancies: string; official: boolean; title: string; org: string; eligibility: string; state: string; level?: string; employmentType?: string; maxAge?: number; minAge?: number; eduTags?: string[]; facts?: NoticeFacts }
 export const daysLeft = (d: string, today = new Date().toISOString().slice(0, 10)) => Math.ceil((Date.parse(d) - Date.parse(today)) / 864e5);
 /** 0-100ish: urgency (closing within 14 days), lesser-known boost, data quality, keyword relevance. */
 export function rankScore(p: RankInput, keywords: string[] = [], today?: string): number {
@@ -19,38 +20,37 @@ export const EDU_RANK: Record<string, number> = { '10': 1, '12': 2, iti: 2, dipl
 export const TAG_RANK: Record<string, number> = { '10TH': 1, '12TH': 2, ITI: 2, DIPLOMA: 2, GRADUATE: 3, ENGINEERING: 3, LAW: 3, MEDICAL: 3, PG: 4, PHD: 5 };
 export type Badge = 'likely' | 'verify' | 'maynot';
 export const BADGE_TEXT: Record<Badge, string> = { likely: 'Likely eligible: check official notification', verify: 'Needs verification (check sub-clauses)', maynot: 'May not qualify: check relaxations in notice' };
-/** Three states only, never "100% eligible". Uses only what the notice text states; unknowns mean "verify". Spec rule 3: six gates. */
+/** Three states only, never "100% eligible". No false hope: every ESSENTIAL condition the notice states (qualification, discipline,
+ *  experience years AND type, licence / enrolment, age, domicile) is compared with the profile. A stated condition that clearly
+ *  fails gives "maynot" (hidden unless "Show all levels"); any condition not stated in the notice or not answered in the profile
+ *  becomes a named check (label "Check notice", never Strong or Eligible). */
 export function eligibilityBadge(p: RankInput, prof: Profile | null, today = new Date().toISOString().slice(0, 10)): { badge: Badge; why: string[]; checks: string[] } {
-  const why: string[] = []; const checks: string[] = [];
+  const why: string[] = []; const checks: string[] = []; const fails: string[] = [];
   if (p.employmentType === 'deputation') return { badge: 'maynot', why: ['Deputation posts are only for serving government employees.'], checks };
   const fit = prof ? profileFit(p, prof) : null;
   if (fit?.belowLevel) return { badge: 'maynot', why: [`${fit.floor === 'pay' ? 'Pay below your minimum pay level' : `Junior / entry-level post (${fit.floor})`}: below your ${prof!.expYears ? `${prof!.expYears} yrs experience and ` : ''}${prof!.spec === 'law' ? 'law degree' : prof!.spec ? `${prof!.spec} degree` : 'graduate'} profile. Hidden unless you tick "Show all levels".`], checks };
   if (!prof) return { badge: 'verify', why: ['Add your details below to get a hint.'], checks };
-  let bad = false, known = 0;
-  // Gate 2: exact degree & discipline.
-  const dg = disciplineGate(p, prof); if (dg.ok === false) { bad = true; why.push(dg.why!); } else if (dg.ok) { known++; why.push(`Degree match: ${dg.need.map((d) => DISC_NAME[d]).slice(0, 2).join(' / ')}.`); } else if (dg.why) checks.push(dg.why.replace(/^Check notice: /, ''));
-  // Gate 3: licence. Gate 4: experience to cut-off.
-  const lg = licenceGate(p, prof); if (lg.ok === false) { bad = true; why.push(lg.why!); } else if (lg.ok) why.push(lg.why!); else if (lg.why) checks.push(lg.why.replace(/^Check notice: /, ''));
-  const xg = experienceGate(p, prof); if (xg.ok === false) { bad = true; why.push(xg.why!); } else if (xg.ok) why.push(xg.why!); else if (xg.why) checks.push(xg.why.replace(/^Check notice: /, ''));
-  // Gate 5: domicile & regional language.
-  const dm = domicileGate(p, prof); if (dm.ok === false) { bad = true; why.push(dm.why!.replace(/^Check notice: /, '')); } else if (dm.why && dm.ok === null) checks.push(dm.why.replace(/^Check notice: /, '').replace(/\.$/, '')); else if (dm.why) why.push(dm.why);
-  // Gate 6: age with statutory relaxation (category relaxation needs the recruiting state's domicile for state posts).
+  const f = factsOf(p); const strip = (w: string) => w.replace(/^Check notice: /, '').replace(/\.$/, '');
+  const gate = (g: { ok: boolean | null; why?: string }) => { if (g.ok === false) fails.push(g.why!); else if (g.ok) { if (g.why) why.push(g.why); } else if (g.why) checks.push(strip(g.why)); };
+  // Essential qualification (satisfaction against the person's degrees), then discipline, licence, experience, domicile.
+  gate(qualGate(f, prof));
+  const dg = disciplineGate(p, prof); if (dg.ok === true) why.push(`Degree match: ${dg.need.map((d) => DISC_NAME[d]).slice(0, 2).join(' / ')}.`); else gate(dg);
+  gate(licenceGate(p, prof)); gate(experienceGate(p, prof)); gate(domicileGate(p, prof));
+  // Age with statutory relaxation (category relaxation needs the recruiting state's domicile for state posts).
   if (!prof.dob) checks.push('add your date of birth to check the age limit');
+  else if (f.ageMax === null && f.ageMin === null) checks.push('the age limit (not in the feed text)');
   else {
     const age = ageOn(prof.dob, p.lastDate || today);
     const stateMismatch = p.level === 'state' && prof.state && p.state && p.state !== 'All India' && p.state.toLowerCase() !== prof.state.toLowerCase();
     const r = relaxYears(prof, !stateMismatch); const relax = r.years;
-    if (p.maxAge) { known++; const cap = p.maxAge + relax; if (age > cap) { bad = true; why.push(`Your age on the last date is about ${age}; stated limit ${p.maxAge}${relax ? ` (+${relax} relaxation, ${r.note} = ${cap})` : ''}.`); } else why.push(`Age ${age}: ${cap - age} yr margin under ${p.maxAge}${relax ? ` + ${relax} (${r.note})` : ''}.`); }
-    else checks.push('age limit (not in the feed text)');
-    if (p.minAge && age < p.minAge) { bad = true; why.push(`Minimum age ${p.minAge}.`); }
+    if (f.ageMax !== null) { const cap = f.ageMax + relax; if (age > cap) fails.push(`Your age on the last date is about ${age}; stated limit ${f.ageMax}${relax ? ` (+${relax} relaxation, ${r.note} = ${cap})` : ''}.`); else why.push(`Age ${age}: ${cap - age} yr margin under ${f.ageMax}${relax ? ` + ${relax} (${r.note})` : ''}.`); }
+    else checks.push('the upper age limit (not in the feed text)');
+    if (f.ageMin !== null && age < f.ageMin) fails.push(`Minimum age ${f.ageMin}.`);
   }
-  // t386u retest M2: a passing discipline gate (CA with ICAI for "CA / MBA Finance") overrides the coarse tag rank, same as qualFits.
-  if (p.eduTags?.length && dg.ok === true && !['10', '12', 'iti'].includes(prof.edu) && directMatch(p, prof, true)) known++;
-  else if (p.eduTags?.length && dg.ok !== false) { known++; const need = Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3)); const have = EDU_RANK[prof.edu] || 0; if (have < need) { bad = true; why.push('The notice seems to need a higher qualification than yours.'); } else if (dg.ok === null) why.push('Your education level looks enough.'); }
   if (fit?.field) why.push(`Matches your ${prof!.spec} background.`);
-  if (fit && isExperienced(prof) && fit.tier === 'senior' && dg.ok !== false) why.push('Officer / specialist level post: suits your experience.');
-  if (bad) return { badge: 'maynot', why, checks };
-  return { badge: known >= 2 && !checks.filter((c) => !/age limit \(not/.test(c)).length ? 'likely' : 'verify', why: why.length ? why : ['Age or qualification not stated in the feed text.'], checks };
+  if (fit && isExperienced(prof) && fit.tier === 'senior' && !fails.length) why.push('Officer / specialist level post: suits your experience.');
+  if (fails.length) return { badge: 'maynot', why: fails, checks };
+  return { badge: checks.length ? 'verify' : 'likely', why: why.length ? why : ['Age or qualification not stated in the feed text.'], checks };
 }
 // ---- Profile fit (t326u): experience, degree and career level drive "Best match". Uses only the posting's own text. ----
 export type Tier = 'junior' | 'mid' | 'senior';
@@ -59,7 +59,7 @@ const SENIOR_TITLE = /\b(gazetted|judge|judicial|magistrate|public prosecutor|pr
 const NOT_SENIOR = /\b(junior|clerk|mts|gds|constable|peon|stenographer|typist|trainee|train manager|guard|ticket|commercial cum|station master|loco pilot|goods)\b|group\s*[cd]\b/i;
 // t385u profession-first families: every open post of the user's profession, matched on title + eligibility (never org name).
 // Law: judicial services, prosecutors, law officers, standing counsel, PSU/bank law officers, tribunal members, legal aid, law faculty.
-const LAW_RE = /\b(law|laws|legal|llb|ll\.\s?b|llm|ll\.\s?m|advocates?|bar council|enrol(?:l)?ment as an advocate|judicial|judge|judges|judiciary|civil judge|pcs[- ]?\(?j\)?|hjs|higher judicial|munsif|magistrate|prosecutors?|prosecution|public prosecutor|standing counsel|counsel|law officer|so[- ]?\(?law\)?|legal aid|dlsa|slsa|nalsa|legal services authority|notary|solicitor|attorney|judicial member|member \(judicial\)|nclt|nclat|itat|drt|drat|cestat|consumer (?:disputes redressal )?commission|consumer forum)\b/i;
+const LAW_RE = /\b(law|laws|legal|llb|l\.?\s?l\.\s?b|llm|l\.?\s?l\.\s?m|advocates?|bar council|enrol(?:l)?ment as an advocate|judicial|judge|judges|judiciary|civil judge|pcs[- ]?\(?j\)?|hjs|higher judicial|munsif|magistrate|prosecutors?|prosecution|public prosecutor|standing counsel|counsel|law officer|so[- ]?\(?law\)?|legal aid|dlsa|slsa|nalsa|legal services authority|notary|solicitor|attorney|judicial member|member \(judicial\)|nclt|nclat|itat|drt|drat|cestat|consumer (?:disputes redressal )?commission|consumer forum)\b/i;
 const TEACH_RE = /\b(teachers?|tgt|pgt|prt|b\.?\s?ed|ctet|tet|lecturer|assistant professor|associate professor|professor|faculty|principal|headmaster|head master)\b/i;
 const MENIAL = /\b(constable|home ?guard|agniveer|gate ?keeper|forest guard|trackman|driver|peon|sweeper|safai|chowkidar|watchman|security guard|helper|attendant|cook|mali|gardener|mts|multi[- ]?tasking|orderly|daftary|daftari|chaprasi|process server|bailiff|typist|stenographer|steno|data entry|deo|ldc|udc|lower division|upper division|office assistant|junior assistant|record keeper|clerk|cleaner|sanitation)\b/i;
 export const SPEC_RE: Record<string, RegExp> = { law: LAW_RE, engineering: /\b(engineer|engineering|b\.e\.|b\.?\s?tech|gate score)\b/i, medical: /\b(medical|mbbs|doctor|nurse|pharmac|health|dental|ayush)\b/i, finance: /\b(accounts?|accountant|finance|financial|chartered accountant|\bca\b|cma|icwa|company secretary|audit|auditor|treasury|actuar\w*)\b/i, teaching: TEACH_RE, other: /$^/ };
@@ -70,8 +70,12 @@ export function payFacts(pay: string): { level?: number; basic?: number } {
 }
 /** Senior = Group A/B, Gazetted, Level 10+ or basic >= Rs 56,100 when pay is known; otherwise only clear officer-grade titles. "Manager"/"supervisor" alone is not enough. */
 export function tierOf(p: Pick<RankInput, 'title' | 'org' | 'eligibility' | 'pay'> & { eduTags?: string[] }): Tier {
+  const f = factsOf(p as RankInput); const lv = postLevelOf(f);
+  if (lv === 'support' || lv === 'subgrad') return 'junior';
+  if (f.group === 'A' || f.group === 'B') return 'senior';
+  if (lv === 'officer' && ((f.payLevel ?? 0) >= 10 || (f.basic ?? 0) >= 56100)) return 'senior';
   const t = `${p.title} ${p.eligibility} ${p.pay}`;
-  const jr = JUNIOR.test(t) || NOT_SENIOR.test(p.title) && /group\s*[cd]\b/i.test(t) || (!!p.eduTags?.length && p.eduTags.every((x) => ['10TH', '12TH', 'ITI'].includes(x)));
+  const jr = lv !== 'officer' && ( JUNIOR.test(t) || NOT_SENIOR.test(p.title) && /group\s*[cd]\b/i.test(t) || (!!p.eduTags?.length && p.eduTags.every((x) => ['10TH', '12TH', 'ITI'].includes(x))));
   if (NOT_SENIOR.test(p.title) || /group\s*[cd]\b/i.test(t)) return jr ? 'junior' : 'mid';
   if (/group\s*[ab]\b|gazetted/i.test(t)) return 'senior';
   const { level, basic } = payFacts(p.pay);
@@ -86,20 +90,20 @@ export const isExperienced = (prof?: Profile | null) => !!prof && (prof.expYears
 export { requiredPart } from './gates';
 export function profileFit(p: RankInput, prof?: Profile | null): { pts: number; tier: Tier; field: boolean; belowLevel: boolean; subjects?: string[]; floor?: string } {
   // org name never counts (t326u NO-GO); a menial title (e.g. "DLSA Driver", "Constable (Legal Cell)") is never a profession match, except a Law Clerk.
-  const tier = tierOf(p); const menial = (MENIAL.test(p.title) || MENIAL_ANY.test(p.title) || CLERICAL.test(p.title) || /\bpara[- ]?legal\b|\bretired (?:employees|officers|persons|judicial)\b/i.test(p.title)) && !/law clerk|legal assistant/i.test(p.title);
+  const tier = tierOf(p); const lv = postLevelOf(factsOf(p)); const menial = (lv === 'support' || lv === 'subgrad' || lv === 'clerical' || /\bpara[- ]?legal\b/i.test(p.title)) && !/law clerk|legal assistant/i.test(p.title);
   const dg = prof ? disciplineGate(p, prof) : null;
   // Exact profession = the core title is the profession, or the notice REQUIRES the profession for a title that is not an adjacent role.
   // A degree named only as "preferred" / "desirable" never makes a post exact (it may still be a Related fit).
-  const re = prof?.spec ? SPEC_RE[prof.spec] : undefined; const required = requiredPart(p.eligibility || '');
+  const re = prof?.spec ? SPEC_RE[prof.spec] : undefined; const required = factsOf(p).essentialText;
   const field = !!re && (re.test(p.title) || (!relatedRole(p.title, prof || null) && re.test(required))) && !menial && dg?.ok !== false;
   if (!prof) return { pts: 0, tier, field, belowLevel: false };
   const exp = prof.expYears ?? 0, senior = isExperienced(prof);
   // Floor first (t386u M1b): a clerical / menial post stays hidden even when it also fails the subject check.
-  const floor0 = floorBlocks(p, prof, field) || (tier === 'junior' && userLevel(prof) >= 4 && !field && (CLERICAL.test(p.title) || (!OFFICER_TITLE.test(p.title) && /group\s*[cd]\b/i.test(`${p.title} ${p.eligibility} ${p.pay}`))) ? 'clerical / Group C-D post' : null);
+  const floor0 = floorBlocks(p, prof, field);
   const lowPay0 = payBelow(p.pay || '', prof.minPayLevel) === true; const below = { belowLevel: !!floor0 || lowPay0, floor: floor0 || (lowPay0 ? 'pay' : undefined) };
   // t386u M1: exact degree & discipline gate (an engineer is not "eligible" for an APP post; a lawyer not for Medical Officer).
   if (dg?.ok === false) return { pts: -30, tier, field: false, ...below, subjects: dg.need.map((d) => DISC_NAME[d]) };
-  const subj = subjectFit(p.eligibility, prof.spec); if (subj.fits === false && dg?.ok !== true) return { pts: -30, tier, field: false, ...below, subjects: subj.named };
+  const subj = subjectFit(required, prof.spec); if (subj.fits === false && dg?.ok !== true) return { pts: -30, tier, field: false, ...below, subjects: subj.named };
   let pts = field ? 25 : 0;
   if (senior) pts += tier === 'senior' ? 30 + Math.min(10, exp) : tier === 'mid' ? 0 : -80;
   else if (exp <= 2) pts += tier === 'junior' ? 10 : tier === 'senior' && !field ? -5 : 0;
@@ -150,39 +154,40 @@ export function relatedRole(title: string, prof: Profile | null): { d: string; r
 }
 /** Related fit: an adjacent role (not the exact profession) that the person's degree AND experience suit, at or above their level floor.
  *  Returns the one-line reason, or null. Never offered for below-floor posts, when a hard gate fails, or (for 10th / 12th / ITI) for officer posts. */
-export function relatedFit(p: RankInput, prof: Profile | null): string | null {
+export function relatedFit(p: RankInput, prof: Profile | null, today?: string): string | null {
   if (!prof) return null; const fit = profileFit(p, prof); if (fit.field || fit.belowLevel) return null;
   const school = !!SCHOOL_EDU[prof.edu]; if (!school && fit.tier === 'junior') return null; if (subjectExact(p, prof)) return null;
-  // 12th pass / 10th / ITI: only posts at their own level (pay level 5 or below, basic under Rs 35,400), never Level 6+ clerks.
-  if (school) { const pi = payInfo(p.pay || ''); const lv = pi.level ?? (/\blevel[- ]?(\d{1,2})\b/i.exec(`${p.title} ${p.eligibility}`) ? Number(/\blevel[- ]?(\d{1,2})\b/i.exec(`${p.title} ${p.eligibility}`)![1]) : undefined);
-    if ((lv !== undefined && lv >= 6) || (pi.basic !== undefined && pi.basic >= 35400) || /\bgrade[- ]?['"]?a\b/i.test(p.title)) return null; }
-  if (school && (fit.tier === 'senior' || /\bofficer\b|अधिकारी/i.test(p.title) || (!!p.eduTags?.length && Math.min(...p.eduTags.map((t) => TAG_RANK[t] || 3)) > (EDU_RANK[prof.edu] || 0)))) return null;
-  const tp = { title: p.title, eligibility: p.eligibility || '' };
-  if (disciplineGate(tp, prof).ok === false || experienceGate(tp, prof).ok === false || licenceGate(tp, prof).ok === false) return null;
+  const f = factsOf(p);
+  // 12th pass / 10th / ITI: only posts at their own level (pay level 5 or below, basic under Rs 35,400), never officer or degree posts.
+  if (school) { const lv = f.payLevel ?? undefined; if ((lv !== undefined && lv >= 6) || (f.basic !== null && f.basic >= 35400) || /\bgrade[- ]?['"]?a\b/i.test(p.title)) return null;
+    if (f.isOfficer || fit.tier === 'senior' || (f.minEdu !== null && f.minEdu > (EDU_RANK[prof.edu] || 0))) return null; }
+  // Degree holders: never a 12th-pass / diploma-level post as Related fit (Data Analyst (Junior), Level 4, 12th pass).
+  if (!school) { const lv = postLevelOf(f); if (lv === 'support' || lv === 'subgrad' || lv === 'clerical') return null; }
   const r = relatedRole(p.title, prof); if (!r || (school !== (r.d === 'SCHOOL'))) return null;
-  const exp = prof.expYears ?? 0; const deg = r.d === 'SCHOOL' ? SCHOOL_EDU[prof.edu] : DISC_NAME[r.d as Disc].replace(/ \(.*\)$/, '');
-  const why = r.reason.replace('{deg}', deg).replace('{exp}', exp > 0 ? ` and ${exp} year${exp === 1 ? '' : 's'} of experience` : '');
-  return `Related fit: ${why}.`;
+  // No false hope: a Related fit must meet every ESSENTIAL condition the notice states, with nothing left unknown.
+  if (eligibilityBadge(p, prof, today).badge !== 'likely') return null;
+  const exp = prof.expYears ?? 0; const deg = r.d === 'SCHOOL' ? SCHOOL_EDU[prof.edu] : (prof.subject?.trim() || DISC_NAME[r.d as Disc].replace(/ \(.*\)$/, ''));
+  const kinds = (prof.expType || []).filter((t) => t !== 'any').map((t) => EXP_NAME[t]);
+  const expTxt = exp > 0 ? ` and ${exp} yr${exp === 1 ? '' : 's'} of ${kinds.length ? kinds.join(' / ') : 'work'} experience` : '';
+  const tie = r.reason.replace('{deg}', r.d === 'SCHOOL' ? deg : DISC_NAME[r.d as Disc].replace(/ \(.*\)$/, '')).replace('{exp}', '');
+  return `Related fit: the notice asks for ${essentialSummary(f)}; your ${deg}${expTxt} meet${exp > 0 ? '' : 's'} it. ${tie.charAt(0).toUpperCase()}${tie.slice(1)}.`;
 }
 const PROF_NAME: Record<string, string> = { law: 'law', engineering: 'engineering', medical: 'medical / health', finance: 'finance / accounts', teaching: 'teaching' };
 /** Spec rules 4-5. Strong match = your profession + nothing to verify on your side + pay at/above your floor.
  *  Eligible = you meet everything stated, with a stated soft trade-off (place, contract/tenure, or a non-profession post).
  *  Check notice = one or two clauses to verify in the notice, named. */
 export function matchLabel(p: RankInput, prof: Profile | null, today?: string): { label: Label; why: string[] } {
-  const e = eligibilityBadge(p, prof, today); const fit = prof ? profileFit(p, prof) : null;
-  const trade = tradeOffs(p, prof); const personal = e.checks.filter((c) => !/age limit \(not/.test(c));
+  const e = eligibilityBadge(p, prof, today); const fit = prof ? profileFit(p, prof) : null; const trade = tradeOffs(p, prof);
   if (e.badge === 'maynot') return { label: 'check', why: ['May not qualify:', ...e.why] };
   const own = fit?.field ? [`${/^[aeiou]/i.test(PROF_NAME[prof!.spec || ''] || prof!.spec || '') ? 'An' : 'A'} ${PROF_NAME[prof!.spec || ''] || prof!.spec} post, your profession.`] : [];
   const rest = e.why.filter((w) => !/^Matches your/.test(w));
-  const rel = !fit?.field ? relatedFit(p, prof) : null;
-  if (rel) return { label: 'related', why: [rel, ...(personal.length ? [`Check notice: verify ${personal.slice(0, 2).map((c) => c.replace(/\.+$/, '')).join('; ')}.`] : []), ...(trade.length ? [`Trade-off: ${trade.join('; ')}.`] : []), ...rest] };
-  if (personal.length) return { label: 'check', why: [...own, `Check notice: verify ${personal.slice(0, 2).map((c) => c.replace(/\.+$/, '')).join('; ')}.`, ...rest] };
-  // t386u M5: Strong match needs the age confirmed against a stated limit. "Age: see notice" caps the label at Check notice.
-  const ageOpen = e.checks.some((c) => /age limit \(not/.test(c));
-  if (fit?.field && ageOpen) return { label: 'check', why: [...own, 'Check notice: verify the age limit (not stated in the feed text); everything else stated matches.', ...rest] };
-  if (fit?.field && !trade.length) return { label: 'strong', why: [...own, ...rest] };
-  if (fit?.field || e.badge === 'likely') return { label: 'eligible', why: [...own, `Eligible: ${trade.length ? trade.join('; ') : 'meets the stated age and qualification'}.`, ...rest] };
-  return { label: 'check', why: ['Check notice: verify the age limit and qualification (not stated in the feed text).', ...rest.filter((w) => !/not stated/.test(w))] };
+  // Any essential condition unknown (not in the notice text, or not answered in the profile): Check notice, naming the clause.
+  if (e.checks.length) { const role = !fit?.field && prof ? relatedRole(p.title, prof) : null;
+    return { label: 'check', why: [...own, ...(role ? [`Adjacent role (${role.role}) for your background, but not confirmed yet.`] : []), `Check notice: verify ${e.checks.slice(0, 3).map((c) => c.replace(/\.+$/, '')).join('; ')}.`, ...rest] }; }
+  if (fit?.field) return trade.length ? { label: 'eligible', why: [...own, `Eligible: ${trade.join('; ')}.`, ...rest] } : { label: 'strong', why: [...own, ...rest] };
+  const rel = relatedFit(p, prof, today);
+  if (rel) return { label: 'related', why: [rel, ...(trade.length ? [`Trade-off: ${trade.join('; ')}.`] : []), ...rest] };
+  return { label: 'eligible', why: [`Eligible: ${trade.length ? trade.join('; ') : 'meets every essential condition the notice states'}.`, ...rest] };
 }
 /** Soft trade-offs shown on "Eligible" (spec table 7): outside your place, contract / tenure, fellowship. */
 export function tradeOffs(p: RankInput, prof: Profile | null): string[] {
