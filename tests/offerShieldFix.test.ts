@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findCtc, findVariablePct, prefillPayFields, mergePayPrefill, scanOffer } from '../src/lib/offerShield';
+import { findCtc, findVariablePct, prefillPayFields, mergePayPrefill, payRefreshNotice, scanOffer } from '../src/lib/offerShield';
 test('reads variable pay % from letter text', () => {
   assert.equal(findVariablePct('annual CTC of Rs 6,00,000. Variable pay of 15% is at the sole discretion'), 15);
   assert.equal(findVariablePct('Your CTC includes 10% variable.'), 10);
@@ -53,4 +53,20 @@ test('H2-H6 M5: ranges, conflicts, ceilings, bonus, monthly, Hindi and crore', (
   assert.equal(findVariablePct('A variable bonus of up to 20% may be paid at discretion.'), null);
   assert.equal(findVariablePct('variable pay of 10-20% of CTC'), null);
   assert.deepEqual(prefillPayFields('The role has a CTC of 10-12 LPA. You may receive up to 15% variable.'), {});
+});
+
+test('retest-2: conflicting CTC hits stay blank; C.T.C., times signs, fixed pay, refresh notice', () => {
+  assert.equal(findCtc('Annexure A states CTC 14 LPA. Page 2 mentions CTC of Rs 11,00,000. Please confirm which figure applies.'), null);
+  assert.equal(findCtc('We confirm a C.T.C. of 9.6 lacs for the Associate Counsel role.'), 960_000);
+  assert.equal(findCtc('Monthly CTC of Rs 95,000 × 12 = Rs 11,40,000 is your annual CTC.'), 1_140_000);
+  assert.equal(findCtc('Monthly CTC of Rs 95,000 * 12 = Rs 11,40,000 is your annual CTC.'), 1_140_000);
+  assert.equal(findCtc('Fixed pay is 9 LPA and CTC is 11 LPA.'), 1_100_000);
+  const edited = { text: 'old', ctc: '1600000', variable: '6', ctcEdited: true, variableEdited: true };
+  assert.equal(payRefreshNotice(edited, 'new'), 'CTC and variable were refreshed from the new letter.');
+  assert.equal(payRefreshNotice(edited, 'type'), undefined);
+  assert.equal(payRefreshNotice(edited, 'append'), undefined);
+  const fresh = mergePayPrefill(edited, 'Your package is 8 LPA, all fixed.', 'new');
+  assert.equal(fresh.ctc, '800000');
+  assert.equal(fresh.variable, '0');
+  assert.equal(fresh.ctcEdited, false);
 });

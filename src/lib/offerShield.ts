@@ -35,7 +35,7 @@ export function scanOffer(text: string): Clause[] {
   return out.sort((x, y) => order[x.risk] - order[y.risk]);
 }
 /** Pulls a clearly stated annual CTC in INR. Ranges, ceilings, conflicts, other currencies and bonus/buyout figures return null. */
-const CTC_CTX = /\b(?:ctc|c\.t\.c\.|cost to (?:the )?company|package|(?:annual|gross)\s+(?:annual\s+)?(?:gross\s+)?(?:salary|compensation|pay)|annual ctc)\b/i;
+const CTC_CTX = /(?:\bctc\b|\bc\.t\.c\.|\bcost to (?:the )?company\b|\bpackage\b|\b(?:annual|gross)\s+(?:annual\s+)?(?:gross\s+)?(?:salary|compensation|pay)\b|\bannual ctc\b)/i;
 const PREV_CTC = /\b(?:previous|last|earlier|existing|prior)\s+(?:ctc|package|salary|compensation|pay)\b/i;
 const CTC_NOISE = /\b(?:retention|joining|sign[- ]?on|performance)?\s*(?:bonus|bond|buy[- ]?outs?|buyouts?|penalty|deposit|damages|claw\s?backs?|liquidated)\b/i;
 const NON_INR = /\b(?:usd|eur|gbp|aed|sgd|cad|aud|dollars?|euros?|pounds?)\b|[$€£]/i;
@@ -43,7 +43,7 @@ const INR_MARK = /₹|\b(?:inr|rs\.?|rupees?|rupaye|lakhs?|lacs?|lpa|crores?|crs
 const RANGE_BEFORE = /(?:\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*$/i;
 const UPTO_BEFORE = /\b(?:up\s*to|upto|as high as)\s*$/i;
 const parseNum = (s: string) => Number(s.replace(/,/g, ''));
-const abbrevDot = (t: string, j: number) => /(?:\b(?:rs|mr|mrs|ms|dr|no|inr|pvt|ltd|inc|co))\.$/i.test(t.slice(Math.max(0, j - 4), j + 1));
+const abbrevDot = (t: string, j: number) => /(?:\b(?:rs|mr|mrs|ms|dr|no|inr|pvt|ltd|inc|co)|c\.t\.c|ctc)\.$/i.test(t.slice(Math.max(0, j - 8), j + 1));
 const clauseSpan = (t: string, i: number) => {
   let a = 0, b = t.length;
   for (const sep of ['. ', '! ', '? ', '\n']) {
@@ -76,16 +76,17 @@ function ctcHits(t: string): CtcHit[] {
     if (RANGE_BEFORE.test(before) || UPTO_BEFORE.test(before)) continue;
     if (CTC_NOISE.test(before) || (CTC_NOISE.test(cl) && !CTC_CTX.test(before))) continue;
     if (PREV_CTC.test(cl) && !/\boffer(?:s|ed|ing)?\s+(?:a |you )?(?:ctc|package)\b/i.test(before) && !/\b(?:new|revised|proposed)\s+ctc\b/i.test(before)) continue;
+    if (/\b(?:fixed(?:\s+pay)?|basic(?:\s+pay)?|basic\s+salary|in-?hand)\b/i.test(before) && !CTC_CTX.test(before.slice(Math.max(0, before.length - 28)))) continue;
     const unit = unitOf(after);
-    const hasCtx = CTC_CTX.test(before) || CTC_CTX.test(afterClose) || CTC_CTX.test(cl);
+    const hasCtx = CTC_CTX.test(before) || /^(?:\s*(?:per\s+annum|p\.a\.?)?\s*)(?:ctc|cost to (?:the )?company|package)\b/i.test(after);
     if (!hasCtx) continue;
     const n = parseNum(raw);
     if (!Number.isFinite(n) || n <= 0) continue;
     const value = Math.round(n * unit.mul);
     if (value < 1000) continue;
     const currency: CtcHit['currency'] = NON_INR.test(before) || NON_INR.test(afterClose) ? 'other' : INR_MARK.test(before) || INR_MARK.test(after) || unit.mul > 1 ? 'inr' : 'unknown';
-    const afterTimes = /(?:x\s*12\s*=\s*(?:₹|rs\.?|inr)?\s*)$/i.test(before);
-    const monthly = !afterTimes && (/\b(?:per\s+month|monthly|\/\s*month|p\.?\s*m\.?)\b/i.test(afterClose) || /\s*x\s*12\b/i.test(afterClose) || /\bmonthly\s+ctc\b.{0,28}$/i.test(before));
+    const afterTimes = /(?:[x×*]\s*12\s*=\s*(?:₹|rs\.?|inr)?\s*)$/i.test(before);
+    const monthly = !afterTimes && (/\b(?:per\s+month|monthly|\/\s*month|p\.?\s*m\.?)\b/i.test(afterClose) || /\s*[x×*]\s*12\b/i.test(afterClose) || /\bmonthly\s+ctc\b.{0,28}$/i.test(before));
     const annual = !monthly && (unit.annual || afterTimes || /\b(?:per\s+annum|per\s+year|p\.?\s*a\.?|annual\s+ctc)\b/i.test(afterClose) || /\bannual\s+ctc\b.{0,28}$/i.test(before));
     out.push({ value, monthly: monthly && !annual, annual, currency });
   }
@@ -96,14 +97,9 @@ export function findCtc(text: string): number | null {
   const hits = ctcHits(t);
   if (!hits.length) return null;
   if (hits.some((h) => h.currency === 'other')) return null;
-  const explicitAnnual = [...new Set(hits.filter((h) => h.annual).map((h) => h.value))];
-  if (explicitAnnual.length === 1) return explicitAnnual[0];
-  if (explicitAnnual.length > 1) return null;
   const converted = [...new Set(hits.map((h) => (h.monthly ? h.value * 12 : h.value)))];
-  if (converted.length === 1) return converted[0];
-  return null;
+  return converted.length === 1 ? converted[0] : null;
 }
-/** Pulls a variable-pay percentage like "Variable pay of 15%" or "15% variable" from the letter, if stated. Ceilings and ranges return null. */
 export function findVariablePct(text: string): number | null {
   const t = (text || '').replace(/\s+/g, ' ');
   const pats = [
@@ -142,5 +138,9 @@ export function mergePayPrefill(prev: PaySide, text: string, kind: 'type' | 'new
     ctcEdited: prev.ctcEdited,
     variableEdited: prev.variableEdited,
   };
+}
+/** Short notice when a whole-document re-paste replaces a hand-edited CTC or variable %. */
+export function payRefreshNotice(prev: PaySide, kind: 'type' | 'new' | 'append'): string | undefined {
+  if (kind === 'new' && (prev.ctcEdited || prev.variableEdited)) return 'CTC and variable were refreshed from the new letter.';
 }
 export const DISCLAIMER = 'Information, not legal advice. Rules-based reading in your browser can miss or misread clauses. For a binding view, ask a qualified professional of your choice.';

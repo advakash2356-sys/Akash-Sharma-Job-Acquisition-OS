@@ -89,3 +89,19 @@ test('H8-H11 M2-M4: no-fee, bonus, reimbursement, salary UPI, negation and exam/
     if (/never ask for OTP/i.test(message)) assert.ok(!r.signs.some((s) => /OTP|bank details/i.test(s.title)), message);
   }
 });
+
+test('retest-2: refundable sum in words is red; never request OTP and official examination fees are not', () => {
+  const r = scanMessage({ message: 'A refundable sum of twelve hundred rupees for document attestation was requested.' });
+  assert.equal(r.verdict, 'red');
+  assert.ok(payTitle(r));
+  for (const message of [
+    'Our team will never request an OTP or CVV. Compensation is 11 LPA, and no money is asked of you.',
+    'UPSC CSE official notification: examination fee Rs 100 is payable to UPSC as per the gazette, not to any consultant.',
+    'SSC CGL official notice lists an examination fee of Rs 100 payable to the Commission through the official portal only.',
+    'The GATE official information brochure lists an application fee of Rs 1,800 payable to the organising IIT, not to a recruiter.',
+  ]) {
+    const x = scanMessage({ message });
+    assert.equal(payTitle(x), undefined, message + ' => ' + x.signs.map((s) => s.title).join(', '));
+    if (/OTP/i.test(message)) assert.ok(!x.signs.some((s) => /OTP|bank details/i.test(s.title)), message);
+  }
+});

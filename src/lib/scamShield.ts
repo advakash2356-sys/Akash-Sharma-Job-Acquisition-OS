@@ -10,11 +10,11 @@ export interface ScamResult { verdict: 'red' | 'amber' | 'green'; signs: Sign[];
 
 const AMOUNT_MARKED = /(?:₹|rs\.?|inr|rupees?|रु\.?|रुपये|rupaye|rupay)\s*\d[\d,]*(?:\.\d+)?\s*k?\b|\d[\d,]*(?:\.\d+)?\s*k?\s*(?:₹|\/-|rs\b|rupees?|रुपये|rupaye|rupay|inr)\b|\d+(?:\.\d+)?\s*k\b/i;
 const FEE = /\b(?:registration|security|refundable|processing|verification|training|kit|document(?:ation)?|interview|joining|uniform|laptop|onboarding|slot|booking|form|enrollment|enrolment)\s*(?:fee|fees|charges?|amount|deposit)\b|\b(?:fee|fees|charges?|deposit)\b|\bpay(?:ment)?\b.{0,40}\b(?:to (?:schedule|confirm|book|process|forward|release))|फीस|शुल्क|पैसे\s*(?:जमा|भेज|देने)|जमा\s*(?:करें|करना|करो)|paise\s*(?:jama|bhej|dene|do)|fees?\s*(?:bharo|bharna|bhare|jama|dena|deni|lagegi|lagega)|jama\s*(?:karo|karna|karein|karen)|amount\s*(?:bhejo|bhejna|transfer)/i;
-const FEE_MORE = /paid\s+service|(?:amount|fee|fees|deposit|sum|payment).{0,40}?refundable|refundable\s+(?:fee|fees|deposit|amount|security|hai)|\b(?:bhejo|bhej\s*do|bhej\s*dena|bhejna|transfer\s*karo)\b/i;
+const FEE_MORE = /paid\s+service|(?:amount|fee|fees|deposit|sum|payment).{0,40}?refundable|refundable\s+(?:fee|fees|deposit|amount|security|sum|payment|hai)|\b(?:bhejo|bhej\s*do|bhej\s*dena|bhejna|transfer\s*karo)\b/i;
 const HINGLISH_PAY = /\b(?:bhejo|bhej\s*do|bhej\s*dena|bhejna|jama\s*karo|jama\s*karna|jama\s*karein|jama\s*karen|transfer\s*karo)\b/i;
-const FEE_ADJ = 'registration|processing|training|security|hidden|joining|document(?:ation)?|interview|refundable|paid|verification|application|enrollment|enrolment|form|slot|booking|onboarding|kit';
+const FEE_ADJ = 'registration|processing|training|security|hidden|joining|document(?:ation)?|interview|refundable|paid|verification|application|enrollment|enrolment|form|slot|booking|onboarding|kit|induction|toolkit|caution|attestation|background[- ]?check';
 const neverAskChunk = (t: string, i: number, hit: string) => {
-  const re = /\b(?:never|do(?:es)?\s+not|don(?:['\u2019]?t)|doesn(?:['\u2019]?t))\s+ask(?:\s+(?:candidates|anyone|you|applicants))?(?:\s+to)?\s+(?:for|to\s+(?:pay|share|send|give))?\s+(.{0,120}?)(?:\.|$)/gi;
+  const re = /\b(?:never|do(?:es)?\s+not|don(?:['\u2019]?t)|doesn(?:['\u2019]?t))\s+(?:ask|request|require|demand)(?:\s+(?:candidates|anyone|you|applicants))?(?:\s+to)?\s+(?:for|an|a|to\s+(?:pay|share|send|give))?\s+(.{0,120}?)(?:\.|$)/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(t))) {
     const from = m.index, to = m.index + m[0].length;
@@ -25,7 +25,7 @@ const neverAskChunk = (t: string, i: number, hit: string) => {
 const feeDenied = (t: string, i: number, hit: string) => {
   const w = t.slice(Math.max(0, i - 100), i + hit.length);
   const around = t.slice(Math.max(0, i - 32), i + hit.length + 32);
-  if (/(?:^|[^A-Za-z])(?:no|not\s+a|without(?:\s+any)?|zero|nil|free of(?:\s+any)?)\s+(?:(?:a|any|the)\s+)?(?:(?:registration|processing|training|security|hidden|joining|document(?:ation)?|interview|refundable|paid|verification|application|enrollment|enrolment|kit|laptop|uniform|form|slot|booking|onboarding|candidate|candidates|applicant|applicants)\s+)*(?:fee|fees|charges?|deposit|payment|paid\s+service)$/i.test(w)) return true;
+  if (/(?:^|[^A-Za-z])(?:no|not\s+a|without(?:\s+any)?|zero|nil|free of(?:\s+any)?)\s+(?:(?:a|any|the)\s+)?(?:(?:registration|processing|training|security|hidden|joining|document(?:ation)?|interview|refundable|paid|verification|application|enrollment|enrolment|kit|laptop|uniform|form|slot|booking|onboarding|candidate|candidates|applicant|applicants|induction|toolkit|caution|attestation|background[- ]?check)\s+)*(?:fee|fees|charges?|deposit|payment|paid\s+service)$/i.test(w)) return true;
   const denyVerb = new RegExp(
     `(?:do(?:es)?\\s+not|don(?:['\\u2019]?t)|doesn(?:['\\u2019]?t)|never)\\s+(?:charge[ds]?|ask(?:\\s+\\w+){0,4}\\s+to\\s+pay|take|require|collect|demand)(?:\\s+(?:any|a|the|candidates?))*(?:\\s+(?:${FEE_ADJ}))*(?:\\s+(?:fee|fees|charges?|deposit|payment)(?:\\s*(?:,|or|and|\\/)\\s*(?:a\\s+|any\\s+)?(?:fee|fees|charges?|deposit|payment))*)?$`,
     'i');
@@ -33,7 +33,7 @@ const feeDenied = (t: string, i: number, hit: string) => {
   if (neverAskChunk(t, i, hit)) return true;
   if (/\bfee\s+waiver\b/i.test(around)) return true;
   if (/\b(?:tuition|semester fee|college fee|university fee|education history)\b/i.test(around) || /\b(?:university|college|semester)\b/i.test(around) && /\bfee\b/i.test(hit)) return true;
-  if (/\b(?:application|exam)\s+fee\b/i.test(hit + ' ' + around) && /\b(?:ibps|sbi|ssc|rrb|upsc|official notification|payable to (?:ibps|the bank))\b/i.test(t)) return true;
+  if (/\b(?:application|exam(?:ination)?)\s+fee\b/i.test(hit + ' ' + around) && /\b(?:ibps|sbi|ssc|rrb|upsc|gate|iit|the commission|official (?:notification|notice|(?:information )?brochure|gazette)|payable to (?:ibps|the bank|upsc|the commission|the organising iit))\b/i.test(t)) return true;
   if (/\b(?:reimburse(?:s|d|ment)?|employer[- ]paid|company will pay|paid by (?:the )?company)\b/i.test(t.slice(Math.max(0, i - 80), i + hit.length + 40))) return true;
   if (/\b(?:joining|retention|sign[- ]?on|performance|annual)\s+bonus\b/i.test(t.slice(Math.max(0, i - 80), i + hit.length + 80))) return true;
   return false;
@@ -43,7 +43,7 @@ const feeAsk = (t: string) => {
   let hit: RegExpExecArray | null;
   while ((hit = re.exec(t))) { if (!feeDenied(t, hit.index, hit[0])) return hit[0]; }
 };
-const PAYCHAN = /\b(?:upi|gpay|google pay|phonepe|paytm|qr code|scan (?:and|&) pay|bank transfer|neft|imps)\b/i;
+const PAYCHAN = /\b(?:upi|gpay|google pay|phonepe|paytm|qr(?:\s+code)?|scan (?:and|&) pay|bank transfer|neft|imps)\b/i;
 const SECRET = /\b(?:otp|cvv|pin|card number|net ?banking|bank password|aadhaar (?:otp|copy)|pan card copy)\b|ओटीपी/i;
 const TASK = /\b(?:like (?:videos?|posts?)|subscribe (?:to )?(?:channels?|youtube)|rate (?:hotels?|products?)|google reviews?|daily tasks?|prepaid tasks?|telegram task|earn ₹?\d+ per (?:task|like|day))\b/i;
 const PRESSURE = /\b(?:today only|within (?:\d+|one|two) (?:hours?|hrs?|minutes?|mins?)|immediately|urgent(?:ly)?|last (?:chance|date today)|limited (?:seats|slots)|before (?:\d+ ?(?:pm|am)|evening|tonight)|asap)\b|turant|abhi\s+(?:karo|bhejo|pay|jama)|aaj\s+hi|jaldi|तुरंत|आज ही|जल्दी/i;

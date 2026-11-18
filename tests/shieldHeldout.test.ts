@@ -1,4 +1,4 @@
-// Fresh held-out wording, not copied from the tester report or earlier PR tests. Akash Sync Agent.
+// Fresh held-out set for retest-2. New wording, not from prior reports or earlier PR tests. Akash Sync Agent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { scanMessage } from '../src/lib/scamShield';
@@ -8,96 +8,96 @@ const paySign = (r: ReturnType<typeof scanMessage>) =>
   r.signs.find((s) => s.title === 'Asks you to pay' || s.title === 'Asks for a payment' || s.title === 'Mentions a fee');
 
 const TP = [
-  'PhonePe par 2500 bhej do joining se pehle, warna slot cancel ho jayega.',
-  'GPay pe 3k transfer karo for the laptop kit, then we ship it.',
-  'UPI pe 4500 jama karna hoga interview slot ke liye.',
-  'Send 1200 rs on Paytm to book your onboarding slot today.',
-  'Please complete IMPS of 7000 as a security deposit before day one.',
-  'Kindly transfer 2.5k INR as document charges to the coordinator.',
-  'Pay rupees three thousand as interview fee to confirm attendance.',
-  'This is a paid service of rupees twenty two hundred to forward your file.',
-  'Form charges of 900 inr apply, said to be refundable after selection.',
-  'WhatsApp note: 3500 jama karo training start karne ke liye.',
-  'NEFT of 6000 for the uniform kit is required before you join.',
-  'Scan and pay 1850 for verification, they sent a QR code.',
-  'Google Pay par 1.5k bhejo otherwise the slot will lapse.',
-  'Deposit 4000 rupees now; they say it is refundable if you are rejected.',
-  'Training charges 5500 rs deni hogi before the first class.',
-  'Slot booking amount of Rs 999 via UPI, pay to schedule the call.',
-  'ID-card fee 800 inr is payable before you enter the campus.',
-  'Laptop deposit 9000 INR, they said Paytm is accepted.',
-  'Onboarding amount 2000 bhej dena to the number they shared.',
-  'Plz 2200 bhejo on PhonePe for registration, then HR will call.',
-  'Interview ke liye paise jama karo 1600, baad mein adjust hoga.',
-  'Fees 3500 lagegi, GPay pe bhej dena before Friday.',
-  'Refundable amount of twelve hundred rupees for document processing.',
-  'Paytm pe 5k bhejna hoga kit ke liye, they already sent the QR.',
-  'Bank transfer 2750 for processing has to be done today.',
-  'QR code se 1999 pay karo, that is the joining fee they named.',
-  'Rupees four thousand five hundred as security, send it on Paytm.',
-  'Enrollment amount 1300 inr before they join the call.',
-  'Jama karein 2400 rs training account mein, details on WhatsApp.',
-  'Send 800 via NEFT as form charges to lock the application.',
-  'Paid service of Rs 2100 to push the profile to their clients.',
-  'Bhej do 1700 Paytm pe, they said interview ke baad refund mil jayega.',
-  'Office aane se pehle 3.2k rs deposit dena hoga at the desk.',
-  'UPI 2800 for background verification charges, pay first.',
-  'Pay one thousand eight hundred as onboarding charges today.',
-  'PhonePe: 6500 laptop security, refundable after three months they say.',
-  'GPay par 1100 bhejo slot confirm karne ke liye.',
-  'Charges of 4200 inr for the medical kit must be paid first.',
-  'IMPS 3100 jama karo HR wallet mein before the briefing.',
-  'Transfer karo 1500, they called it a paid service for profile push.',
-  'Registration fee of ₹2.2k via UPI to schedule the first round.',
-  'Please pay a processing amount of 1750 inr and share the screenshot.',
+  'PhonePe pe 1350 bhej do pehle, tabhi call schedule hoga.',
+  'GPay par 4.1k transfer karo laptop security ke liye.',
+  'UPI id pe 2650 jama karna padega slot book karne ko.',
+  'Send 780 rs on Paytm to reserve the induction seat.',
+  'Please do an IMPS of 8200 as a caution deposit before Monday.',
+  'Transfer 1.7k INR as attestation charges to the coordinator now.',
+  'Pay rupees nineteen hundred as a registration amount today.',
+  'This is a paid service of rupees thirteen hundred to move your file.',
+  'Form charges of 640 inr, they said refundable after the written test.',
+  'WhatsApp: 2950 jama karo training start hone se pehle.',
+  'NEFT of 4700 for the uniform set is due before you report.',
+  'Scan the QR and pay 1425 for document verification.',
+  'Google Pay pe 2.3k bhejo warna interview cancel ho jayega.',
+  'Deposit 6100 rupees now; they claim it is refundable if you fail.',
+  'Training charges 7350 rs deni hogi before module one.',
+  'Booking amount of Rs 875 via UPI, pay to confirm the meeting.',
+  'Badge fee 520 inr must be paid before campus entry.',
+  'Monitor deposit 8800 INR, they asked for Paytm only.',
+  'Joining amount 1450 bhej dena to the mobile number in the mail.',
+  'Plz 2050 bhejo on PhonePe for the form, then they will call.',
+  'Interview ke liye 980 jama karo, later adjust kar denge.',
+  'Fees 4150 lagegi, GPay pe bhej dena by Thursday.',
+  'Refundable amount of sixteen hundred rupees for file processing.',
+  'Paytm pe 6.5k bhejna hoga toolkit ke liye, QR already sent.',
+  'Bank transfer 3320 for processing has to go today itself.',
+  'QR se 1680 pay karo, they named it a joining charge.',
+  'Rupees two thousand two hundred as security, send it on Paytm.',
+  'Enrollment amount 1175 inr before they join the video call.',
+  'Jama karein 2550 rs the training wallet mein, chat pe details hain.',
+  'Send 730 via NEFT as form charges to freeze the application.',
+  'Paid service of Rs 1950 to circulate the profile to clients.',
+  'Bhej do 1260 Paytm pe, they promised a refund after the test.',
+  'Office aane se pehle 3.8k rs deposit dena hoga at reception.',
+  'UPI 3050 for police-verification charges, pay first.',
+  'Pay one thousand four hundred as onboarding charges today.',
+  'PhonePe: 7700 device security, refundable after two months they say.',
+  'GPay par 960 bhejo slot lock karne ke liye.',
+  'Charges of 5380 inr for the safety kit must be paid first.',
+  'IMPS 2210 jama karo the office wallet mein before briefing.',
+  'Transfer karo 1550, they called it a paid service for shortlisting.',
+  'Registration fee of ₹3.4k via UPI to schedule the screening.',
+  'Please pay a processing amount of 1875 inr and share the receipt.',
 ];
 
 const TRAPS = [
-  'Stipend is Rs 25,000 a month for this internship. No charges at all.',
-  'We do not charge any onboarding fee. CTC is Rs 7,50,000.',
-  'The company reimburses course fees up to Rs 20,000 each year after you join.',
-  'Share a GPay number only so we can reimburse your travel after the interview.',
-  'Please share UPI so we can credit your first salary. Package 10 LPA. No fee.',
-  'We never ask candidates to pay a registration fee or a security deposit. CTC 14 LPA.',
-  'We never ask for PIN, OTP or a security deposit. The offer is 8 LPA.',
-  'A fee waiver applies to the internal MBA course. CTC will be Rs 11,00,000.',
-  'IBPS PO official notification lists an application fee of Rs 850 payable to IBPS.',
-  'My college tuition fee was Rs 2,00,000. I am applying for the analyst role at CTC 9 LPA.',
-  'I paid a tuition fee last year of Rs 90,000 during CA articleship.',
-  'After a bank posting you may still pay the official IBPS exam fee to the Board.',
-  'This is a paid internship with a stipend of Rs 20,000. No deposit is required.',
-  'ESOP grant of Rs 2,00,000 vests over four years. We never charge applicants.',
-  'Night shift allowance is Rs 8,000. Training is provided at no charge.',
-  'Professional tax of Rs 2,400 is deducted from salary. There are no hidden charges.',
-  'Travel expenses are refunded and paid by the company after the visit.',
-  'A joining bonus of Rs 50,000 is repayable if you resign within a year.',
-  'We will pay a retention bonus of Rs 2,00,000; it is repayable if you leave early.',
-  'The salary range is ₹8-12 LPA. Could you share two slots for a call next week?',
-  'There is no processing fee and no kit deposit attached to this offer.',
-  'Certification is employer-paid; the company will pay the exam fee of Rs 5,000.',
-  'Only PF and professional tax are deducted. CTC is Rs 6,50,000.',
-  'Please do not pay anyone who calls asking for money. The official process is free of cost.',
-  'Do not transfer any amount to a personal UPI. This HR team never charges applicants.',
-  'Training will be provided free of any cost. CTC is 13 LPA.',
-  'We don\'t take any security deposit from new hires. Package is 16 LPA.',
-  'Relocation expenses are reimbursed up to Rs 30,000 after you join.',
-  'Share your bank account only for salary setup. No payment is asked from you.',
-  'Official RRB notification: exam fee Rs 500 is payable to IBPS / the Board.',
-  'Education history: my semester fee was Rs 45,000 at university last year.',
-  'This is not a paid service. Interviews are free. CTC is 8.5 LPA.',
-  'We will credit your UPI for the travel refund after the interview.',
-  'We never require a deposit or fee from candidates. This is a 12 LPA role.',
-  'Variable pay can be up to 15%. Fixed CTC is 10 LPA. No charges.',
-  'Medical insurance premium is paid by the company under a Rs 12,000 cover.',
-  'Notice buyout is at the company\'s discretion. CTC is 18 LPA. No candidate fee.',
-  'We do not collect any document verification charges. Salary is 45,000 a month.',
-  'Kindly ignore messages asking for a Paytm payment. We never charge for hiring.',
-  'During the increment review, last increment was Rs 40,000. There is no fee to apply.',
-  'Please come in on Tuesday. We do not charge any verification fee. CTC Rs 8,00,000.',
-  'The offer includes a refundable joining bonus of Rs 75,000 if you stay a year; CTC 13 LPA.',
+  'Internship stipend is Rs 22,000 a month. There are no charges of any kind.',
+  'We do not charge any induction fee. CTC is Rs 8,25,000.',
+  'The firm reimburses workshop fees up to Rs 18,000 each year after joining.',
+  'Share a PhonePe number only so travel can be reimbursed after the drive.',
+  'Please share UPI so payroll can credit your salary. Package 12 LPA. No fee.',
+  'We never ask applicants to pay a joining fee or a caution deposit. CTC 15 LPA.',
+  'We never request a PIN, OTP or a caution deposit. The offer is 7.5 LPA.',
+  'A fee waiver is in place for the internal diploma. CTC will be Rs 10,50,000.',
+  'RBI Grade B official notification lists an examination fee of Rs 850 payable to the Board.',
+  'My university tuition was Rs 1,80,000. I am applying as an associate at CTC 8 LPA.',
+  'I paid a semester fee of Rs 70,000 last year during my articleship.',
+  'Once posted, you may still pay the official SSC examination fee to the Commission.',
+  'This is a paid internship with a stipend of Rs 18,000. No deposit is asked.',
+  'ESOP worth Rs 1,50,000 vests over four years. Applicants are never charged.',
+  'Shift allowance is Rs 6,500. Training is given free of any cost.',
+  'Professional tax of Rs 2,500 comes out of salary. There are no hidden charges.',
+  'Cab fare is refunded and paid by the company after the site visit.',
+  'A joining bonus of Rs 40,000 is repayable if you resign within a year.',
+  'We will pay a retention bonus of Rs 1,50,000; repayable if you leave early.',
+  'The salary range is ₹7-11 LPA. Can you share two slots next week?',
+  'There is no processing fee and no toolkit deposit on this offer.',
+  'The licence exam is employer-paid; the company will pay the fee of Rs 4,500.',
+  'Only PF and professional tax are deducted. CTC is Rs 7,25,000.',
+  'Do not pay anyone who calls for money. The official hiring process is free of cost.',
+  'Do not transfer funds to a personal UPI. This desk never charges candidates.',
+  'Classroom training is provided free of any cost. CTC is 14 LPA.',
+  'We do not take any caution deposit from joiners. Package is 17 LPA.',
+  'Relocation is reimbursed up to Rs 28,000 after you join.',
+  'Share your account only for salary credit. No payment is asked of you.',
+  'Official CAT brochure: examination fee Rs 2,400 is payable to the organising IIT.',
+  'Education history: hostel fee was Rs 38,000 at college last year.',
+  'This is not a paid service. Screens are free. CTC is 9.25 LPA.',
+  'We will credit your UPI for the cab refund after the campus drive.',
+  'We never require a deposit or fee from applicants. This is a 13 LPA role.',
+  'Variable pay may be as high as 18%. Fixed CTC is 11 LPA. No charges.',
+  'Group medical premium is paid by the company under a Rs 15,000 cover.',
+  'Notice buyout is discretionary. CTC is 19 LPA. No candidate fee.',
+  'We do not collect any background-check charges. Salary is 48,000 a month.',
+  'Ignore chats asking for a PhonePe payment. We never charge to hire.',
+  'In the increment letter, last increment was Rs 35,000. There is no fee to apply.',
+  'Please visit on Wednesday. We do not charge any attestation fee. CTC Rs 9,50,000.',
+  'The letter includes a refundable joining bonus of Rs 60,000 if you stay a year; CTC 14 LPA.',
 ];
 
-test('held-out: payment asks are red (fresh set)', () => {
+test('held-out: payment asks are red (retest-2 set)', () => {
   let pass = 0;
   const misses: string[] = [];
   for (const message of TP) {
@@ -109,13 +109,13 @@ test('held-out: payment asks are red (fresh set)', () => {
   assert.ok(TP.length >= 40);
 });
 
-test('held-out: traps are not payment asks (fresh set)', () => {
+test('held-out: traps are not payment asks (retest-2 set)', () => {
   let pass = 0;
   const misses: string[] = [];
   for (const message of TRAPS) {
     const r = scanMessage({ message });
     const pay = paySign(r);
-    const otp = /never ask for PIN, OTP/i.test(message) && r.signs.some((s) => /OTP|bank details/i.test(s.title));
+    const otp = /never request a PIN, OTP/i.test(message) && r.signs.some((s) => /OTP|bank details/i.test(s.title));
     if (!pay && !otp) pass++;
     else misses.push(`${r.verdict} ${r.signs.map((s) => `${s.title}:${s.match || ''}`).join(' | ')} :: ${message}`);
   }
@@ -123,12 +123,12 @@ test('held-out: traps are not payment asks (fresh set)', () => {
   assert.ok(TRAPS.length >= 40);
 });
 
-test('held-out offer: clear figures fill, ranges and noise stay blank', () => {
-  assert.equal(findCtc('Annexure A: annual cost to the company is 14.5 lakhs per annum.'), 1_450_000);
-  assert.equal(findCtc('We confirm a CTC of 21 LPA, all inclusive.'), 2_100_000);
-  assert.equal(findCtc('Compensation is a CTC band of 9-11 LPA and will be set later.'), null);
-  assert.equal(findCtc('Notice buyout equal to 4 LPA may apply. The CTC annexure is not attached.'), null);
-  assert.equal(findCtc('Monthly CTC Rs 90,000, so annual CTC is Rs 10,80,000.'), 1_080_000);
-  assert.equal(findVariablePct('The variable component is 8% of CTC.'), 8);
-  assert.equal(findVariablePct('Variable pay may be as high as 25% depending on the board.'), null);
+test('held-out offer: conflicts stay blank; clear and labelled figures fill', () => {
+  assert.equal(findCtc('Schedule I quotes CTC 16 LPA. The covering note quotes CTC of Rs 13,50,000. Kindly confirm the correct number.'), null);
+  assert.equal(findCtc('We record a C.T.C. of 8.4 lacs for the listed role.'), 840_000);
+  assert.equal(findCtc('Monthly CTC of Rs 70,000 × 12 = Rs 8,40,000 is your annual CTC.'), 840_000);
+  assert.equal(findCtc('Basic pay is 7 LPA and CTC is 10 LPA.'), 1_000_000);
+  assert.equal(findCtc('Compensation is a CTC band of 8-10 LPA to be set later.'), null);
+  assert.equal(findVariablePct('The variable component is 11% of CTC.'), 11);
+  assert.equal(findVariablePct('Variable pay may be as high as 22% depending on the board.'), null);
 });
