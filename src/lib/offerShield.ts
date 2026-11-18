@@ -38,6 +38,9 @@ export function scanOffer(text: string): Clause[] {
 export function findCtc(text: string): number | null {
   const t = (text || '').replace(/\s+/g, ' ');
   const lpa = t.match(/(\d+(?:\.\d+)?)\s*(?:lpa|lakhs? per annum)/i); if (lpa) return Math.round(Number(lpa[1]) * 100_000);
+  const lakhs = t.match(/(?:ctc|cost to (?:the )?company)[^\d]{0,24}(\d+(?:\.\d+)?)\s*(?:lakhs?|lacs?)\b/i)
+    || t.match(/(\d+(?:\.\d+)?)\s*(?:lakhs?|lacs?)\s+(?:per annum )?(?:ctc|cost to (?:the )?company)/i);
+  if (lakhs) return Math.round(Number(lakhs[1]) * 100_000);
   const m = t.match(/(?:ctc|cost to (?:the )?company|annual (?:gross )?(?:salary|compensation))[^₹\d]{0,40}(?:₹|rs\.?|inr)?\s?(\d[\d,]{4,})/i);
   return m ? Number(m[1].replace(/,/g, '')) : null;
 }
@@ -46,5 +49,10 @@ export function findVariablePct(text: string): number | null {
   const t = (text || '').replace(/\s+/g, ' ');
   const m = t.match(/variable(?: pay| component| bonus)?[^%\d.]{0,40}(\d{1,2}(?:\.\d+)?)\s*%/i) || t.match(/(\d{1,2}(?:\.\d+)?)\s*%\s*(?:of (?:the |your )?(?:ctc|salary) )?(?:as |is )?variable/i);
   const n = m ? Number(m[1]) : NaN; return n > 0 && n <= 60 ? n : null;
+}
+/** Values to pre-fill from a pasted letter. Omits a field when the figure is not clearly stated. */
+export function prefillPayFields(text: string): { ctc?: string; variable?: string } {
+  const c = findCtc(text), v = findVariablePct(text);
+  return { ...(c ? { ctc: String(c) } : {}), ...(v != null ? { variable: String(v) } : {}) };
 }
 export const DISCLAIMER = 'Information, not legal advice. Rules-based reading in your browser can miss or misread clauses. For a binding view, ask a qualified professional of your choice.';

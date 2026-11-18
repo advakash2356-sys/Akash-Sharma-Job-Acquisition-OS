@@ -10,6 +10,18 @@ export interface ScamResult { verdict: 'red' | 'amber' | 'green'; signs: Sign[];
 
 const AMOUNT = /(?:₹|rs\.?|inr|rupees?|रु\.?|रुपये|rupaye|rupay)\s?\d[\d,]*|\d[\d,]*\s?(?:₹|\/-|rs\b|rupees?|रुपये|rupaye|rupay)/i;
 const FEE = /\b(?:registration|security|refundable|processing|verification|training|kit|document(?:ation)?|interview|joining|uniform|laptop|onboarding|slot|booking|form)\s*(?:fee|fees|charges?|amount|deposit)\b|\b(?:fee|fees|charges?|deposit)\b|\bpay(?:ment)?\b.{0,40}\b(?:to (?:schedule|confirm|book|process|forward|release))|फीस|शुल्क|पैसे\s*(?:जमा|भेज|देने)|जमा\s*(?:करें|करना|करो)|paise\s*(?:jama|bhej|dene|do)|fees?\s*(?:bharo|bharna|bhare|jama|dena|deni|lagegi|lagega)|jama\s*(?:karo|karna|karein|karen)|amount\s*(?:bhejo|bhejna|transfer)/i;
+const FEE_MORE = /paid\s+service|(?:amount|fee|fees|deposit|sum|payment).{0,40}?refundable|refundable\s+hai|\brefundable\b/i;
+const feeDenied = (t: string, i: number, hit: string) => {
+  const w = t.slice(Math.max(0, i - 80), i + hit.length);
+  if (/(?:^|[^A-Za-z])(?:no|not\s+a|without(?:\s+any)?|zero|nil|free of(?:\s+any)?)\s+(?:(?:a|any|the)\s+)?(?:(?:registration|processing|training|security|hidden|joining|document(?:ation)?|interview|refundable|paid|verification)\s+)*(?:fee|fees|charges?|deposit|payment|paid\s+service)$/i.test(w)) return true;
+  if (/(?:do(?:es)?\s+not|don(?:['\u2019]?t)|doesn(?:['\u2019]?t)|never)\s+(?:charge[ds]?|ask(?:\s+\w+){0,3}\s+to\s+pay|take|require|collect|demand)(?:\s+(?:any|a|the|candidates?))*(?:\s+(?:fee|fees|charges?|deposit|payment))?$/i.test(w)) return true;
+  return false;
+};
+const feeAsk = (t: string) => {
+  const re = new RegExp(`(?:${FEE.source})|(?:${FEE_MORE.source})`, 'ig');
+  let hit: RegExpExecArray | null;
+  while ((hit = re.exec(t))) { if (!feeDenied(t, hit.index, hit[0])) return hit[0]; }
+};
 const PAYCHAN = /\b(?:upi|gpay|google pay|phonepe|paytm|qr code|scan (?:and|&) pay|bank transfer|neft|imps)\b/i;
 const SECRET = /\b(?:otp|cvv|pin|card number|net ?banking|bank password|aadhaar (?:otp|copy)|pan card copy)\b|ओटीपी/i;
 const TASK = /\b(?:like (?:videos?|posts?)|subscribe (?:to )?(?:channels?|youtube)|rate (?:hotels?|products?)|google reviews?|daily tasks?|prepaid tasks?|telegram task|earn ₹?\d+ per (?:task|like|day))\b/i;
@@ -27,7 +39,7 @@ export const emailsIn = (t: string) => t.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) 
 export function scanMessage(input: ScamInput): ScamResult {
   const t = `${input.message || ''}`.replace(/\s+/g, ' ');
   const signs: Sign[] = [];
-  const amt = m(AMOUNT, t), fee = m(FEE, t), pay = m(PAYCHAN, t);
+  const amt = m(AMOUNT, t), fee = feeAsk(t), pay = m(PAYCHAN, t);
   if (fee && (amt || pay)) signs.push({ level: 'red', title: 'Asks you to pay', detail: 'Real employers and job sites do not charge candidates for interviews, registration, training or documents.', match: [fee, amt].filter(Boolean).join(' · ') });
   else if (amt && pay) signs.push({ level: 'red', title: 'Asks for a payment', detail: 'An amount and a payment method appear together. Do not pay to get a job.', match: `${amt} · ${pay}` });
   else if (fee) signs.push({ level: 'amber', title: 'Mentions a fee', detail: 'Ask in writing who is paying and why. Candidates should not pay.', match: fee });

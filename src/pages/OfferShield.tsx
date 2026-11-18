@@ -2,7 +2,7 @@ import { ConsentBoxes } from '../components/ConsentBoxes';
 import { useState } from 'react';
 import { FileSearch, Upload } from 'lucide-react';
 import { Badge, Button, Card, Input, Label, PageHeader, Textarea } from '../components/ui';
-import { DISCLAIMER, findCtc, findVariablePct, scanOffer, type Clause } from '../lib/offerShield';
+import { DISCLAIMER, prefillPayFields, scanOffer, type Clause } from '../lib/offerShield';
 import { ctcToInHand, inr, TAX_YEAR } from '../lib/indiaTax';
 import { OFFER_ACCEPT, readOfferFile } from '../lib/docText';
 import { checkOneStop } from '../lib/oneStop';
@@ -27,7 +27,7 @@ export default function OfferShield() {
   const oneReport = () => one ? [`Offer check (letter + email): ${one.verdict.toUpperCase()}`, '', 'Offer letter:', ...one.letter.map((c) => `- [${c.risk}] ${c.kind}: ${c.why}`), '', 'Email:', ...one.email.signs.map((g) => `- [${g.level}] ${g.title}: ${g.detail}`), '', 'Between the two:', ...one.cross.map((c) => `- [${c.level}] ${c.title}: ${c.detail}`), '', 'Rules-based warning signs, not legal advice.'].join('\n') : '';
   const [basic, setBasic] = useState('50'); const [pt, setPt] = useState('2400');
   const set = (i: 0 | 1, p: Partial<Side>) => setS((x) => { const y = [...x] as [Side, Side]; y[i] = { ...y[i], ...p }; return y; });
-  const load = async (i: 0 | 1, f?: File) => { if (!f) return; set(i, { busy: 'Reading…' }); try { const t = await readOfferFile(f, (b) => set(i, { busy: b })); const c = findCtc(t), v = findVariablePct(t); set(i, { text: t, busy: '', ...(c ? { ctc: String(c) } : {}), ...(v != null ? { variable: String(v) } : {}) }); } catch (e: any) { set(i, { busy: e?.message || 'Could not read the file.' }); } };
+  const load = async (i: 0 | 1, f?: File) => { if (!f) return; set(i, { busy: 'Reading…' }); try { const t = await readOfferFile(f, (b) => set(i, { busy: b })); set(i, { text: t, busy: '', ...prefillPayFields(t) }); } catch (e: any) { set(i, { busy: e?.message || 'Could not read the file.' }); } };
   const res = s.map((x) => ({ clauses: x.text.trim() ? scanOffer(x.text) : [], pay: Number(x.ctc) > 0 ? ctcToInHand({ ctc: Number(x.ctc), variablePct: Number(x.variable) || 0, basicPct: Number(basic) || 50, professionalTax: Number(pt) || 0 }) : null }));
   const both = res[0].pay && res[1].pay;
   return (
@@ -62,7 +62,7 @@ export default function OfferShield() {
             <h2 className="text-xl font-medium">Offer {i === 0 ? 'A' : 'B'}</h2>
             <label className="inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-lg border border-border px-4 text-sm hover:bg-muted"><Upload size={15} /> Upload offer (PDF, DOCX, scan, photo)<input type="file" hidden accept={OFFER_ACCEPT} onChange={(e) => load(i, e.target.files?.[0])} /></label>
             {s[i].busy && <p className="text-sm text-muted-foreground" role="status">{s[i].busy}</p>}
-            <div><Label htmlFor={`ot${i}`}>Or paste the text</Label><Textarea id={`ot${i}`} rows={6} value={s[i].text} onChange={(e) => set(i, { text: e.target.value })} /></div>
+            <div><Label htmlFor={`ot${i}`}>Or paste the text</Label><Textarea id={`ot${i}`} rows={6} value={s[i].text} onChange={(e) => { const t = e.target.value; set(i, { text: t, ...prefillPayFields(t) }); }} /></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div className="min-w-0"><Label htmlFor={`oc${i}`}>CTC per year (₹)</Label><Input id={`oc${i}`} inputMode="numeric" value={s[i].ctc} onChange={(e) => set(i, { ctc: e.target.value.replace(/\D/g, '') })} /></div>
               <div className="min-w-0"><Label htmlFor={`ov${i}`}>Variable pay %</Label><Input id={`ov${i}`} inputMode="numeric" value={s[i].variable} onChange={(e) => set(i, { variable: e.target.value.replace(/[^\d.]/g, '') })} /></div></div>
             <Button variant="ghost" className="w-fit" onClick={() => set(i, { text: i === 0 ? SAMPLE_A : SAMPLE_B, ctc: i === 0 ? '900000' : '850000', variable: i === 0 ? '10' : '0' })}>Try a sample (made up)</Button>
