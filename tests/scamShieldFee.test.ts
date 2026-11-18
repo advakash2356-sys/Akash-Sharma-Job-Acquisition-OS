@@ -52,3 +52,40 @@ test('scam: payment-ask wordings are red', () => {
 test('scam: salary and no-fee wording is not a payment ask', () => {
   for (const [message, label] of SAFE) assertNoPaymentAsk(message, label);
 });
+
+test('H7 M1: Hinglish pay-app asks and unparsed amounts are red', () => {
+  const cases = [
+    'Paytm pe 1800 bhejo for training, after that we start the onboarding.',
+    'Joining se pehle 2k rs deposit dena hoga HR account mein.',
+    'Pay rupees two thousand five hundred as form fee to confirm the slot.',
+    'We need a refundable security of 8,000 INR before you start.',
+    'We charge a small paid service of eighteen hundred rupees to process this.',
+    'Please pay enrollment charges of 4000 inr to lock the batch.',
+    'bhai 1800 jama karo, refund ho jayega if not selected.',
+  ];
+  for (const message of cases) {
+    const r = scanMessage({ message });
+    assert.equal(r.verdict, 'red', message);
+    assert.ok(payTitle(r), message);
+  }
+});
+test('H8-H11 M2-M4: no-fee, bonus, reimbursement, salary UPI, negation and exam/tuition traps', () => {
+  const cases = [
+    'We do not charge any processing fee. Please come in on Monday. Salary Rs 40,000 a month.',
+    'We will pay your joining bonus of Rs 1,00,000; it is refundable if you leave within 12 months. CTC 15 LPA.',
+    'The company will reimburse certification fees up to Rs 10,000 after you join.',
+    'Kindly share your UPI only for salary credit setup after joining. CTC Rs 6,00,000. No fee.',
+    'We never ask candidates to pay a fee or deposit. Package is 11 LPA.',
+    'We never ask for OTP, CVV or a deposit. The package is 9 LPA.',
+    'A fee waiver is available for this internal course. Your CTC will be Rs 9,00,000.',
+    'SBI Clerk 2026 official notification: application fee Rs 750 is payable to IBPS/the Bank.',
+    'Education: B.Com (Hons). My tuition fee was Rs 80,000 per year at college. CTC 6 LPA.',
+    'I paid tuition fee of Rs 1,20,000 last year during my MBA.',
+    'Bank job: after selection, you may need to pay the official application fee of Rs 850 to IBPS.',
+  ];
+  for (const message of cases) {
+    const r = scanMessage({ message });
+    assert.equal(payTitle(r), undefined, message + ' => ' + r.signs.map((s) => s.title).join(', '));
+    if (/never ask for OTP/i.test(message)) assert.ok(!r.signs.some((s) => /OTP|bank details/i.test(s.title)), message);
+  }
+});
