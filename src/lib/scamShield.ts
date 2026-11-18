@@ -8,9 +8,42 @@ export interface Sign { level: Level; title: string; detail: string; match?: str
 export interface ScamInput { message: string; email?: string; company?: string; phone?: string }
 export interface ScamResult { verdict: 'red' | 'amber' | 'green'; signs: Sign[]; headline: string; advice: string[] }
 
-const AMOUNT = /(?:₹|rs\.?|inr|rupees?|रु\.?|रुपये|rupaye|rupay)\s?\d[\d,]*|\d[\d,]*\s?(?:₹|\/-|rs\b|rupees?|रुपये|rupaye|rupay)/i;
-const FEE = /\b(?:registration|security|refundable|processing|verification|training|kit|document(?:ation)?|interview|joining|uniform|laptop|onboarding|slot|booking|form)\s*(?:fee|fees|charges?|amount|deposit)\b|\b(?:fee|fees|charges?|deposit)\b|\bpay(?:ment)?\b.{0,40}\b(?:to (?:schedule|confirm|book|process|forward|release))|फीस|शुल्क|पैसे\s*(?:जमा|भेज|देने)|जमा\s*(?:करें|करना|करो)|paise\s*(?:jama|bhej|dene|do)|fees?\s*(?:bharo|bharna|bhare|jama|dena|deni|lagegi|lagega)|jama\s*(?:karo|karna|karein|karen)|amount\s*(?:bhejo|bhejna|transfer)/i;
-const PAYCHAN = /\b(?:upi|gpay|google pay|phonepe|paytm|qr code|scan (?:and|&) pay|bank transfer|neft|imps)\b/i;
+const AMOUNT_MARKED = /(?:₹|rs\.?|inr|rupees?|रु\.?|रुपये|rupaye|rupay)\s*\d[\d,]*(?:\.\d+)?\s*k?\b|\d[\d,]*(?:\.\d+)?\s*k?\s*(?:₹|\/-|rs\b|rupees?|रुपये|rupaye|rupay|inr)\b|\d+(?:\.\d+)?\s*k\b/i;
+const FEE = /\b(?:registration|security|refundable|processing|verification|training|kit|document(?:ation)?|interview|joining|uniform|laptop|onboarding|slot|booking|form|enrollment|enrolment)\s*(?:fee|fees|charges?|amount|deposit)\b|\b(?:fee|fees|charges?|deposit)\b|\bpay(?:ment)?\b.{0,40}\b(?:to (?:schedule|confirm|book|process|forward|release))|फीस|शुल्क|पैसे\s*(?:जमा|भेज|देने)|जमा\s*(?:करें|करना|करो)|paise\s*(?:jama|bhej|dene|do)|fees?\s*(?:bharo|bharna|bhare|jama|dena|deni|lagegi|lagega)|jama\s*(?:karo|karna|karein|karen)|amount\s*(?:bhejo|bhejna|transfer)/i;
+const FEE_MORE = /paid\s+service|(?:amount|fee|fees|deposit|sum|payment).{0,40}?refundable|refundable\s+(?:fee|fees|deposit|amount|security|sum|payment|hai)|\b(?:bhejo|bhej\s*do|bhej\s*dena|bhejna|transfer\s*karo)\b/i;
+const HINGLISH_PAY = /\b(?:bhejo|bhej\s*do|bhej\s*dena|bhejna|jama\s*karo|jama\s*karna|jama\s*karein|jama\s*karen|transfer\s*karo)\b/i;
+const FEE_ADJ = 'registration|processing|training|security|hidden|joining|document(?:ation)?|interview|refundable|paid|verification|application|enrollment|enrolment|form|slot|booking|onboarding|kit|induction|toolkit|caution|attestation|background[- ]?check';
+const neverAskChunk = (t: string, i: number, hit: string) => {
+  const re = /\b(?:never|do(?:es)?\s+not|don(?:['\u2019]?t)|doesn(?:['\u2019]?t))\s+(?:ask|request|require|demand)(?:\s+(?:candidates|anyone|you|applicants))?(?:\s+to)?\s+(?:for|an|a|to\s+(?:pay|share|send|give))?\s+(.{0,120}?)(?:\.|$)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(t))) {
+    const from = m.index, to = m.index + m[0].length;
+    if (i >= from && i <= to && new RegExp(hit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(m[1] || m[0])) return true;
+  }
+  return false;
+};
+const feeDenied = (t: string, i: number, hit: string) => {
+  const w = t.slice(Math.max(0, i - 100), i + hit.length);
+  const around = t.slice(Math.max(0, i - 32), i + hit.length + 32);
+  if (/(?:^|[^A-Za-z])(?:no|not\s+a|without(?:\s+any)?|zero|nil|free of(?:\s+any)?)\s+(?:(?:a|any|the)\s+)?(?:(?:registration|processing|training|security|hidden|joining|document(?:ation)?|interview|refundable|paid|verification|application|enrollment|enrolment|kit|laptop|uniform|form|slot|booking|onboarding|candidate|candidates|applicant|applicants|induction|toolkit|caution|attestation|background[- ]?check)\s+)*(?:fee|fees|charges?|deposit|payment|paid\s+service)$/i.test(w)) return true;
+  const denyVerb = new RegExp(
+    `(?:do(?:es)?\\s+not|don(?:['\\u2019]?t)|doesn(?:['\\u2019]?t)|never)\\s+(?:charge[ds]?|ask(?:\\s+\\w+){0,4}\\s+to\\s+pay|take|require|collect|demand)(?:\\s+(?:any|a|the|candidates?))*(?:\\s+(?:${FEE_ADJ}))*(?:\\s+(?:fee|fees|charges?|deposit|payment)(?:\\s*(?:,|or|and|\\/)\\s*(?:a\\s+|any\\s+)?(?:fee|fees|charges?|deposit|payment))*)?$`,
+    'i');
+  if (denyVerb.test(w)) return true;
+  if (neverAskChunk(t, i, hit)) return true;
+  if (/\bfee\s+waiver\b/i.test(around)) return true;
+  if (/\b(?:tuition|semester fee|college fee|university fee|education history)\b/i.test(around) || /\b(?:university|college|semester)\b/i.test(around) && /\bfee\b/i.test(hit)) return true;
+  if (/\b(?:application|exam(?:ination)?)\s+fee\b/i.test(hit + ' ' + around) && /\b(?:ibps|sbi|ssc|rrb|upsc|gate|iit|the commission|official (?:notification|notice|(?:information )?brochure|gazette)|payable to (?:ibps|the bank|upsc|the commission|the organising iit))\b/i.test(t)) return true;
+  if (/\b(?:reimburse(?:s|d|ment)?|employer[- ]paid|company will pay|paid by (?:the )?company)\b/i.test(t.slice(Math.max(0, i - 80), i + hit.length + 40))) return true;
+  if (/\b(?:joining|retention|sign[- ]?on|performance|annual)\s+bonus\b/i.test(t.slice(Math.max(0, i - 80), i + hit.length + 80))) return true;
+  return false;
+};
+const feeAsk = (t: string) => {
+  const re = new RegExp(`(?:${FEE.source})|(?:${FEE_MORE.source})`, 'ig');
+  let hit: RegExpExecArray | null;
+  while ((hit = re.exec(t))) { if (!feeDenied(t, hit.index, hit[0])) return hit[0]; }
+};
+const PAYCHAN = /\b(?:upi|gpay|google pay|phonepe|paytm|qr(?:\s+code)?|scan (?:and|&) pay|bank transfer|neft|imps)\b/i;
 const SECRET = /\b(?:otp|cvv|pin|card number|net ?banking|bank password|aadhaar (?:otp|copy)|pan card copy)\b|ओटीपी/i;
 const TASK = /\b(?:like (?:videos?|posts?)|subscribe (?:to )?(?:channels?|youtube)|rate (?:hotels?|products?)|google reviews?|daily tasks?|prepaid tasks?|telegram task|earn ₹?\d+ per (?:task|like|day))\b/i;
 const PRESSURE = /\b(?:today only|within (?:\d+|one|two) (?:hours?|hrs?|minutes?|mins?)|immediately|urgent(?:ly)?|last (?:chance|date today)|limited (?:seats|slots)|before (?:\d+ ?(?:pm|am)|evening|tonight)|asap)\b|turant|abhi\s+(?:karo|bhejo|pay|jama)|aaj\s+hi|jaldi|तुरंत|आज ही|जल्दी/i;
@@ -24,14 +57,51 @@ const m = (re: RegExp, t: string) => t.match(re)?.[0];
 const domainOf = (email = '') => (email.trim().toLowerCase().match(/@([a-z0-9.-]+\.[a-z]{2,})$/) || [])[1] || '';
 export const emailsIn = (t: string) => t.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) || [];
 
+const WORD_NUM: Record<string, number> = { zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90, hundred:100, thousand:1000, lakh:100000, lac:100000 };
+const WORD_RUN = /\b(?:rupees?\s+)?(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|lac)(?:[\s-]+(?:and\s+)?(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|lac))*(?:\s+rupees?)?\b/i;
+const wordsToNum = (s: string) => {
+  const toks = s.toLowerCase().replace(/-/g, ' ').split(/\s+/).filter((x) => x && x !== 'and' && x !== 'rupee' && x !== 'rupees');
+  if (!toks.length || toks.some((x) => WORD_NUM[x] == null)) return null;
+  let total = 0, cur = 0;
+  for (const x of toks) {
+    const v = WORD_NUM[x];
+    if (v === 100) cur = (cur || 1) * 100;
+    else if (v >= 1000) { total += (cur || 1) * v; cur = 0; }
+    else cur += v;
+  }
+  const n = total + cur; return n >= 100 ? n : null;
+};
+const isYearish = (s: string) => { const n = Number(s.replace(/,/g, '')); return /^(?:19|20)\d{2}$/.test(s) && n >= 1900 && n <= 2039; };
+const wordAmount = (t: string) => { const m = t.match(WORD_RUN); if (!m || wordsToNum(m[0]) == null) return; return m[0]; };
+const findAmount = (t: string) => {
+  const marked = t.match(AMOUNT_MARKED); if (marked) return marked[0];
+  const words = wordAmount(t); if (words) return words;
+  const re = /\b(\d{1,2},\d{3}|\d{3,5})\b/g;
+  let hit: RegExpExecArray | null;
+  while ((hit = re.exec(t))) {
+    const near = t.slice(Math.max(0, hit.index - 44), hit.index + hit[0].length + 44);
+    const payCtx = PAYCHAN.test(near) || HINGLISH_PAY.test(near) || /\b(?:training|joining|onboarding|deposit|fees?|charges?|paid service|registration|interview|amount)\b/i.test(near);
+    if (isYearish(hit[1]) && !payCtx) continue;
+    if (payCtx) return hit[0];
+  }
+};
+const noFeeClause = (t: string) => /\b(?:no fee|do(?:es)? not charge|never charge|never ask(?:\s+\w+){0,4}\s+to\s+pay|without (?:any )?(?:fee|charge)|free of (?:any )?(?:cost|charge|fee))\b/i.test(t);
+const payForSalary = (t: string) => /\b(?:salary credit|for salary|salary (?:credit )?setup|credit setup|after joining.{0,24}(?:upi|paytm|gpay|phonepe|google pay)|(?:upi|paytm|gpay|phonepe).{0,48}salary)\b/i.test(t);
+const secretAsk = (t: string) => {
+  const re = new RegExp(SECRET.source, 'ig');
+  let hit: RegExpExecArray | null;
+  while ((hit = re.exec(t))) { if (!neverAskChunk(t, hit.index, hit[0]) && !feeDenied(t, hit.index, hit[0])) return hit[0]; }
+};
+
+
 export function scanMessage(input: ScamInput): ScamResult {
   const t = `${input.message || ''}`.replace(/\s+/g, ' ');
   const signs: Sign[] = [];
-  const amt = m(AMOUNT, t), fee = m(FEE, t), pay = m(PAYCHAN, t);
+  const amt = findAmount(t), fee = feeAsk(t), pay = m(PAYCHAN, t);
   if (fee && (amt || pay)) signs.push({ level: 'red', title: 'Asks you to pay', detail: 'Real employers and job sites do not charge candidates for interviews, registration, training or documents.', match: [fee, amt].filter(Boolean).join(' · ') });
-  else if (amt && pay) signs.push({ level: 'red', title: 'Asks for a payment', detail: 'An amount and a payment method appear together. Do not pay to get a job.', match: `${amt} · ${pay}` });
+  else if (amt && pay && !noFeeClause(t) && !payForSalary(t)) signs.push({ level: 'red', title: 'Asks for a payment', detail: 'An amount and a payment method appear together. Do not pay to get a job.', match: `${amt} · ${pay}` });
   else if (fee) signs.push({ level: 'amber', title: 'Mentions a fee', detail: 'Ask in writing who is paying and why. Candidates should not pay.', match: fee });
-  const sec = m(SECRET, t); if (sec) signs.push({ level: 'red', title: 'Asks for OTP or bank details', detail: 'Never share an OTP, PIN, CVV or bank login with anyone.', match: sec });
+  const sec = secretAsk(t); if (sec) signs.push({ level: 'red', title: 'Asks for OTP or bank details', detail: 'Never share an OTP, PIN, CVV or bank login with anyone.', match: sec });
   const task = m(TASK, t); if (task) signs.push({ level: 'red', title: 'Paid "task" job', detail: 'Liking videos or writing reviews for money is a common task-fraud pattern that later asks for a deposit.', match: task });
   const emails = [input.email || '', ...emailsIn(t)].filter(Boolean);
   const claimed = `${input.company || ''} ${t}`.toLowerCase();
