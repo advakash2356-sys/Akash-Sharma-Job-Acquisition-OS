@@ -900,3 +900,165 @@ test('offer: retest-6 pockets/suitcase whitelist, no bare aapke paas, handed ove
 
   assert.equal(docTier('Original testimonials are not handed over to the corporation under this appointment letter.'), 'clean');
 });
+
+test('offer: retest-7 whole-phrase keep-self, no instruction downgrade, return-negation is a hold', () => {
+  for (const s of [
+    'The original certificates remain in your pocket file kept by HR at IREDA New Delhi.',
+    'The original degree will be kept in your suitcase locker at the establishment cell, Cochin Shipyard.',
+    'Original marksheets remain in your purse cupboard at the personnel section of SJVN Shimla.',
+    'The original diploma stays in your bag room of the welfare officer at FACT Udyogamandal.',
+    'Originals are retained in your folder of the establishment clerk at MECON Ranchi.',
+  ]) assert.notEqual(docTier(s), 'clean', 'compound / of-officer location must not be clean: ' + s);
+
+  for (const s of [
+    'Please keep your original degree with your reporting manager at HAL Koraput until the bond ends.',
+    'Kindly leave your original certificates in your unit locker at BEL Ghaziabad for two years.',
+    'The original marksheets should remain with your departmental head at NFL Panipat till the surety is discharged.',
+    'Please keep the original diploma in your circle office at BESCOM Bengaluru until further orders.',
+    'Kindly leave the original testimonials with your branch manager at Bank of Baroda, Alkapuri.',
+    'The original educational papers should stay with your regional office strong room at Powergrid Ballabhgarh.',
+    'Please keep the original degree in your office drawer at EIL Gurugram till the indenture lapses.',
+    'Kindly leave your original marksheets in your plant locker at MRPL Mangaluru for the traineeship.',
+    'Apne original certificates HR ke paas jama karein, bond khatam hone tak wapas nahi milenge.',
+  ]) assert.equal(docTier(s), 'red', 'imperative workplace / time-bound / wapas-nahi must be red: ' + s);
+
+  assert.notEqual(docTier('Please keep the original diploma in your coat after the copies are stamped.'), 'red');
+
+  const nouns = ['pocket', 'suitcase', 'purse', 'bag', 'folder', 'briefcase', 'wallet', 'hands'];
+  const tails = [
+    ' file kept by HR',
+    ' locker',
+    ' cupboard',
+    ' room',
+    ' of the establishment officer',
+    ' at IOCL Panipat',
+    ' with your manager',
+    ' until the bond ends',
+  ];
+  const abused: string[] = [];
+  for (const n of nouns) for (const tail of tails) {
+    const s = `The original certificates remain in your ${n}${tail}.`;
+    if ((docsHeldRisk(s) ?? 'clean') === 'clean') abused.push(s);
+  }
+  assert.ok(nouns.length * tails.length >= 30, 'need a generated abuse set');
+  assert.equal(abused.length, 0, 'whitelist noun + compound/of/at/with/until must never be clean:\n' + abused.join('\n'));
+
+  const places = ['reporting manager', 'unit locker', 'circle office', 'office drawer', 'plant locker', 'branch manager', 'regional office', 'departmental head'];
+  const times = ['until the bond ends', 'till the surety is discharged', 'for two years', 'for the traineeship'];
+  const notRed: string[] = [];
+  for (const place of places) for (const time of times) {
+    const s = `Please keep the original degree in your ${place} at NTPC Korba ${time}.`;
+    if (docsHeldRisk(s) !== 'red') notRed.push(s + ' => ' + (docsHeldRisk(s) ?? 'clean'));
+  }
+  assert.equal(notRed.length, 0, 'imperative x workplace x time bound must be red:\n' + notRed.join('\n'));
+
+  const selfRed: string[] = [];
+  for (const n of ['briefcase', 'wallet', 'bag', 'handbag', 'backpack', 'folder', 'file', 'possession', 'pocket', 'suitcase', 'purse', 'hands']) {
+    const s = `The original certificates remain in your ${n}.`;
+    if (docsHeldRisk(s) === 'red') selfRed.push(s);
+  }
+  for (const s of [
+    'Originals remain with you after the joining check.',
+    'Please keep the original diploma in your pocket once the verification stamp is on the copies.',
+    'मूल प्रमाण पत्र अपने पास रखें।',
+  ]) if (docsHeldRisk(s) === 'red') selfRed.push(s);
+  assert.equal(selfRed.length, 0, 'plain whitelisted possession must never be red:\n' + selfRed.join('\n'));
+});
+
+const FRESH7_HOLD = [
+  'Originals will be kept in your pocket dossier at IOCL Panipat until the surety lapses.',
+  'The original degree remains in your suitcase cabinet of the welfare officer at NTPC Korba.',
+  'Please keep your original marksheets with your reporting manager at HPCL Visakh for two years.',
+  'Kindly leave the original diploma in your unit locker at CONCOR Tughlakabad till the indenture ends.',
+  'Original certificates stay in your purse almirah at the personnel section of RITES Gurugram.',
+  'The original testimonials are retained in your bag chamber of the establishment clerk at FCI Zonal Office, Chennai.',
+  'Please keep the original B.Sc. degree in your circle office at Canara Bank, Hampankatta, until further orders.',
+  'Kindly leave your original papers in your plant locker at NLC Neyveli for the traineeship.',
+  'The original educational certificates should remain with your departmental head at Oil India Duliajan till the bond is discharged.',
+  'Originals are stored in your folder drawer at NBCC Lodhi Road after joining formalities.',
+  'Apne original certificates HR ke paas jama karein Union Bank, Ernakulam mein, bond khatam hone tak wapas nahi milenge.',
+  'मूल प्रमाण पत्र कार्यालय तिजोरी में रखे जाएँगे जब तक सेवा पूरी न हो।',
+  'Your original LL.B. certificate shall be deposited with the legal cell at EXIM Bank, Nariman Point, and released only after the pupillage year.',
+  'The company vault at PFC, Connaught Place, will hold original marksheets of every new officer.',
+  'Original academic records remain with the principal of the training institute at ITI Bengaluru.',
+  'Aapke paas submit karne ke baad originals REC vault mein rakh diye jaayenge.',
+  'आपके पास जमा करने के बाद मूल डिग्री कार्यालय लॉकर में रखे जाएँगे।',
+  'The original TC will stay with your branch manager at Indian Overseas Bank, T. Nagar.',
+  'Please keep the original licence in your office strong room at BPCL Kochi until the posting is served.',
+  'Kindly leave original testimonials with your regional office at LIC Yogakshema for the duration of probation.',
+  'Originals have been placed in custody of the shipping master at SCI Mumbai.',
+  'The original degree is to remain in your regional office at Western Coalfields, Nagpur, until further orders.',
+  'Joining instructions. Report to BEML Kolar on 12 January 2027. Please keep your original B.Tech degree with your reporting manager at the works until the one-year traineeship has been served in full.',
+  'Original board certificates won\'t be given back till the two-year posting at Chennai Petroleum is served.',
+  'The institute will not hand the original diploma back until the surety at ECGC is vacated.',
+  'Original papers are to be deposited with the admin wing of NCDC, Hauz Khas.',
+  'HR ke paas original marksheets rakhwaayi jaayengi jab tak bond poora na ho at TRIFED Delhi.',
+  'The original nursing licence will not be released unless eighteen months at AIC have been completed.',
+  'Originals remain in your file locker kept by the controller at HUDCO India Habitat Centre.',
+  'The original marksheets stay in the hands of the welfare officer at Coir Board, Kochi.',
+  'Please keep the original diploma in your office drawer at New India Assurance, Chennai, till the indenture lapses.',
+  'Kindly leave your original certificates in your unit locker at Balmer Lawrie, Kolkata, for two years.',
+  'मूल दस्तावेज अभिरक्षा में लिए गए हैं और एनबीसीसी कार्यालय में रखे जाएँगे।',
+  'Company originals ko establishment almirah mein rakh legi at MMTC New Delhi.',
+  'The dockyard holds original testimonials of every new apprentice at HSL Visakhapatnam.',
+  'Original educational certificates will be held by the establishment section at GSL Goa.',
+  'You must deposit your originals in the company locker at Oriental Insurance, New Delhi.',
+  'The original degree will be retained throughout the research posting at SECI, CGO Complex.',
+  'Originals are kept by HR at the Tea Board regional desk, Jorhat, and are not returned until the bond ends.',
+  'Apne original papers admin locker mein jama kijiye; tak wapas nahi milenge at Rubber Board, Kottayam.',
+];
+const FRESH7_LEGIT = [
+  'Please bring original educational certificates for verification at IOCL Panipat on 8 January 2027.',
+  'Original 10th and 12th marksheets will be verified and returned the same morning at NTPC Korba.',
+  'Candidates should produce original documents at DV in HPCL Visakh; they leave with you afterwards.',
+  'Kindly carry original papers for document verification; the clerk hands them back before you leave the hall at CONCOR Tughlakabad.',
+  'The controller will inspect original academic records at RITES Gurugram, compare them with the scans, and return them in one sitting.',
+  'Please keep original certificates ready for DV at FCI Chennai and take them with you after the stamp is applied.',
+  'Original papers will be looked at once during induction at NBCC Lodhi Road and packed away by you at the same table.',
+  'The original certificates are listed on the back of annex C for ease of reference.',
+  'Please take the originals back after DV at Canara Bank, Hampankatta, and keep them with you; the office files only copies.',
+  'The corporation does not keep original educational certificates after the induction formalities close at NLC Neyveli.',
+  'No original papers are stored in the personnel dossier of a new technician at Oil India Duliajan.',
+  'Recruits are not required to deposit original marksheets with the welfare section at PFC.',
+  'This engagement letter prohibits EXIM Bank from storing original academic records overnight.',
+  'There is no provision under which original diplomas stay with LIC Yogakshema after scrutiny.',
+  'Please file only attested photocopies and keep the original degree with you at Union Bank, Ernakulam.',
+  'The personal file holds xerox copies only; the original certificates remain in your briefcase.',
+  'Original certificates remain in your wallet after the joining check at Indian Overseas Bank, T. Nagar.',
+  'Please keep the original diploma in your pocket once the verification stamp is on the copies at BPCL Kochi.',
+  'The original certificates should remain in your suitcase after the officer returns them at the hall at Western Coalfields, Nagpur.',
+  'Please keep the original marksheets in your hands after the stamp is applied at BEML Kolar.',
+  'Original certificates remain in your purse after the joining check at Chennai Petroleum.',
+  'Please keep the original degree in your backpack once the copies have been stamped at ECGC.',
+  'मूल प्रमाण पत्र अपने पास रखें।',
+  'Aapke originals aapke paas hi rahenge after the stamp is applied to the copies at TRIFED Delhi.',
+  'Original testimonials are not handed over to HUDCO under this appointment letter.',
+  'The yard will neither hold nor file any original degree certificate during this appointment at SCI Mumbai.',
+  'Staff are not required to surrender original marksheets or the nursing registration at Coir Board, Kochi.',
+  'Kindly bring original educational certificates, etc., for DV at Tea Board, Jorhat; nothing is collected for overnight storage.',
+  'Please arrive with original certificates, e.g. the degree and the marksheets, for a brief document verification at Rubber Board, Kottayam; they are returned in the same sitting.',
+  'Background verification will ask to see original marksheets, which remain in the candidate\'s folder.',
+  'A subsequent circular will say whether any original paper is to be left in deposit after induction week ends at SECI.',
+  'The board does not normally retain original degrees except when a sponsored bond is still open at New India Assurance.',
+  'This letter does not say whether the original marksheets would stay in the safe once confirmation is granted at Oriental Insurance.',
+  'People operations will write later if any paper from the original set is to be held after the first-week check at Balmer Lawrie; this letter leaves that open.',
+  'Join with originals for attestation at HSL Visakhapatnam, then take every paper home the same evening.',
+  'Please hold your original marksheet in front of the webcam during the remote DV at GSL Goa.',
+  'HR retains only self-attested copies; originals stay in your bag throughout the appointment at MMTC New Delhi.',
+  'The firm will keep scanned copies of the original degree; the paper itself remains in your folder.',
+  'कृपया मूल शैक्षणिक प्रमाण पत्र सत्यापन के लिए साथ लाएँ; उसी दोपहर लौटा दिए जाएँगे।',
+  'Document verification of original certificates is completed the same afternoon at NCDC, Hauz Khas, and every sheet goes home with you.',
+];
+
+test('offer: fresh held-out 40+40 after whole-phrase inversion', () => {
+  assert.ok(FRESH7_HOLD.length >= 40 && FRESH7_LEGIT.length >= 40);
+  const missed = FRESH7_HOLD.filter((s) => docTier(s) === 'clean');
+  const falseRed = FRESH7_LEGIT.filter((s) => docTier(s) === 'red');
+  assert.equal(missed.length, 0, 'fresh holds must not be clean:\n' + missed.join('\n'));
+  assert.equal(falseRed.length, 0, 'fresh legit must not be red:\n' + falseRed.join('\n'));
+  const hc = { red: 0, amber: 0, clean: 0 };
+  const lc = { red: 0, amber: 0, clean: 0 };
+  for (const s of FRESH7_HOLD) hc[docTier(s)]++;
+  for (const s of FRESH7_LEGIT) lc[docTier(s)]++;
+  console.log('fresh7 holds', hc, 'legit', lc);
+});

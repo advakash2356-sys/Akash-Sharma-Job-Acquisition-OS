@@ -45,22 +45,54 @@ const DURABLE = /\b(?:until|till|unless|bond(?:ed)?|lock[- ]?in|surety|for\s+the
 function hasOrig(s: string) { return ORIG_SUBJ.test(s) || YOUR_CERTS.test(s); }
 function hasHold(s: string) { return HOLD_VERB.test(s) || HOLD_PHRASE.test(s); }
 function isCameraHold(s: string) { return /webcam|\bcameras?\b|कैमरा|camera ke saamne|in\s+front\s+of\s+the\s+(?:web)?camera/i.test(s) && /\bhold/i.test(s); }
-/** Strict candidate-possession whitelist. Workplace places (office, locker, manager, unit) do not qualify. */
+/** Strict candidate-possession whitelist. The whole location phrase must be possession, not a compound workplace place. */
 const SELF_NOUN = '(?:briefcases?|wallets?|bags?|handbags?|backpacks?|folders?|files?|possession|pockets?|suitcases?|purses?|hands?)';
+const SELF_COMPOUND = /^(?:files?|lockers?|cupboards?|rooms?|cabinets?|almirahs?|drawers?|offices?|cells?|sections?|vaults?|stores?|units?|plants?|depots?|desks?|counters?|chambers?|safes?|godowns?|strong)\b/i;
+const SELF_CLAUSE = /^(?:after|once|when|then|and|throughout|afterwards|following|during|before|as\s+soon\s+as|so\s+that|while\s+you|only|safely|yourself|too|as\s+well|that\s+you|which\s+you)\b/i;
+function selfRemainderOk(rest: string): boolean {
+  const r = rest.replace(/^\s+/, '');
+  if (!r || /^[.,;:!?।]/.test(r)) return true;
+  if (SELF_COMPOUND.test(r)) return false;
+  if (/^of\s+(?:the\s+)?/i.test(r)) return false;
+  if (/^(?:at|in)\s+/i.test(r)) return false;
+  if (/^with\s+(?:your\s+)?(?:HR|hrs?|managers?|heads?|officers?|clerks?|admins?|companies?|offices?|boards?|cells?|controllers?|principals?|welfare|establishment|personnel)\b/i.test(r)) return false;
+  if (/^(?:until|till|unless|jab\s+tak|tak)\b/i.test(r) || /^(?:जब तक|तक\b)/.test(r)) return false;
+  if (/^for\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+(?:years?|months?|weeks?)\b/i.test(r)) return false;
+  if (/^for\s+the\s+(?:traineeship|bond|duration|indenture|surety)\b/i.test(r)) return false;
+  if (/^kept\s+by\b/i.test(r) && !/^kept\s+by\s+you\b/i.test(r)) return false;
+  return SELF_CLAUSE.test(r);
+}
+function hasWholeSelfLocation(s: string): boolean {
+  const re = new RegExp('(?:in|with)\\s+(?:your(?:\\s+own)?|(?:the\\s+)?candidate[\'’]s(?:\\s+own)?)\\s+' + SELF_NOUN + '\\b', 'ig');
+  let m: RegExpExecArray | null, ok = false;
+  while ((m = re.exec(s))) {
+    if (selfRemainderOk(s.slice(m.index + m[0].length))) ok = true;
+  }
+  return ok;
+}
 function isWhitelistSelf(s: string) {
-  const inSelf = new RegExp('(?:in|with)\\s+(?:your(?:\\s+own)?|(?:the\\s+)?candidate[\'’]s(?:\\s+own)?)\\s+' + SELF_NOUN + '\\b', 'i');
-  return /\b(?:with you|with the candidate|yourself|in your possession|handed to you|returned to you|given back to you)\b/i.test(s)
-    || new RegExp('\\b(?:remain(?:s|ed|ing)?|stays?|keep(?:s|ing)?|kept|left)\\b[\\s\\S]{0,48}\\b(?:with you\\b|with the candidate\\b|' + inSelf.source + ')', 'i').test(s)
-    || inSelf.test(s)
-    || /\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:yourself|handy|ready|available)\b/i.test(s)
-    || /अपने पास रखें|अपने साथ रखें/i.test(s)
-    // Bare aapke paas / आपके पास is not keep-self. Only candidate-possession frames (rakhein/rahenge as the destination).
-    || /(?:aapke paas|apne paas|आपके पास|अपने पास)\s*(?:hi\s+|ही\s+)?(?:rakhein|rakho|rahenge|rakhna|rahiye|rahenga|rahegi|rahengi|rah\w*|रखें|रखो|रहेंगे|रहेंगी|रहेगा|रखिए|रहें)/i.test(s);
+  if (/\b(?:with you|with the candidate|yourself|handed to you|returned to you|given back to you)\b/i.test(s)
+    && !/\b(?:with you|with the candidate)\b[\s\S]{0,24}\b(?:until|till|unless|jab\s+tak)\b/i.test(s)) return true;
+  if (hasWholeSelfLocation(s)) return true;
+  if (/\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:yourself|handy|ready|available)\b/i.test(s) && !/\b(?:until|till|unless)\b/i.test(s)) return true;
+  if (/अपने पास रखें|अपने साथ रखें/i.test(s) && !/\b(?:jab\s+tak|until|till)\b|जब तक|तक/.test(s)) return true;
+  const hi = /(?:aapke paas|apne paas|आपके पास|अपने पास)\s*(?:hi\s+|ही\s+)?(?:rakhein|rakho|rahenge|rakhna|rahiye|rahenga|rahegi|rahengi|rah\w*|रखें|रखो|रहेंगे|रहेंगी|रहेगा|रखिए|रहें)/ig;
+  let m: RegExpExecArray | null;
+  while ((m = hi.exec(s))) {
+    if (selfRemainderOk(s.slice(m.index + m[0].length))) return true;
+  }
+  return false;
 }
-/** Instruction to the candidate to keep/remain papers in their own 'your <noun>' place: never red. Amber if the noun is not on the whitelist. */
-function isCandidateKeepInstruction(s: string) {
-  return /(?:\b(?:please|kindly)\s+(?:keep|leave|carry)|\bshould\s+(?:remain|stay|be kept))\b[\s\S]{0,60}\b(?:in|with)\s+your\b/i.test(s);
+const WORK_PLACE = /\b(?:offices?|circles?|regional|units?|plants?|lockers?|managers?|heads?|branches?|departmental|depots?|cells?|sections?|clerks?|officers?|drawers?|rooms?|cupboards?|cabinets?|almirahs?|vaults?|stores?|strong\s+rooms?|workshops?|yards?|institutes?|colleges?|boards?|companies?|corporations?|establishments?|personnel|welfare|admins?|controllers?|principals?|reporting)\b/i;
+/** Instruction is safe only if the place is a whole self-possession phrase. Workplace or time-bounded keep is never downgraded. */
+function isPersonalInstructionAmber(s: string) {
+  if (!/(?:\b(?:please|kindly)\s+(?:keep|leave|carry)|\bshould\s+(?:remain|stay|be kept))\b[\s\S]{0,80}\b(?:in|with)\s+your\b/i.test(s)) return false;
+  const place = s.match(/\b(?:in|with)\s+your(?:\s+own)?\s+(.+)/i)?.[1] || '';
+  if (WORK_PLACE.test(place) || SELF_COMPOUND.test(place.trim())) return false;
+  if (/\b(?:until|till|unless|jab\s+tak)\b|जब तक|\bfor\s+(?:the\s+)?(?:\d+|one|two|three)\s+years?|\bfor\s+the\s+(?:traineeship|bond|duration|indenture)/i.test(s)) return false;
+  return !isWhitelistSelf(s);
 }
+
 const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?)\b|\bbe\s+with\b|\bin\s+deposit\b|\bjama\b|\brakh\w*\b|रख|जमा/i;
 function hasLocTransfer(s: string) {
   return LOC_TRANSFER.test(s) || /\bleav(?:e|es|ing)\s+(?:the\s+|your\s+)?original/i.test(s);
@@ -106,7 +138,17 @@ function isUntilReturnHold(s: string) {
   return new RegExp('\\b(?:' + negAux.source + ')\\s+(?:be\\s+)?' + RETURN_FAM.source + '[\\s\\S]{0,80}?\\b(?:until|till|unless)\\b', 'i').test(s)
     || /\breleas(?:e|ed|es|ing)\s+only\s+after\b/i.test(s)
     || /वापस\s*नहीं[\s\S]{0,40}(?:तक|जब)/.test(s)
-    || /तभी\s*जारी[\s\S]{0,48}जब/.test(s);
+    || /तभी\s*जारी[\s\S]{0,48}जब/.test(s)
+    || /(?:\btak\b|hone\s+tak|जब तक|तक)\s*[,.]?\s*(?:wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*मिल)/i.test(s)
+    || /(?:wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*मिल)[\s\S]{0,48}(?:\btak\b|जब तक|तक)/i.test(s);
+}
+/** Negation that only refuses a return never cancels a hold; it is a hold signal. */
+function returnNotGiven(s: string) {
+  return /wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*(?:मिल|दिए|किए)|(?:will\s+not|won['’]?t|shall\s+not|(?:is|are)\s+not)\s+(?:be\s+)?(?:returned|given\s+back|handed\s+back)|not\s+(?:be\s+)?returned\b/i.test(s);
+}
+function negCancelsHold(s: string) {
+  if (isUntilReturnHold(s) || returnNotGiven(s)) return false;
+  return NEG_WORD.test(s);
 }
 function isConditionalHold(s: string) {
   return /\b(?:whether|if)\b[\s\S]{0,120}\b(?:to\s+be\s+|has\s+to\s+)?(?:held|kept|retained|deposited|stored|left|placed|lodged|remain(?:s|ed|ing)?|stays?)\b/i.test(s)
@@ -155,29 +197,30 @@ export function docsHeldRisk(text: string): DocsTier {
     // 1. Orig + time/return marker is never clean. Run this before any keep-out or copy-only rule.
     if (subj && time) {
       if (isConditionalHold(s)) { amber = true; continue; }
-      if (isUntilReturnHold(s)) return 'red';
-      // orig + time is never clean, but a whitelist / denial / verify / copy-only sentence must not go red
-      if (isWhitelistSelf(s) || (holdNegatedCleanly(s) && !mixedException(s)) || isCameraHold(s) || isPlainVerify(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSoftSubmit(s)) {
+      if (isUntilReturnHold(s) || returnNotGiven(s)) return 'red';
+      // orig + time is never clean. Whitelist applies only when the whole location phrase is possession and is not time-bounded.
+      if ((isWhitelistSelf(s) && !time) || (holdNegatedCleanly(s) && !mixedException(s) && !returnNotGiven(s)) || isCameraHold(s) || isPlainVerify(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSoftSubmit(s)) {
         amber = true;
         continue;
       }
-      if (isCandidateKeepInstruction(s)) { amber = true; continue; }
-      if (subj && hold && !NEG_WORD.test(s)) return 'red';
+      if (isPersonalInstructionAmber(s)) { amber = true; continue; }
+      if (subj && hold && !negCancelsHold(s)) return 'red';
       amber = true;
       continue;
     }
     // 2. whether / if / will say whether / may be about a later hold: amber, never red.
     if (isConditionalHold(s) && (subj || hold)) { amber = true; continue; }
-    // 3. Clean only via (a) possession whitelist, (b) clear denial, (c) plain verification / camera, or strict copy-only.
+    // 3. Clean only via (a) a whole-phrase possession match, (b) a clear denial, (c) plain verification / camera, or strict copy-only.
     if (isWhitelistSelf(s)) continue;
-    if (holdNegatedCleanly(s) && !mixedException(s)) continue;
+    if (holdNegatedCleanly(s) && !mixedException(s) && !returnNotGiven(s)) continue;
     if (isCameraHold(s)) continue;
     if (isPlainVerify(s)) continue;
     if (copyOnlyHold(s) || copiesKeptOriginalsReturned(s)) continue;
     if (isSoftSubmit(s)) { amber = true; continue; }
-    if (isCandidateKeepInstruction(s)) { amber = true; continue; }
+    if (isPersonalInstructionAmber(s)) { amber = true; continue; }
     if (isUntilReturnHold(s) && subj) return 'red';
-    if (subj && hold && !NEG_WORD.test(s)) return 'red';
+    if (returnNotGiven(s) && subj) return 'red';
+    if (subj && hold && !negCancelsHold(s)) return 'red';
     if ((subj && hold) || hold) amber = true;
   }
   return amber ? 'amber' : null;
