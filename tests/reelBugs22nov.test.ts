@@ -1,6 +1,7 @@
 // Regression + held-out tests for the five live-site bugs filmed 22 Nov 2026. Made-up clauses. Akash Sync Agent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { scanOffer, docsHeldRisk, offerClauses } from '../src/lib/offerShield';
 import { designationPack } from '../src/lib/voiceGame';
 import { naturalize } from '../src/lib/voiceInterview';
@@ -1205,4 +1206,15 @@ test('offer: fresh held-out 40+40 FAQ/tables/email/SMS after DOCUMENT_SUBJECT', 
   for (const s of FRESH8_HOLD) hc[docTier(s)]++;
   for (const s of FRESH8_LEGIT) lc[docTier(s)]++;
   console.log('fresh8 holds', hc, 'legit', lc);
+});
+
+test('offer: retest-9 Highs — copy strip, sight-check tail, photo-tray, language note', () => {
+  const copies = 'keep scanned copies of your marksheets';
+  assert.equal(docTier(copies), 'clean', copies + ' => ' + docTier(copies));
+  const bag = 'Keep the academic papers in your bag until the sight-check ends at TCIL, Greater Kailash.';
+  assert.notEqual(docTier(bag), 'red', bag + ' => ' + docTier(bag));
+  const kiosk = 'Kiosk screen, ESIC Hospital Basaidarapur, “Document check”.\n\nPlace the degree and marksheets on the tray for a photograph. Collect them from the tray when the light turns green.';
+  assert.notEqual(docTier(kiosk), 'red', kiosk + ' => ' + docTier(kiosk));
+  const page = readFileSync(new URL('../src/pages/OfferShield.tsx', import.meta.url), 'utf8');
+  assert.ok(page.includes('Checks English, Hindi and Hinglish wording; other languages may not be fully checked, so read document clauses yourself.'));
 });

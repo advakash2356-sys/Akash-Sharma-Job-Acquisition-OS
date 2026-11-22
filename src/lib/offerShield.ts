@@ -80,10 +80,12 @@ function isHostileTimeBound(s: string): boolean {
     || /\bvarikkum\b/i.test(s);
 }
 function isVerifyWindow(s: string): boolean {
-  return /\b(?:until|till)\s+(?:the\s+)?(?:verification|DV|document[- ]verification|check|stamp|inspection|attestation|sitting|session)\b/i.test(s)
+  const noun = '(?:verification|DV|document[- ]verification|document[- ]check|sight[- ]check|visual\\s+check|photograph|photo(?:\\s+session)?|check|stamp|inspection|attestation|sitting|session)';
+  return new RegExp('\\b(?:until|till)\\s+(?:the\\s+)?' + noun + '(?:\\s+(?:ends?|finishes|is\\s+over|is\\s+done|is\\s+complete))?', 'i').test(s)
     || /\b(?:until|till)\s+you\s+leave\b/i.test(s)
     || /\b(?:until|till)\s+(?:the\s+)?(?:stamp\s+is\s+applied|verification\s+is\s+over|check\s+(?:is\s+)?(?:over|done|complete))\b/i.test(s);
 }
+
 function selfRemainderOk(rest: string): boolean {
   const r = rest.replace(/^\s+/, '');
   if (!r || /^[.,;:!?।]/.test(r)) return true;
@@ -116,6 +118,7 @@ function isHarmlessOrgTail(s: string): boolean {
   while ((m = re.exec(s))) {
     const rest = s.slice(m.index + m[0].length).replace(/^\s+/, '');
     if (SELF_COMPOUND.test(rest) || /^of\s+/i.test(rest) || isCustodyAt(rest)) continue;
+    if (isVerifyWindow(rest) && /\bat\s+/i.test(rest) && !isHostileTimeBound(rest)) return true;
     if (/^at\s+/i.test(rest) && !isVenueTail(rest) && !isHostileTimeBound(rest)) return true;
   }
   return false;
@@ -149,15 +152,25 @@ function isLeaveHold(s: string) {
   if (/\b(?:before|when|as|after)\s+you\s+leave|you leave the (?:hall|room|campus|venue|counter)|leave with you|leave them with you|leaves with you/i.test(s)) return false;
   return hasOrig(s);
 }
-function hasLocTransfer(s: string) {
-  return LOC_TRANSFER.test(s) || isLeaveHold(s);
+function isPlaceForPhoto(s: string) {
+  return /\bplac(?:e|es|ed|ing)\b[\s\S]{0,80}\b(?:on the (?:tray|counter|kiosk)|for a (?:photograph|photo))\b/i.test(s);
 }
+function hasLocTransfer(s: string) {
+  const rest = isPlaceForPhoto(s)
+    ? s.replace(/\bplac(?:e|es|ed|ing)\b[\s\S]{0,80}\b(?:on the (?:tray|counter|kiosk)|for a (?:photograph|photo))\b/gi, ' ')
+    : s;
+  return LOC_TRANSFER.test(rest) || isLeaveHold(s);
+}
+
 /** Drop "copy/photocopy of (the/your) original …" so those originals are not treated as the hold object. */
 function withoutCopyOfOrig(s: string) {
-  return s
-    .replace(/\b(?:(?:photo)?cop(?:y|ies)|xerox|scanned\s+copies|self[- ]attested\s+copies)\s+(?:of\s+)?(?:your\s+|the\s+)?original(?:\s+[\w.-]+){0,5}(?:\s+(?:certificates?|documents?|mark\s*-?sheets?|marksheets?|degree|diplomas?|licen[cs]es?|papers?|testimonials?))?/gi, ' ')
-    .replace(/मूल.{0,32}की\s+(?:फोटो)?प्रति(?:लिपि)?/g, ' ');
+  const ofDoc = new RegExp(
+    '\\b(?:(?:photo)?cop(?:y|ies)|xerox|scanned\\s+copies|self[- ]attested\\s+copies)\\s+(?:of\\s+)?(?:your\\s+|the\\s+)?(?:original(?:\\s+[\\w.-]+){0,5}\\s+)?(?:' + DOC_NOUN + ')',
+    'gi'
+  );
+  return s.replace(ofDoc, ' ').replace(/मूल.{0,32}की\s+(?:फोटो)?प्रति(?:लिपि)?/g, ' ');
 }
+
 function origHeldAsTarget(s: string) {
   const rest = withoutCopyOfOrig(s);
   return hasOrig(rest) && (hasHold(rest) || hasLocTransfer(rest));
@@ -184,8 +197,8 @@ function isKeepQuestion(s: string) {
   return /\?\s*$/.test(s.trim()) && /\b(?:keep|retain|hold|deposit|store)\b/i.test(s);
 }
 function isPlainVerify(s: string) {
-  const cue = /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|visual check|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with|dikhane|dikhana|viewing|viewed?|shown?|showing|glance|we look|tick[- ]?mark)\b|सत्यापन|दिखाना|दिखाने|जाँच|देखने/i.test(s)
-    || /\b(?:same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out|pack it away|collected again|handed to you|before you leave|take them (?:home|back)|in one sitting|returned in the same sitting|handed back at the counter|you walk out)\b|उसी\s+(?:दिन|बैठक|समय)|वापस ले/i.test(s);
+  const cue = /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|document[- ]check|sight[- ]check|visual check|photograph|photo(?:\s+session)?|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with|dikhane|dikhana|viewing|viewed?|shown?|showing|glance|we look|tick[- ]?mark|on the tray|kiosk)\b|सत्यापन|दिखाना|दिखाने|जाँच|देखने/i.test(s)
+    || /\b(?:same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out|pack it away|collected again|handed to you|before you leave|take them (?:home|back)|in one sitting|returned in the same sitting|handed back at the counter|you walk out|collect(?:s|ed|ing)?(?:\s+them)?(?:\s+from\s+the\s+tray)?|when the light turns green)\b|उसी\s+(?:दिन|बैठक|समय)|वापस ले/i.test(s);
   if (!cue) return false;
   if (isWhitelistSelf(s)) return true;
   if (/\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:ready|handy|available)\b/i.test(s) && !/\b(?:deposit|retain|store|lodge)\b/i.test(s)) return true;
