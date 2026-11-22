@@ -46,14 +46,20 @@ function hasOrig(s: string) { return ORIG_SUBJ.test(s) || YOUR_CERTS.test(s); }
 function hasHold(s: string) { return HOLD_VERB.test(s) || HOLD_PHRASE.test(s); }
 function isCameraHold(s: string) { return /webcam|\bcameras?\b|कैमरा|camera ke saamne|in\s+front\s+of\s+the\s+(?:web)?camera/i.test(s) && /\bhold/i.test(s); }
 /** Strict candidate-possession whitelist. Workplace places (office, locker, manager, unit) do not qualify. */
-const SELF_NOUN = '(?:briefcases?|wallets?|bags?|handbags?|backpacks?|folders?|files?|possession)';
+const SELF_NOUN = '(?:briefcases?|wallets?|bags?|handbags?|backpacks?|folders?|files?|possession|pockets?|suitcases?|purses?|hands?)';
 function isWhitelistSelf(s: string) {
   const inSelf = new RegExp('(?:in|with)\\s+(?:your(?:\\s+own)?|(?:the\\s+)?candidate[\'’]s(?:\\s+own)?)\\s+' + SELF_NOUN + '\\b', 'i');
   return /\b(?:with you|with the candidate|yourself|in your possession|handed to you|returned to you|given back to you)\b/i.test(s)
     || new RegExp('\\b(?:remain(?:s|ed|ing)?|stays?|keep(?:s|ing)?|kept|left)\\b[\\s\\S]{0,48}\\b(?:with you\\b|with the candidate\\b|' + inSelf.source + ')', 'i').test(s)
     || inSelf.test(s)
     || /\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:yourself|handy|ready|available)\b/i.test(s)
-    || /आपके पास|अपने पास रखें|अपने साथ रखें|aapke paas/i.test(s);
+    || /अपने पास रखें|अपने साथ रखें/i.test(s)
+    // Bare aapke paas / आपके पास is not keep-self. Only candidate-possession frames (rakhein/rahenge as the destination).
+    || /(?:aapke paas|apne paas|आपके पास|अपने पास)\s*(?:hi\s+|ही\s+)?(?:rakhein|rakho|rahenge|rakhna|rahiye|rahenga|rahegi|rahengi|rah\w*|रखें|रखो|रहेंगे|रहेंगी|रहेगा|रखिए|रहें)/i.test(s);
+}
+/** Instruction to the candidate to keep/remain papers in their own 'your <noun>' place: never red. Amber if the noun is not on the whitelist. */
+function isCandidateKeepInstruction(s: string) {
+  return /(?:\b(?:please|kindly)\s+(?:keep|leave|carry)|\bshould\s+(?:remain|stay|be kept))\b[\s\S]{0,60}\b(?:in|with)\s+your\b/i.test(s);
 }
 const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?)\b|\bbe\s+with\b|\bin\s+deposit\b|\bjama\b|\brakh\w*\b|रख|जमा/i;
 function hasLocTransfer(s: string) {
@@ -115,7 +121,7 @@ function isSoftSubmit(s: string) {
     && !/\b(?:retain(?:s|ed|ing)?|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|kept|held|custody)\b/i.test(s);
 }
 function holdNegatedCleanly(s: string) {
-  return /\b(?:does\s+not|do\s+not|will\s+not|shall\s+not|are\s+not|is\s+not|won['’]?t|shan['’]?t|not)\s+(?:be\s+)?(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|collect(?:s|ed|ing)?|left)\b/i.test(s)
+  return /\b(?:does\s+not|do\s+not|will\s+not|shall\s+not|are\s+not|is\s+not|won['’]?t|shan['’]?t|not)\s+(?:be\s+)?(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|collect(?:s|ed|ing)?|left|hand(?:ed|ing)?\s+over)\b/i.test(s)
     || /\bno\s+original[\s\S]{0,64}?\b(?:are\s+|is\s+|will\s+be\s+)?(?:kept|stored|held|deposited|retained|collected|left|placed)\b/i.test(s)
     || /\bnothing\s+(?:is\s+)?(?:to\s+be\s+)?(?:stored|kept|retained|held|deposited|collected)\b/i.test(s)
     || /\bnot\s+a\s+request\s+to\s+(?:deposit|surrender|retain|keep)\b/i.test(s)
@@ -155,6 +161,7 @@ export function docsHeldRisk(text: string): DocsTier {
         amber = true;
         continue;
       }
+      if (isCandidateKeepInstruction(s)) { amber = true; continue; }
       if (subj && hold && !NEG_WORD.test(s)) return 'red';
       amber = true;
       continue;
@@ -168,6 +175,7 @@ export function docsHeldRisk(text: string): DocsTier {
     if (isPlainVerify(s)) continue;
     if (copyOnlyHold(s) || copiesKeptOriginalsReturned(s)) continue;
     if (isSoftSubmit(s)) { amber = true; continue; }
+    if (isCandidateKeepInstruction(s)) { amber = true; continue; }
     if (isUntilReturnHold(s) && subj) return 'red';
     if (subj && hold && !NEG_WORD.test(s)) return 'red';
     if ((subj && hold) || hold) amber = true;

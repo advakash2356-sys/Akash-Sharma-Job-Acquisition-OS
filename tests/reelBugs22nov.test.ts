@@ -859,7 +859,7 @@ test('offer: retest-5 invert default, whitelist, copy-only, conditionals', () =>
   assert.ok(subjects.length * verbs.length * workPlaces.length >= 30, 'need a generated workplace set');
   assert.equal(workClean.length, 0, 'orig + loc/transfer + workplace your-place must never be clean:\n' + workClean.join('\n'));
 
-  const selfPlaces = ['briefcase', 'wallet', 'bag', 'handbag', 'backpack', 'folder', 'file', 'possession'];
+  const selfPlaces = ['briefcase', 'wallet', 'bag', 'handbag', 'backpack', 'folder', 'file', 'possession', 'pocket', 'suitcase', 'purse', 'hands'];
   const selfRed: string[] = [];
   for (const subj of subjects) for (const place of selfPlaces) {
     const s = `The ${subj} remain in your ${place}.`;
@@ -871,4 +871,32 @@ test('offer: retest-5 invert default, whitelist, copy-only, conditionals', () =>
     'मूल प्रमाण पत्र अपने पास रखें।',
   ]) if (docsHeldRisk(s) === 'red') selfRed.push(s);
   assert.equal(selfRed.length, 0, 'orig + whitelist possession must never be red:\n' + selfRed.join('\n'));
+});
+
+test('offer: retest-6 pockets/suitcase whitelist, no bare aapke paas, handed over denial', () => {
+  assert.equal(docTier('Please keep the original diploma in your pocket once the verification stamp is on the copies.'), 'clean');
+  assert.equal(docTier('The original certificates should remain in your suitcase after the officer returns them at the hall.'), 'clean');
+  assert.notEqual(docTier('Please keep the original marksheets in your hands after the stamp is applied.'), 'red');
+  assert.equal(docTier('Original certificates remain in your purse after the joining check.'), 'clean');
+  // instruction to the candidate in a non-whitelisted "your <noun>" is never red
+  assert.notEqual(docTier('Please keep the original diploma in your coat after the copies are stamped.'), 'red');
+  // workplace traps still not clean
+  for (const s of [
+    'Originals remain in your regional office strong room.',
+    'The original degree will stay with your reporting manager.',
+    'Original educational certificates are kept in your unit locker at the plant.',
+  ]) assert.notEqual(docTier(s), 'clean', 'workplace your-place must not be clean: ' + s);
+
+  // bare aapke paas / आपके पास is not keep-self when the destination is a vault or locker
+  for (const s of [
+    'Aapke paas submit karne ke baad originals company vault mein rakh diye jaayenge.',
+    'आपके पास जमा करने के बाद मूल प्रमाण पत्र कार्यालय लॉकर में रखे जाएँगे।',
+    'Aapke paas submit karne ke baad originals company vault mein rakh diye jaayenge jab tak bond poora na ho.',
+    'आपके पास जमा करने के बाद मूल प्रमाण पत्र कार्यालय लॉकर में रखे जाएँगे जब तक सेवा पूरी न हो।',
+  ]) assert.notEqual(docTier(s), 'clean', 'vault/locker deposit must not be clean: ' + s);
+
+  assert.equal(docTier('मूल प्रमाण पत्र अपने पास रखें।'), 'clean');
+  assert.notEqual(docTier('Aapke originals aapke paas hi rahenge after the stamp is applied to the copies.'), 'red');
+
+  assert.equal(docTier('Original testimonials are not handed over to the corporation under this appointment letter.'), 'clean');
 });
