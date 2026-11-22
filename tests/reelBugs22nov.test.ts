@@ -1,7 +1,7 @@
 // Regression + held-out tests for the five live-site bugs filmed 22 Nov 2026. Made-up clauses. Akash Sync Agent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scanOffer } from '../src/lib/offerShield';
+import { scanOffer, docsHeldRisk, offerClauses } from '../src/lib/offerShield';
 import { designationPack } from '../src/lib/voiceGame';
 import { naturalize } from '../src/lib/voiceInterview';
 import { CGL_POSTS, EXAMS, ageLimitText, ageOn, cglPostLabel, cglPostStatuses, keepExamVisible, match, matchExam, radarText, type Profile } from '../src/lib/govJobs';
@@ -795,4 +795,32 @@ test('offer: retest-3 Highs and Medium — rakhwaayi/jab tak, conditionals, B.Te
   assert.equal(docTier('A special condition is written in: originals are not returned unless the bank guarantee has been vacated.'), 'red');
   assert.equal(docTier('The original nursing licence will not be released unless eighteen months of service have been completed.'), 'red');
   assert.equal(docTier('Original academic records will be released only after you have served the full notice period.'), 'red');
+});
+
+test('offer: retest-4 Highs, Medium abbrevs/denials, and fail-safe combinations', () => {
+  assert.equal(docTier("Original board certificates won't be returned until the surety is discharged."), 'red');
+  assert.equal(docTier("The institute won't give back the original degree till the two-year posting is served."), 'red');
+  assert.equal(docTier('Original papers will not be given back until the notice has been worked off.'), 'red');
+  assert.equal(docTier('We will not hand the originals back till the surety is discharged by the bank.'), 'red');
+  assert.notEqual(docTier('The dossier holds xerox copies only; the original certificates remain in your briefcase.'), 'red');
+  assert.notEqual(docTier('Original certificates remain in your wallet after the joining check.'), 'red');
+  assert.equal(docTier('Your original LL.B. degree shall be deposited with the foundation until the bond ends.'), 'red');
+  assert.equal(docTier('The original Ph.D. diploma will be retained throughout the research posting.'), 'red');
+  assert.equal(offerClauses('Your original LL.B. degree shall be deposited with the foundation until the bond ends.').length, 1);
+  assert.equal(offerClauses('The papers listed at Sr. No. 3 of annex B will be retained until the surety is vacated.').length, 1);
+  assert.equal(docTier('The original papers listed at Sr. No. 3 of annex B will be retained until the surety is vacated.'), 'red');
+  assert.equal(docTier('This engagement letter prohibits the employer from storing original academic records overnight.'), 'clean');
+  assert.equal(docTier('There is no provision under which original diplomas stay with the institute after scrutiny.'), 'clean');
+  assert.equal(docTier('कंपनी किसी भी चरण में मूल डिग्री प्रमाण पत्र नहीं रखेगी; केवल सत्यापित प्रतियाँ फ़ाइल में रहेंगी।'), 'clean');
+
+  const subjects = ['original certificates', 'the originals', 'original degree', 'मूल प्रमाण पत्र', 'original marksheets'];
+  const markers = ['until', 'till', 'jab tak', 'जब तक', 'only after', 'unless', 'for the duration', 'back', 'वापस'];
+  const fillers = ['the posting is over', 'the bond ends', 'HR closes the file', 'year two is complete'];
+  const clean: string[] = [];
+  for (const subj of subjects) for (const mark of markers) for (const fill of fillers) {
+    const s = `The clerk noted that ${subj} ${mark} ${fill}.`;
+    if ((docsHeldRisk('SAMPLE. ' + s) ?? 'clean') === 'clean') clean.push(s);
+  }
+  assert.ok(subjects.length * markers.length * fillers.length >= 30, 'need a generated set');
+  assert.equal(clean.length, 0, 'fail-safe missed (must be amber or red, never clean):\n' + clean.join('\n'));
 });
