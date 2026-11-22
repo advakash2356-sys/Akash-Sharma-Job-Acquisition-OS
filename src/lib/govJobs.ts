@@ -223,8 +223,7 @@ export function cglPostStatuses(p: Profile): { post: CglPost; status: AgeStatus;
   return CGL_POSTS.map((post) => {
     const cap: PostCap = post.ageUnstated ? { ageUnstated: true, verifyNote: post.verifyNote } : { minAge: post.minAge!, maxAge: post.maxAge! };
     const m = matchExam(exam, p, cap);
-    const verify = post.ageUnstated && post.verifyNote && m.ageStatus === 'check' && !/date of birth/i.test(m.ageClause || '') ? ` ${post.verifyNote}` : '';
-    const note = m.ageStatus === 'check' ? `${m.ageClause || CGL_AGE_UNSTATED}${verify}` : undefined;
+    const note = m.ageStatus === 'check' ? m.ageClause : undefined;
     return { post, status: m.ageStatus, note };
   });
 }
