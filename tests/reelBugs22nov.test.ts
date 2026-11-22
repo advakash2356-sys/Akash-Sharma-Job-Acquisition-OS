@@ -746,9 +746,10 @@ test('offer: tester retest-2 64 strings and a new 30+30 three-tier documents set
   assert.equal(falseRed.length, 0, 'false reds (legit may be clean or amber):\n' + falseRed.join('\n'));
   assert.ok(TESTER2_DOC_TP.length >= 32 && TESTER2_DOC_FP.length >= 32);
   assert.ok(FRESH3_DOC_HOLD.length >= 30 && FRESH3_DOC_VERIFY.length >= 30);
-  const amberWhy = docs('SAMPLE. We neither retain nor deposit any original certificates at joining or later.');
+  const amberWhy = docs('SAMPLE. The firm does not normally keep originals except when a service bond is in force.');
   assert.equal(amberWhy[0]?.risk, 'amber');
   assert.equal(amberWhy[0]?.why, 'Check: confirm whether originals are kept');
+  assert.equal(docTier('We neither retain nor deposit any original certificates at joining or later.'), 'clean');
   const sets = {
     'tester-64-hold': docCounts(TESTER2_DOC_TP),
     'tester-64-legit': docCounts(TESTER2_DOC_FP),
@@ -764,4 +765,34 @@ test('gov: Inspector verify note is printed once', () => {
   const needle = 'Some listings give 18–30; verify in the official notice.';
   assert.match(text, /age not stated in notice/i);
   assert.equal(text.split(needle).length - 1, 1, 'verify note duplicated: ' + text);
+});
+
+test('offer: retest-3 Highs and Medium — rakhwaayi/jab tak, conditionals, B.Tech/B.E., clear denials, not-returned-until', () => {
+  const ho39 = 'Pehle original certificates verification ke liye dikhana hoga. Uske baad original degree HR locker mein rakhwaayi jaayegi jab tak do saal ka service bond poora na ho.';
+  assert.equal(docTier(ho39), 'red', 'HO39 rakhwaayi jaayegi jab tak must be a hold, and na ho is until not negation');
+  const ho39mail = 'Joining mail, made up. Dear Sana, welcome to Kaveri Textiles, Erode. On 8 December please come to the mill office at 9 a.m. with photographs and a cancelled cheque. Pehle original certificates verification ke liye dikhana hoga. Uske baad original degree HR locker mein rakhwaayi jaayegi jab tak do saal ka service bond poora na ho. Regards, Mill HR.';
+  assert.equal(docTier(ho39mail), 'red');
+
+  const am08 = 'Joining packs mention original documents in the checklist, and a follow-up note will state if anything is to be held after the first-day check.';
+  assert.notEqual(docTier(am08), 'red', 'AM08 conditional if … to be held must not be red');
+
+  assert.equal(docTier('The hospital stores the original B.Sc certificate in deposit with its standing counsel until outstanding loans end.'), 'red');
+  assert.equal(docTier('The employer shall keep the original B.Tech degree in the strong room for the funded term.'), 'red');
+  assert.equal(docTier('The firm will retain your original B.E. degree until the bond ends.'), 'red');
+  const ho36 = 'Bring original educational certificates for verification on the first day. Photocopies will be attested in front of you. The project will retain your original B.Tech degree certificate until that rural service has been completed.';
+  assert.equal(docTier(ho36), 'red');
+
+  for (const t of [
+    'The hospital does not retain original educational certificates after the joining formalities end.',
+    'No original documents are kept in the personal file of any new staff nurse.',
+    'We do not collect or store original degree certificates at any stage of onboarding.',
+    'Original papers are not deposited with the employer under this appointment letter.',
+    'Staff are not required to surrender original marksheets or the nursing registration.',
+    'This appointment forbids the employer from holding original academic records at any time.',
+    'There is no clause under which original marksheets remain with the nursing college after the check.',
+  ]) assert.equal(docTier(t), 'clean', 'clear denial should be clean: ' + t);
+
+  assert.equal(docTier('A special condition is written in: originals are not returned unless the bank guarantee has been vacated.'), 'red');
+  assert.equal(docTier('The original nursing licence will not be released unless eighteen months of service have been completed.'), 'red');
+  assert.equal(docTier('Original academic records will be released only after you have served the full notice period.'), 'red');
 });
