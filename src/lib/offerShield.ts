@@ -10,18 +10,90 @@ export function toDays(m: RegExpMatchArray | null): number | null {
 }
 
 const PAY_W = /\b(salary|pay|paid|remuneration|compensation|wages?|stipend|fixed pay)\b/i;
-const NO_PAY = /\b(no\s+(?:salary|pay|remuneration)|not\s+(?:be\s+)?(?:paid|entitled)|unpaid|without\s+(?:salary|pay)|salary\s+(?:is\s+|will\s+be\s+)?(?:withheld|stopped|paused|not\s+paid)|will\s+not\s+pay\s+salary|not\s+pay\s+salary|salary\s+nahi|pay\s+nahi|tanka\s+nahi|nahi\s+mileg[ia]|वेतन\s*नहीं)\b/i;
-const BENCH_W = /\bbench\b/i;
+const NO_PAY = /\b(no\s+(?:salary|pay|remuneration)|not\s+(?:be\s+)?(?:paid|entitled)|unpaid|without\s+(?:salary|pay)|salary\s+(?:is\s+|will\s+be\s+)?(?:withheld|stopped|paused|not\s+paid)|will\s+not\s+pay\s+salary|not\s+pay\s+salary|salary\s+nahi|pay\s+nahi|tanka\s+nahi|nahi\s+mileg[ia])\b|वेतन\s*नहीं/i;
+const BENCH_W = /\bbench\b|बेंच/i;
 const ONLY_WHEN = /\b(only\s+(?:after|when|once|upon|if|for)|payable\s+only|paid\s+only|draw(?:s|n)?\s+(?:salary\s+|remuneration\s+)?only|starts?\s+only|begins?\s+only|commences?\s+only|solely\s+(?:after|upon|for)|contingent\s+upon|subject\s+to\s+being|unless\s+(?:allocated|assigned|deployed|staffed))\b/i;
 const ALLOC_W = /\b(billable|deploy(?:ed|ment)|allocat(?:ed|ion)|staffed|client\s+project|client\s+assignment)\b/i;
-function benchPayHit(s: string) { return (NO_PAY.test(s) && BENCH_W.test(s)) || (PAY_W.test(s) && ONLY_WHEN.test(s) && ALLOC_W.test(s)); }
-const ORIG_W = /\boriginals\b|\boriginal(?:\s+\w+){0,3}\s+(?:certificates?|documents?|mark\s*-?sheets?|marksheets?|degree|papers?|testimonials?)\b|मूल.{0,24}(?:प्रमाण\s*पत्र(?:ों)?|दस्तावेज(?:ों)?|डिग्री|अंक\s*पत्र(?:ों)?)/i;
-const HOLD_W = /\b(retain(?:s|ed|ing)?|deposit(?:s|ed|ing)?|custody|withhold(?:s|ing)?|withheld)\b|\b(held|holding|hold)\b|\bjama\b|\brakhn[ae]\b|\brakhne\b|\brakhenge\b|\brakhega\b|\bcompany ke paas\b|\bpaas rakh|\bpaas rah|के पास रह|जमा|अभिरक्षा|रख(?:ना|ने|ेंगे|ेगा|ेगी|ेंगे|ा|े)/i;
-const HOLD_NEG = /\b(?:not|never|no)\s+(?:to\s+be\s+)?(?:retain|deposit|kept|keep|hold|held|withhold|jama|stored?)\b|\bnot(?:\s+\w+){0,6}\s+(?:to\s+)?(?:deposit|retain|keep|hold|withhold)\b|rakhne ke liye nahi|रखने के लिए नहीं|नहीं रखना|जमा नहीं|नहीं जमा/i;
-const KEEP_NOT = /\b(?:keep|kept|keeping|hold|held|holding)(?:\s+\w+){0,4}\s+ready\b|\b(?:keep|kept|keeping)\s+(?:them|it|originals?|the\s+originals?|documents?|certificates?)?\s*(?:with\s+you|with\s+the\s+candidate|in\s+your\s+possession)\b/i;
-function realHold(s: string) { return (HOLD_W.test(s) || /\b(keep|kept|keeping)\b/i.test(s)) && !KEEP_NOT.test(s); }
-function docsHeldHit(s: string) { return ORIG_W.test(s) && realHold(s) && !HOLD_NEG.test(s); }
-const RULES: { kind: string; re: RegExp; hit?: (s: string) => boolean; why: string; risk: (s: string) => Risk }[] = [
+function unpaidDenied(s: string) { return /\bunpaid\s+leave\b/i.test(s) || /\b(?:does\s+not|do\s+not|not)\b[\s\S]{0,48}\bunpaid\b/i.test(s); }
+function benchPayHit(s: string) { return (NO_PAY.test(s) && BENCH_W.test(s) && !unpaidDenied(s)) || (PAY_W.test(s) && ONLY_WHEN.test(s) && ALLOC_W.test(s)); }
+/** Split a sentence into clauses so a hold in one clause is not mixed with a return or a copy in another. */
+export function offerClauses(t: string): string[] {
+  return (t || '').replace(/\r/g, ' ').replace(/\s+/g, ' ').trim()
+    .split(/(?<=[.;!?।])\s+|(?<=:)\s+(?=[A-Z0-9“"‘'])|(?:,\s+and\s+)/)
+    .map((s) => s.trim()).filter((s) => s.length > 6);
+}
+const ORIG_SUBJ = /\boriginals\b|\boriginal(?:\s+\w+){0,4}\s+(?:certificates?|documents?|mark\s*-?sheets?|marksheets?|degree|papers?|testimonials?|academic\s+records|educational\s+(?:documents?|papers?|certificates?))\b|मूल.{0,32}(?:प्रमाण\s*)?पत्र(?:ों)?|मूल.{0,24}(?:दस्तावेज(?:ों)?|डिग्री|अंक\s*पत्र(?:ों)?)/i;
+const ANAPHORA = /\b(they|them|those(?:\s+(?:papers?|certificates?|documents?))?|the\s+(?:same|said)\s+(?:papers?|certificates?|documents?))\b/i;
+const COPY_OBJ = /\b((?:photo)?cop(?:y|ies)|scanned\s+copies|self[- ]attested\s+copies|attested\s+(?:photo)?cop(?:y|ies)|scanned\s+(?:photo)?cop(?:y|ies)|xerox)\b|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि/i;
+const CAMERA = /\bhold(?:s|ing)?\b[\s\S]{0,48}?(?:up\s+to\s+the\s+camera|in\s+front\s+of\s+the\s+camera)|(?:camera|kyc)[\s\S]{0,48}\bhold\b|\bhold\b[\s\S]{0,48}(?:camera|kyc)|camera ke saamne|कैमरा/i;
+const KEEP_READY = /\b(?:keep(?:s|ing)?|kept|hold(?:s|ing)?)\b[\s\S]{0,60}?\b(?:ready|handy|available|with\s+you|in\s+your\s+(?:bag|possession))\b|आप अपने पास रख|अपने पास रखें|अपने साथ रखें|आपके पास ही रह/i;
+const SAME_DAY = /\b(?:the\s+)?same\s+(?:day|afternoon|evening|morning|sitting)\b|\bimmediately\b|\bat\s+once\b|\bbefore\s+you\s+(?:leave|exit)\b|\bbefore\s+lunch\b|\bhanded\s+back(?!\s+only\s+after)\b|\bhand(?:s|ed)?\s+(?:them|it|the\s+originals?)?\s*back(?!\s+only\s+after)\b|\bwalk\s+out\s+with\b|\btake\s+it\s+home\b|\bgo\s+straight\s+back\b|\bcollected\s+by\s+the\s+candidate\b|\busi\s+(?:time|din)\b|तत्काल\s+लौटा|उसी\s+(?:दिन|समय)/i;
+const DURABLE = /\b(?:until|till|bond(?:ed)?|lock[- ]?in|custody|surety|probation|collateral|vault|deposit|impound|only\s+after)\b|\bjab\s+tak\b|जब तक|बॉन्ड|अभिरक्षा/i;
+type HoldHit = { i: number; n: number; tag: 'hold' | 'until-return' };
+function holdHits(s: string): HoldHit[] {
+  const specs: [RegExp, HoldHit['tag']][] = [
+    [/\b(?:will\s+|shall\s+|are\s+|is\s+|to\s+)?not\s+(?:be\s+)?(?:return(?:ed|s)?|releas(?:e|ed|es|ing))[\s\S]{0,80}?\b(?:until|till)\b/gi, 'until-return'],
+    [/(?:वापस\s*नहीं|नहीं\s*(?:किया|की)\s*जाएग[ाी])[\s\S]{0,40}तक|तक[\s\S]{0,40}(?:वापस\s*नहीं|नहीं\s*(?:किया|की)\s*जाएग[ाी])/g, 'until-return'],
+    [/\bsubmit(?:s|ted|ting)?\b[\s\S]{0,90}?\b(?:till|until)\b/gi, 'hold'],
+    [/\bplaced\s+with\b[\s\S]{0,70}?\b(?:until|till)\b/gi, 'hold'],
+    [/\b(?:remain(?:s|ed|ing)?|stays?|stay)\s+(?:in\s+)?(?:the\s+)?(?:[\w'-]+\s+){0,4}(?:custody|deposit|impounded)\b/gi, 'hold'],
+    [/\bin\s+deposit\s+with\b/gi, 'hold'],
+    [/\b(retain(?:s|ed|ing)?|hold(?:s|ing)?|held|keep(?:s|ing)?|kept|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld)\b/gi, 'hold'],
+    [/\bcustody\b/gi, 'hold'],
+    [/\bjama\b|\brakh(?:na|ne|ene|enge|ega|waane|wane|waana)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah/gi, 'hold'],
+    [/के पास रह|अभिरक्षा|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े)|रोक(?:ी|ेगा|ेगी|ेंगे)?/g, 'hold'],
+  ];
+  const out: HoldHit[] = [];
+  for (const [re, tag] of specs) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(s))) {
+      out.push({ i: m.index, n: m[0].length, tag });
+      if (!re.global) break;
+    }
+  }
+  return out.sort((a, b) => a.i - b.i);
+}
+function objectIsCopy(s: string, h: HoldHit): boolean {
+  const after = s.slice(h.i + (h.tag === 'hold' ? Math.min(h.n, 24) : 0), h.i + h.n + 80);
+  if (COPY_OBJ.test(after) && !/^\s+(?:the\s+)?originals?\b/i.test(after)) return true;
+  const before = s.slice(Math.max(0, h.i - 70), h.i);
+  if (COPY_OBJ.test(before) && /(?:cop(?:y|ies)|copies|xerox|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)(?:\s+की)?\s+(?:are|is|to\s+be|only|के)?\s*$/i.test(before)) return true;
+  return false;
+}
+function verbNegated(s: string, h: HoldHit): boolean {
+  if (h.tag === 'until-return') return false;
+  const before = s.slice(Math.max(0, h.i - 56), h.i);
+  const after = s.slice(h.i + h.n, h.i + h.n + 56);
+  if (/\b(not|never|n['’]?t)\b/i.test(before) || /\bno\s+(?:authority|right|power)\s+to\s*$/i.test(before) || /(?:नहीं|नही)\s*$/.test(before) || /\bnahi[n]?\b\s*$/i.test(before)) return true;
+  const negAt = after.search(/\bnahi[n]?\b|नहीं|नही/i);
+  if (negAt >= 0 && !/\buntil\b|\btill\b|\bjab\s+tak\b|जब तक|तक/i.test(after.slice(0, negAt))) return true;
+  return false;
+}
+function cameraHold(s: string, h: HoldHit): boolean {
+  return /\bhold/i.test(s.slice(h.i, h.i + h.n)) && CAMERA.test(s);
+}
+function hasOrig(s: string): boolean { return ORIG_SUBJ.test(s); }
+function clauseIsHold(s: string, prevOrig: boolean): boolean {
+  if (!hasOrig(s) && !(prevOrig && ANAPHORA.test(s))) return false;
+  if (KEEP_READY.test(s) && !DURABLE.test(s)) return false;
+  const hits = holdHits(s).filter((h) => !cameraHold(s, h) && !objectIsCopy(s, h) && !verbNegated(s, h));
+  if (!hits.length) return false;
+  if (SAME_DAY.test(s) && !hits.some((h) => h.tag === 'until-return') && !DURABLE.test(s)) return false;
+  return true;
+}
+/** True when a clause holds original certificates (not verification, copies, or a negated verb). */
+export function docsHeldHit(text: string): boolean {
+  const clauses = offerClauses(text || '');
+  let prev = false;
+  for (const c of clauses) {
+    if (clauseIsHold(c, prev)) return true;
+    prev = hasOrig(c) || prev;
+  }
+  return false;
+}
+
+const RULES: { kind: string; re: RegExp; hit?: (s: string) => boolean; why: string; risk: (s: string) => Risk; whole?: boolean }[] = [
   { kind: 'Service bond', re: /\b(service (bond|agreement)|bond(?!\s+period)|minimum (service|tenure)|lock[- ]in)\b/i, why: 'You may have to pay money if you leave before a set time. Ask for the amount, how it reduces over time, and what it covers.', risk: (s) => (AMT.test(s) || /penalt/i.test(s) ? 'red' : 'amber') },
   { kind: 'Pay to join / deposit', re: /\b((refundable |security |caution )deposit|deposit (of|amount)|pay(ment)? (to|before) (join|joining)|joining (fee|charges?)|registration (fee|charges?)|kit (fee|charges?)|laptop (deposit|charges?))\b/i, why: 'Asking a new hire to pay a deposit or fee to join is a serious warning sign. Genuine employers do not charge candidates. Do not pay; ask for this in writing.', risk: () => 'red' },
   { kind: 'Non-compete', re: /\b(non[- ]?compete|shall not (join|work for|engage)|competitor|competing business)\b/i, why: 'Limits where you can work after leaving. In India, section 27 of the Indian Contract Act, 1872 generally makes restraints on trade after employment void, but read it and ask: https://www.indiacode.nic.in/bitstream/123456789/2187/2/A187209.pdf', risk: () => 'amber' },
@@ -29,7 +101,7 @@ const RULES: { kind: string; re: RegExp; hit?: (s: string) => boolean; why: stri
   { kind: 'Notice period', re: /\b(notice period|(\d+|one|two|three|six)\s*(days?|months?)['’]?\s*(written )?notice|notice of (\d+|one|two|three))/i, why: 'Long notice periods make it harder to join your next job. 30 to 60 days is common; 90 days is long.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d >= 90 ? 'red' : d != null && d > 60 ? 'amber' : 'info'; } },
   { kind: 'Clawback / repayment', re: /\b(claw ?back|repay|refund (the|any)|recover(y|ed)? (of|from)|reimburse the company|joining bonus|relocation (assistance|bonus|allowance)|sign[- ]on bonus)\b/i, why: 'Money you may have to return if you leave early. Ask for the exact amount and time period in writing.', risk: (s) => (/repay|claw|recover|refund|reimburse/i.test(s) ? 'amber' : 'info') },
   { kind: 'Training cost recovery', re: /\btraining (cost|fee|expense|charges)/i, why: 'Some employers recover training costs if you leave. Ask what the real cost is and how it is calculated.', risk: () => 'amber' },
-  { kind: 'Original documents held', re: /\b(originals?|original educational|retain (your|the) (original|certificates))|मूल/i, hit: docsHeldHit, why: 'Holding original certificates is a serious warning sign. Offer only copies, and ask for this in writing.', risk: () => 'red' },
+  { kind: 'Original documents held', re: /\b(originals?|original educational|retain (your|the) (original|certificates))|मूल/i, hit: docsHeldHit, whole: true, why: 'Holding original certificates is a serious warning sign. Offer only copies, and ask for this in writing.', risk: () => 'red' },
   { kind: 'Pay depends on project allocation / bench', re: /\b(bench|billable|deploy(?:ed|ment)|allocat(?:ed|ion))\b/i, hit: benchPayHit, why: 'Pay may stop, or start only, when you are assigned to a billable project (including time on the bench). Ask in writing whether you are paid between projects, and from which date salary starts.', risk: (s) => (NO_PAY.test(s) ? 'red' : 'amber') },
   { kind: 'Liquidated damages', re: /\b(liquidated damages|penalty of|pay (a )?penalty|damages of)\b/i, why: 'A fixed sum payable if you break the terms. Ask how the figure was set.', risk: () => 'red' },
   { kind: 'Probation', re: /\bprobation/i, why: 'During probation notice is often shorter and confirmation is not automatic. Check the length and notice.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d > 180 ? 'amber' : 'info'; } },
@@ -40,7 +112,8 @@ const RULES: { kind: string; re: RegExp; hit?: (s: string) => boolean; why: stri
 const sentences = (t: string) => t.replace(/\r/g, '').replace(/([.;!?:])?[ \t]*\n{2,}/g, (_m, p) => (p ? p + ' ' : '. ')).replace(/(?<!\.)\.\s*\.(?!\.)/g, '.').replace(/\s+/g, ' ').split(/(?<=[.;!?])\s+(?=[A-Z0-9(•-])/).map((s) => s.trim()).filter((s) => s.length > 15);
 export function scanOffer(text: string): Clause[] {
   const out: Clause[] = [];
-  for (const s of sentences(text || '')) for (const r of RULES) if (r.hit ? r.hit(s) : r.re.test(s)) {
+  const chunks = (r: (typeof RULES)[number]) => r.whole ? [(text || '').replace(/\s+/g, ' ').trim()].filter((s) => s.length > 15) : sentences(text || '');
+  for (const r of RULES) for (const s of chunks(r)) if (r.hit ? r.hit(s) : r.re.test(s)) {
     if (out.some((c) => c.kind === r.kind && c.sentence === s)) continue;
     const d = s.match(DUR), a = s.match(AMT);
     out.push({ kind: r.kind, risk: r.risk(s), sentence: s.slice(0, 400), why: r.why, detail: [a?.[0], d?.[0]].filter(Boolean).join(' · ') || undefined });

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { scanOffer } from '../src/lib/offerShield';
 import { designationPack } from '../src/lib/voiceGame';
 import { naturalize } from '../src/lib/voiceInterview';
-import { CGL_POSTS, EXAMS, ageLimitText, ageOn, match, matchExam, radarText, type Profile } from '../src/lib/govJobs';
+import { CGL_POSTS, EXAMS, ageLimitText, ageOn, cglPostLabel, cglPostStatuses, keepExamVisible, match, matchExam, radarText, type Profile } from '../src/lib/govJobs';
 
 const BENCH_KIND = 'Pay depends on project allocation / bench';
 const DOC_KIND = 'Original documents held';
@@ -391,4 +391,218 @@ test('gov: missing or empty DOB never passes and does not report a numeric pass 
   const cse = match(base({ dob: '' })).find((m) => m.exam.id === 'upsc-cse')!;
   assert.equal(cse.ok, false);
   assert.equal(cse.ageStatus, 'check');
+});
+
+
+// Tester's exact 32 + 32 from the 0b3434a retest, plus a fresh held-out set written for this fix.
+const TESTER_DOC_FP = [
+  'Kindly produce your original certificates for scrutiny at the onboarding counter on Monday morning.',
+  'The originals will be shown and handed back across the desk once the clerk has ticked the checklist.',
+  'This offer states that originals are not retained by the establishment at any stage of joining.',
+  'We do not keep originals; only the attested photocopies are placed on the personal file.',
+  'All educational papers will be returned after verification, usually before you leave the hall.',
+  'Candidates must present original marksheets for inspection by the document-verification officer.',
+  'Please bring the original degree for DV at the regional office and take it home when the slot ends.',
+  'The campus team will inspect original documents under CCTV and give them back before lunch is served.',
+  'You are required to produce original certificates for scrutiny, after which they go straight back into your bag.',
+  'HR will not retain any original educational papers; the clause covers photocopies only.',
+  'We will not retain your original certificates, as confirmed in paragraph 4 of this appointment letter.',
+  'The firm does not keep original documents overnight, even if verification runs late into the evening.',
+  'Originals not retained: you walk in with them and walk out with them after the visual check.',
+  'Please hold the original certificates up to the camera during the remote KYC call, then put them away.',
+  'The company will keep a photocopy of your original degree; the original itself stays with you.',
+  'HR will retain only the self-attested copies, and the original certificates are returned immediately.',
+  'We retain scanned copies for the file; your originals will be returned the same afternoon.',
+  'Document scrutiny is limited to viewing original papers; nothing is taken into company storage.',
+  'Please arrive with original testimonials for a short comparison against the uploaded scans.',
+  'The notary will look at the original degree, stamp the copies, and give the original back at once.',
+  'Joining instructions: carry original academic records for DV, then collect them before you exit.',
+  'A visual check of original papers is mandatory; the employer has no authority to store those papers.',
+  'On the first morning, original certificates are to be exhibited and then collected by the candidate.',
+  'Please do not leave original documents on the table; they are only for a momentary inspection.',
+  'Background verification will ask to see original marksheets, which remain in the candidate’s folder.',
+  'Originals ko sirf dikhana hai verification desk par, wapas le jaana hai usi time, rakhne ke liye nahi.',
+  'DV ke baad originals wapas ho jaayenge; company ke paas rakhne ka koi niyam is offer mein nahi hai.',
+  'हम मूल प्रमाण पत्र केवल जांच के लिए मांगते हैं और सत्यापन पूरा होते ही लौटा देते हैं।',
+  'मूल दस्तावेज जमा नहीं करने हैं; केवल देखने के बाद उम्मीदवार उन्हें साथ ले जाएँ।',
+  'कंपनी मूल डिग्री अपने पास नहीं रखेगी, जांच के पश्चात कागजात तत्काल लौटाए जाएंगे।',
+  'We never hold original certificates after the appointment; that is written in the FAQs attached here.',
+  'The letter is clear that original documents must be produced for scrutiny and are not to be deposited.',
+];
+const TESTER_DOC_TP = [
+  'The firm will retain your original academic certificates until the close of the service agreement.',
+  'Please deposit original marksheets with the admin desk; they are released only after the lock-in ends.',
+  'HR may withhold the original degree for the first eighteen months of employment under clause 11.',
+  'Original documents will stay in the company’s custody while the training surety remains in force.',
+  'You must submit originals to the registrar till completion of bond, as set out in schedule C.',
+  'Originals will not be returned until you have served the full notice and the exit clearance is signed.',
+  'The employer shall keep the original certificates in a sealed cover for the term of the agreement.',
+  'Joining is conditional on leaving original educational papers in deposit with the contractor’s office.',
+  'A surety clause allows the institute to hold original testimonials for the sponsored study period.',
+  'Personnel will take custody of your original degree on day one and log it in the bond register.',
+  'The original mark sheets are to be surrendered and will be stored by management for two calendar years.',
+  'We will keep original documents as collateral against the repayment obligation in annexure D.',
+  'Should you resign early, original certificates already deposited remain with us until dues are cleared.',
+  'The appointment requires original papers to be placed with the trustee until the guarantee expires.',
+  'Your originals stay impounded in the head-office vault for the entire probation-plus-bond window.',
+  'The college will not release original documents till the funded course has been completed in full.',
+  'Aapko originals jama karwane honge joining ke din, aur teen saal baad hi nikalwaye ja sakte hain.',
+  'Original certificates company locker mein rakhwaane honge jab tak service bond discharge na ho.',
+  'Annexure (Hindi): originals ko paas rakhna hoga till the surety letter is cancelled in writing.',
+  'Bond ke khatam hone tak original documents company ke paas rahenge, jo schedule mein likha hai.',
+  'मूल प्रमाणपत्र जमा कराने होंगे और अनुबंध पूरा होने के बाद ही लौटाए जाएंगे।',
+  'नियोक्ता मूल दस्तावेज अपनी अभिरक्षा में रखेगा जब तक बॉन्ड की रकम का निपटान न हो।',
+  'आपकी मूल डिग्री तब तक रोकी जाएगी जब तक निर्धारित सेवा अवधि पूरी नहीं हो जाती।',
+  'कार्यालय आपके मूल अंक पत्र दो वर्ष तक अपने पास रखेगा, यह शर्त पत्र में दर्ज है।',
+  'The sponsor retains original educational documents for the period of the scholarship bond.',
+  'Original papers held by the training partner are handed back only after the bonded term ends.',
+  'Clause 6 says the contractor may withhold original certificates if the lock-in is still running.',
+  'Please hand over original testimonials; they will be kept in the iron cupboard until year two ends.',
+  'The society shall deposit your original degree with its lawyer until the service period lapses.',
+  'Originals remain in HR custody and cannot be withdrawn mid-bond except by a court order.',
+  'We retain the original registration certificate throughout the rural-posting bond described below.',
+  'Management will keep your original certificates until the liquidated-damages clause is exhausted.',
+];
+
+const FRESH2_DOC_HOLD = [
+  'The firm shall retain the original degree certificate throughout the training bond.',
+  'Original marksheets are to be surrendered at induction and are released only after the lock-in lapses.',
+  'HR has stored the original academic records in the vault pending completion of the service term.',
+  'Your original certificates will be impounded as security against the joining-bonus recovery clause.',
+  'The sponsor will not return original educational documents until the funded internship is over.',
+  'Original papers must be submitted to the registrar till the bonded months have been served.',
+  'The contractor keeps the original testimonials in its strong room for the whole engagement.',
+  'Originals stay deposited with the principal until the surety bond is formally vacated.',
+  'The hospital withholds original registration certificates during the two-year rural posting.',
+  'We will hold your original graduation certificate as collateral for the equipment issued to you.',
+  'Original educational papers remain in the custody of the personnel wing until resignation is cleared.',
+  'The academy has retained all original mark sheets of sponsored cadets for the course duration.',
+  'The original degree is to be placed with the trustee until the liquidated-damages amount is settled.',
+  'The college will keep the originals and will not release them till fee recovery is complete.',
+  'Joining ke baad original certificates jama karne honge, wapas tabhi jab bond khatam ho.',
+  'Original documents rakhwaane hain company locker mein until the notice period is fully served.',
+  'Aapke originals training partner ke paas rahenge jab tak course complete na ho.',
+  'HR originals ko rakhne wala hai till the probation-plus-bond window is over.',
+  'Company will rakh the original degree with head office for the entire bonded tenure.',
+  'Original papers ko surrender karna hoga aur return tabhi milega jab lock-in cross ho.',
+  'मूल प्रमाण पत्र संस्थान तब तक अपने पास रखेगा जब तक बॉन्ड की राशि चुका न दी जाए।',
+  'मूल डिग्री जमा करनी होगी तथा सेवाकाल पूरा होने तक वापस नहीं की जाएगी।',
+  'मूल अंक पत्र नियोक्ता की अभिरक्षा में रहेंगे जब तक अनुबंध समाप्त नहीं होता।',
+  'कंपनी आपके मूल दस्तावेज रोकेगी यदि आप निर्धारित अवधि से पहले छोड़ते हैं।',
+  'मूल शैक्षणिक पत्र कार्यालय में तब तक रखे रहेंगे जब तक जमानत पत्र रद्द न हो।',
+  'The training partner has deposited the original certificates, and they remain in custody until the exam is cleared.',
+  'Originals will be kept back by the firm; they are handed over only after the service bond expires.',
+  'You must deposit original academic documents with the escrow desk for the life of the agreement.',
+  'The board shall withhold the original degree and shall not release it until the scholarship is worked off.',
+  'Please submit the original degree. They will be retained until the rural service bond ends.',
+];
+const FRESH2_DOC_VERIFY = [
+  'Please bring original certificates for document verification and take them home afterwards.',
+  'Originals are only to be shown to the notary; no paper is left with the office overnight.',
+  'Kindly hold your original degree up to the camera during the video KYC call.',
+  'The desk will keep a photocopy of each certificate on the personnel file.',
+  'HR retains only self-attested copies; originals stay in your bag throughout the appointment.',
+  'Candidates must produce original marksheets for a same-day visual check at the desk.',
+  'We do not retain original educational documents under any clause of this letter.',
+  'Originals will not be deposited with the employer; only scans are uploaded to the portal.',
+  'Please keep a photocopy of your original degree for the joining folder.',
+  'The board will inspect original papers and return them before lunch the same day.',
+  'DV requires sight of the originals, which you carry in and carry out yourself.',
+  'Original documents are required at joining so that copies can be attested in front of you.',
+  'The firm has no authority to hold your original certificates at any time.',
+  'Originals nahi rakhne hain, sirf verification ke liye dikhane hain on the first morning.',
+  'Company originals ko retain nahi karegi; copies file mein jayengi after attestation.',
+  'Aap photocopies jama kijiye; original certificates aapke paas hi rahenge throughout.',
+  'Rakhne ke liye nahi, sirf camera ke saamne original degree hold karni hai for KYC.',
+  'DV ke din originals dikhana hoga and you walk out with every paper the same afternoon.',
+  'कृपया मूल प्रमाण पत्र सत्यापन हेतु साथ लाएँ; जमा नहीं करने हैं।',
+  'मूल दस्तावेज केवल दिखाने हैं, कंपनी उन्हें अपने पास नहीं रखेगी।',
+  'मूल डिग्री की फोटोप्रति जमा करें; मूल पत्र अपने पास रखें।',
+  'सत्यापन के बाद उसी दिन मूल अंक पत्र वापस कर दिए जाएंगे।',
+  'नियोक्ता मूल प्रमाण पत्र नहीं रखेगा, केवल प्रतियाँ फ़ाइल में रहेंगी।',
+  'The notary will look at the original degree and give it back at once after stamping copies.',
+  'Please keep original documents ready for a brief cross-check; they remain with you.',
+  'Original certificates are never stored with the company under this joining policy.',
+  'Background screening will view the original degree once at the venue and close the file.',
+  'Submit self-attested copies only; do not surrender your original marksheets to anyone at the desk.',
+  'The university does not keep original educational documents after the appointment ends.',
+  'Originals rakhne ki zaroorat nahi, only attested copies chahiye for the personal file.',
+];
+
+test('offer: tester 32+32 and a fresh 30+30 documents set (clause detector)', () => {
+  const missed: string[] = [], falseHits: string[] = [];
+  const score = (arr: string[], expectHit: boolean, bag: string[], label: string) => {
+    for (const t of arr) {
+      const c = docs('SAMPLE. ' + t);
+      if (expectHit) {
+        if (!c.length) bag.push(label + ' missed: ' + t);
+        else if (c[0].risk !== 'red') bag.push(label + ' not red: ' + t);
+      } else if (c.length) bag.push(label + ' false: ' + t);
+    }
+  };
+  score(TESTER_DOC_TP, true, missed, 'tester');
+  score(FRESH2_DOC_HOLD, true, missed, 'fresh');
+  score(TESTER_DOC_FP, false, falseHits, 'tester');
+  score(FRESH2_DOC_VERIFY, false, falseHits, 'fresh');
+  assert.equal(missed.length, 0, missed.join('\n'));
+  assert.equal(falseHits.length, 0, falseHits.join('\n'));
+  assert.ok(TESTER_DOC_TP.length >= 32 && TESTER_DOC_FP.length >= 32);
+  assert.ok(FRESH2_DOC_HOLD.length >= 30 && FRESH2_DOC_VERIFY.length >= 30);
+});
+
+test('offer: Hindi bench wording and unpaid-leave denial do not mis-fire', () => {
+  assert.ok(bench('SAMPLE. वेतन नहीं दिया जाएगा यदि आप बेंच पर हैं और कोई बिल योग्य परियोजना आवंटित नहीं है।').length);
+  assert.ok(bench('SAMPLE. बेंच पर रहते हुए वेतन नहीं मिलेगा जब तक नई तैनाती नहीं होती।').length);
+  assert.equal(bench('SAMPLE. The firm tracks bench days for capacity planning and does not treat them as unpaid leave.').length, 0);
+  assert.equal(bench('SAMPLE. Bench time is recorded for planning; it is not unpaid leave under the standing orders.').length, 0);
+});
+
+test('gov: Inspector (Preventive Officer) and Inspector (Examiner) are Check notice, never aged', () => {
+  const po = CGL_POSTS.find((x) => x.id === 'po-inspector')!;
+  const ex = CGL_POSTS.find((x) => x.id === 'examiner')!;
+  assert.equal(po.name, 'Inspector (Preventive Officer)');
+  assert.equal(ex.name, 'Inspector (Examiner)');
+  assert.equal(po.ageUnstated, true);
+  assert.equal(ex.ageUnstated, true);
+  assert.match(cglPostLabel(po), /age not stated in notice/i);
+  assert.match(cglPostLabel(ex), /age not stated in notice/i);
+  for (const age of [17, 25, 31, 40]) {
+    for (const id of ['po-inspector', 'examiner'] as const) {
+      const m = match({ ...base({ dob: dobAt(age), cat: 'GEN' }), cglPost: id }).find((x) => x.exam.id === 'ssc-cgl')!;
+      assert.equal(m.ageStatus, 'check', id + ' age ' + age);
+      assert.equal(m.ok, false, id + ' must not pass on age ' + age);
+      assert.notEqual(m.fit, 'ok', id);
+      assert.ok(m.why.every((w) => !/Over age|Too young/i.test(w)), m.why.join(' | '));
+      assert.match(m.ageClause || '', /age not stated in notice/i);
+      assert.match(ageLimitText(m).heading, /Check notice/i);
+      assert.match(m.ageClause || '', /18–30|18-30/);
+    }
+  }
+});
+
+test('gov: empty DOB still returns exams for the results card, with Check notice', () => {
+  const rows = match(base({ dob: '' }));
+  assert.ok(rows.length > 0, 'UI can render the results card from match() with an empty DOB');
+  const cgl = rows.find((m) => m.exam.id === 'ssc-cgl')!;
+  assert.equal(cgl.ageStatus, 'check');
+  assert.equal(cgl.fit, 'check');
+  assert.equal(cgl.ok, false);
+  assert.match(ageLimitText(cgl).heading, /Check notice/i);
+  assert.ok(cgl.why.some((w) => /date of birth/i.test(w)));
+});
+
+test('gov: per-post pass/check/fail keeps CGL visible when the picked post fails', () => {
+  const p = base({ dob: dobAt(31), cat: 'GEN', cglPost: 'auditor-cag' });
+  const m = match(p).find((x) => x.exam.id === 'ssc-cgl')!;
+  assert.equal(m.ageStatus, 'fail');
+  assert.equal(m.fit, 'no');
+  assert.equal(keepExamVisible(m, false), true, 'CGL must stay on the list with its breakdown');
+  const rows = cglPostStatuses(p);
+  const auditor = rows.find((r) => r.post.id === 'auditor-cag')!;
+  const jso = rows.find((r) => r.post.id === 'jso')!;
+  const po = rows.find((r) => r.post.id === 'po-inspector')!;
+  assert.equal(auditor.status, 'fail');
+  assert.equal(jso.status, 'pass');
+  assert.equal(po.status, 'check');
+  assert.match(po.note || '', /age not stated in notice/i);
 });

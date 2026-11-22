@@ -65,8 +65,8 @@ export function eduOk(e: Exam, p: Profile) {
   return false;
 }
 
-/** SSC CGL 2026 posts with an age printed in the official notice (as on 01-08-2026). Inspector (Preventive Officer) and Inspector (Examiner) are omitted because that notice does not print an age on those two rows. */
-export interface CglPost { id: string; name: string; org: string; minAge: number; maxAge: number }
+/** SSC CGL 2026 posts from the official notice (as on 01-08-2026). Posts with a blank age column are listed as Check notice and are never passed or failed on age. */
+export interface CglPost { id: string; name: string; org: string; minAge?: number; maxAge?: number; ageUnstated?: boolean; verifyNote?: string }
 export const CGL_POSTS: CglPost[] = [
   { id: 'aao-central', name: 'Assistant Audit Officer (Central Cadre)', org: 'C&AG', minAge: 18, maxAge: 30 },
   { id: 'aao-state', name: 'Assistant Audit Officer (State Cadre)', org: 'C&AG', minAge: 18, maxAge: 30 },
@@ -80,6 +80,8 @@ export const CGL_POSTS: CglPost[] = [
   { id: 'aso-other-l7', name: 'Assistant / Assistant Section Officer', org: 'Other Ministries/Departments/Organizations (Level 7)', minAge: 18, maxAge: 30 },
   { id: 'it-inspector', name: 'Inspector of Income Tax', org: 'CBDT', minAge: 18, maxAge: 30 },
   { id: 'ce-inspector', name: 'Inspector (Central Excise)', org: 'CBIC', minAge: 18, maxAge: 30 },
+  { id: 'po-inspector', name: 'Inspector (Preventive Officer)', org: 'CBIC', ageUnstated: true, verifyNote: 'Some listings give 18–30; verify in the official notice.' },
+  { id: 'examiner', name: 'Inspector (Examiner)', org: 'CBIC', ageUnstated: true, verifyNote: 'Some listings give 18–30; verify in the official notice.' },
   { id: 'ed-aeo', name: 'Assistant Enforcement Officer', org: 'Directorate of Enforcement', minAge: 18, maxAge: 30 },
   { id: 'cbi-si', name: 'Sub Inspector', org: 'Central Bureau of Investigation', minAge: 20, maxAge: 30 },
   { id: 'inspector-posts', name: 'Inspector Posts', org: 'Department of Posts', minAge: 18, maxAge: 30 },
@@ -116,7 +118,7 @@ export function postAges(e: Exam): number[] {
   return [...new Set(raw)].sort((a, b) => a - b);
 }
 export function postMins(e: Exam): number[] {
-  if (e.id === 'ssc-cgl') return [...new Set(CGL_POSTS.map((x) => x.minAge))].sort((a, b) => a - b);
+  if (e.id === 'ssc-cgl') return [...new Set(CGL_POSTS.filter((x) => !x.ageUnstated && x.minAge != null).map((x) => x.minAge as number))].sort((a, b) => a - b);
   return [e.minAge];
 }
 /** ESM: fail closed unless years of military service are given, then deduct service + 3 (CGL / notices that deduct service). Does not stack on top of category + PwBD; the larger figure is used. */
@@ -127,7 +129,10 @@ export function esmExtra(e: Exam, p: Profile): number | 'check' {
   if (p.esmYears == null || !Number.isFinite(p.esmYears) || p.esmYears < 0) return 'check';
   return p.esmYears + 3;
 }
-export type PostCap = number | { minAge: number; maxAge: number };
+export type PostCap = number | { minAge: number; maxAge: number } | { ageUnstated: true; verifyNote?: string };
+const isUnstatedCap = (post?: PostCap): post is { ageUnstated: true } => typeof post === 'object' && post != null && 'ageUnstated' in post && !!post.ageUnstated;
+const isNamedCap = (post?: PostCap): post is { minAge: number; maxAge: number } => typeof post === 'object' && post != null && 'maxAge' in post;
+
 /** Age check for one exam. When limits vary by post, use a named or listed cap; otherwise fail closed to Check notice naming the clause. Strong / likely eligible needs a confirmed age. Missing DOB never passes. */
 export function matchExam(e: Exam, p: Profile, post?: PostCap): Match {
   const rawAge = ageOn(p.dob, e.asOn);
@@ -147,7 +152,7 @@ export function matchExam(e: Exam, p: Profile, post?: PostCap): Match {
     postMaxAge = post;
     used = posts.includes(post) ? [post] : 'unknown';
     usedMins = used === 'unknown' ? minsAll : [e.minAge];
-  } else if (post) {
+  } else if (isNamedCap(post)) {
     postMaxAge = post.maxAge;
     used = [post.maxAge];
     usedMins = [post.minAge];
@@ -162,6 +167,10 @@ export function matchExam(e: Exam, p: Profile, post?: PostCap): Match {
   if (dobMissing) {
     ageStatus = 'check';
     clause = 'add a valid date of birth to confirm the age limit.';
+    why.push(`Check notice: ${clause}`);
+  } else if (isUnstatedCap(post)) {
+    ageStatus = 'check';
+    clause = 'age not stated in notice.' + (post.verifyNote ? ` ${post.verifyNote}` : '');
     why.push(`Check notice: ${clause}`);
   } else if (age < minLoose) {
     why.push(`Too young: ${age} on ${e.asOn}, minimum ${minLoose}`);
@@ -198,10 +207,40 @@ export function match(p: Profile): Match[] {
     if (e.id !== 'ssc-cgl') return matchExam(e, p);
     const post = cglPostOf(p);
     if (post === 'unknown') return matchExam(e, p, -1);
-    if (post) return matchExam(e, p, { minAge: post.minAge, maxAge: post.maxAge });
+    if (post && post.ageUnstated) return matchExam(e, p, { ageUnstated: true, verifyNote: post.verifyNote });
+    if (post) return matchExam(e, p, { minAge: post.minAge!, maxAge: post.maxAge! });
     return matchExam(e, p);
   }).sort((a, b) => order[a.fit] - order[b.fit]);
 }
+
+export const CGL_AGE_UNSTATED = 'Check notice: age not stated in notice';
+export function cglPostLabel(x: CglPost): string {
+  if (x.ageUnstated) return `${x.name}, ${x.org} (age not stated in notice)`;
+  return `${x.name}, ${x.org} (${x.minAge}–${x.maxAge})`;
+}
+export function cglPostStatuses(p: Profile): { post: CglPost; status: AgeStatus; note?: string }[] {
+  const exam = EXAMS.find((e) => e.id === 'ssc-cgl')!;
+  return CGL_POSTS.map((post) => {
+    const cap: PostCap = post.ageUnstated ? { ageUnstated: true, verifyNote: post.verifyNote } : { minAge: post.minAge!, maxAge: post.maxAge! };
+    const m = matchExam(exam, p, cap);
+    const verify = post.ageUnstated && post.verifyNote && m.ageStatus === 'check' && !/date of birth/i.test(m.ageClause || '') ? ` ${post.verifyNote}` : '';
+    const note = m.ageStatus === 'check' ? `${m.ageClause || CGL_AGE_UNSTATED}${verify}` : undefined;
+    return { post, status: m.ageStatus, note };
+  });
+}
+/** CGL stays on the results list with its per-post breakdown even when the picked post is a fail. */
+export function keepExamVisible(m: Match, showAll: boolean) {
+  return showAll || m.fit !== 'no' || m.exam.id === 'ssc-cgl';
+}
+
+export function cglPostGroups(p: Profile) {
+  const rows = cglPostStatuses(p);
+  const labels = { pass: 'Pass', check: 'Check notice', fail: 'Fail' } as const;
+  return (['pass', 'check', 'fail'] as const)
+    .map((status) => ({ status, label: labels[status], rows: rows.filter((r) => r.status === status) }))
+    .filter((g) => g.rows.length);
+}
+
 export function ageLimitText(m: Match): { heading: string; detail: string } {
   const posts = postAges(m.exam), r = m.relax;
   if (m.ageStatus === 'check') return { heading: 'Check notice', detail: m.ageClause || m.exam.note || 'Age limit varies by post. Check the official notice.' };
