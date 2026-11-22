@@ -1062,3 +1062,147 @@ test('offer: fresh held-out 40+40 after whole-phrase inversion', () => {
   for (const s of FRESH7_LEGIT) lc[docTier(s)]++;
   console.log('fresh7 holds', hc, 'legit', lc);
 });
+
+test('offer: retest-8 DOCUMENT_SUBJECT, venue tails, Marathi/Tamil hold cues', () => {
+  assert.notEqual(docTier('keep originals in your pocket at the exam hall'), 'red');
+  assert.notEqual(docTier('keep the originals in your bag until the verification is over'), 'red');
+  assert.notEqual(docTier('The academic set should remain in your backpack at all times on the ICF shop floor after the tick-mark.'), 'red');
+  assert.notEqual(docTier('carry your originals with you at the venue on 5 March'), 'red');
+
+  for (const s of [
+    'Original degree-ah establishment locker-la veidunga TANGEDCO Mettur-la; bond mudinjida varikkum return aagadhu.',
+    'Kindly leave the academic papers in your unit locker at NHAI, Dwarka, for two years.',
+    'मूळ कागदपत्रे कार्यालय तिजोरीत ठेवली जातील, सिडको पनवेल; मुदत नमूद नाही.',
+    'The works will not give the M.Sc. degree back till the rural bond is discharged at IREL, Chatrapur.',
+    'We will not hand the board sheets back until the notice period is served at NITTTR Bhopal.',
+    'You must deposit the academic set in the company locker at ELCOT, Sholinganallur, on the reporting morning.',
+  ]) assert.notEqual(docTier(s), 'clean', 'must not be clean: ' + s);
+
+  const subjects = ['the original certificates', 'the academic set', 'the M.Sc. degree', 'the board sheets', 'the diploma', 'the marksheets'];
+  const make = [
+    (d: string, p: string, t: string) => `You must deposit ${d} in the ${p} ${t}.`,
+    (d: string, p: string, t: string) => `Kindly leave ${d} in the ${p} ${t}.`,
+    (d: string, p: string, t: string) => `Kindly hand over ${d} to the admin at the ${p} who will keep them ${t}.`,
+    (d: string, p: string, t: string) => `Please submit ${d} to the ${p} ${t}.`,
+    (d: string, p: string, t: string) => `We will not return ${d} ${t}.`,
+    (d: string, p: string, t: string) => `The works will not give ${d} back till ${t.replace(/^until |^till /i, '')}.`,
+    (d: string, p: string, t: string) => `Please keep ${d} in the ${p} ${t}.`,
+    (d: string, p: string, t: string) => `${d} will be retained at the ${p} ${t}.`,
+    (d: string, p: string, t: string) => `${d} are stored in the ${p} ${t}.`,
+  ];
+  const places = ['company locker', 'establishment cell', 'unit locker'];
+  const times = ['until the bond ends', 'for two years', 'till the notice period is served'];
+  const missed: string[] = [];
+  for (const d of subjects) for (const fn of make) for (const place of places) for (const time of times) {
+    const s = fn(d, place, time);
+    if (docsHeldRisk(s) !== 'red') missed.push((docsHeldRisk(s) ?? 'clean') + ' :: ' + s);
+  }
+  assert.ok(subjects.length * make.length * places.length * times.length >= 30, 'need a generated path set');
+  assert.equal(missed.length, 0, 'DOCUMENT_SUBJECT x hold path x workplace x time must be red:\n' + missed.slice(0, 20).join('\n'));
+
+  const nouns = ['pocket', 'bag', 'suitcase', 'purse', 'backpack', 'wallet', 'briefcase', 'hands'];
+  const tails = [' at the exam hall', ' at the venue', ' at the counter', ' at all times', ' until the verification is over', ' until you leave the hall'];
+  const selfRed: string[] = [];
+  for (const n of nouns) for (const tail of tails) {
+    const s = `Keep the originals in your ${n}${tail}.`;
+    if (docsHeldRisk(s) === 'red') selfRed.push(s);
+  }
+  assert.equal(selfRed.length, 0, 'self-noun x venue/verify tail must never be red:\n' + selfRed.join('\n'));
+});
+
+const FRESH8_HOLD = [
+  `FAQ — KIOCL, Bengaluru.\nQ. Where do the academic papers go after joining?\nA. You must deposit the academic set in the company locker at KIOCL, Bengaluru, until the bond ends.`,
+  `Document action\nDiploma: retained by Establishment at NPCIL, Kaiga, till probation ends.`,
+  `From: hr@dlw.example.test\nTo: joiner\nThe M.Sc. degree will be kept in the establishment cell at DLW, Varanasi, for two years.`,
+  `SMS from SBI LHO Kolkata: "Pls leave the board sheets with HR on reporting day. They will not be given back till the surety is discharged."`,
+  `WhatsApp, Bank of Maharashtra, Pune: "Hand over the diploma to admin. Return aagadhu until notice is served."`,
+  `The degree was lodged in the works locker at AAI Chennai Airport and will be released only after the traineeship.`,
+  `Kindly leave the academic papers in your unit locker at India Post GPO, Mumbai, for two years.`,
+  `मूळ कागदपत्रे कार्यालय तिजोरीत ठेवली जातील, एचडब्ल्यूबी कोटा.`,
+  `Original degree-ah locker-la veidunga BEL Kotdwara-la; bond mudinjida varikkum return aagadhu.`,
+  `Minutes, BHEL Bhopal, item 6. The academic set is to be deposited with the Controller and retained till the rural bond is discharged.`,
+  `Form field — NTPC Ramagundam. Academic papers: to be surrendered to Establishment on day one.`,
+  `Circulating memo, CWC, New Delhi. Board sheets shall be stored in the strong room for the duration of the indenture.`,
+  `Please keep the diploma with your reporting manager at GAIL Pata until further orders.`,
+  `You must deposit the academic set in the company locker at IOCL Barauni on the reporting morning.`,
+  `Kindly hand over the marksheets to the admin at MSTC Kolkata, who will keep them for two years of the funded residency.`,
+  `We will not hand the board sheets back until the notice period is served at Bridge & Roof, Kolkata.`,
+  `The works will not give the B.Tech degree back till the service bond is discharged at CLW Chittaranjan.`,
+  `Apne academic papers HR ke paas jama kijiye at HWB Kota, bond khatam hone tak wapas nahi milenge.`,
+  `The original TC will stay with your branch manager at Bank of Maharashtra, Pune.`,
+  `Academic records remain with the principal of the training institute at KIOCL Bengaluru.`,
+  `Aapke paas submit karne ke baad the diploma company vault mein rakh diye jaayenge at NPCIL Kaiga.`,
+  `Please keep the academic set in your office drawer at SBI LHO Kolkata till the indenture lapses.`,
+  `Kindly leave your marksheets in your plant locker at NTPC Ramagundam for the traineeship.`,
+  `The diploma is to remain in your regional office at CWC, New Delhi, until further orders.`,
+  `Joining mail. Report to BEL Kotdwara. Please keep your B.Com. degree with your reporting manager at the works until the one-year traineeship has been served in full.`,
+  `The company vault at MSTC Kolkata will hold marksheets of every new officer.`,
+  `Degree certificates shall be deposited with the admin wing of AAI Chennai Airport.`,
+  `मूल पदवी प्रमाणपत्र जमा करावे; परत दिले जाणार नाही, एचडब्ल्यूबी कोटा.`,
+  `Board sheets: retained till probation ends at DLW Varanasi.`,
+  `Passive voice: the academic papers have been placed in custody of the shipping clerk at India Post GPO.`,
+  `Teams chat — IOCL Barauni. "Leave the diploma in the unit locker for two years."`,
+  `FAQ, GAIL Pata. Q. Are board sheets returned? A. They will not be returned until the bond ends.`,
+  `Table. Testimonials | stored in the establishment almirah at Bridge & Roof.`,
+  `SMS: "Deposit the academic set in the locker at CLW Chittaranjan. Tak wapas nahi milenge."`,
+  `The M.Phil. diploma will be retained throughout the research posting at KIOCL.`,
+  `You must deposit your originals in the company locker at NPCIL Kaiga.`,
+  `Kindly hand over the academic set to HR at SBI LHO; it will be retained till the bond ends.`,
+  `Original marksheets are kept by Establishment at NTPC Ramagundam and are not returned until the surety lapses.`,
+  `The diploma stays in the hands of the welfare officer at Bank of Maharashtra.`,
+  `Please submit the board sheets to the establishment cell at CWC until the notice period is served.`,
+];
+const FRESH8_LEGIT = [
+  `FAQ — KIOCL, Bengaluru.\nQ. Do I leave my degree with you?\nA. No. Bring the academic papers for a sight-check; you walk out with every sheet the same morning.`,
+  `Document action list — NPCIL, Kaiga.\n• Degree / diploma ………… shown at Window A, returned in the same sitting\n• Photocopies ……………… attested and placed on the personal file`,
+  `From: onboarding@dlw.example.test\nHi Arun, have the academic papers on you so we can glance at them. You walk out with every sheet. We keep the scans, nothing else.`,
+  `SMS from SBI LHO Kolkata: "Pls have degree + marksheets handy at 9 am for a visual check. You take them back at the same desk."`,
+  `Onboarding chat, Bank of Maharashtra.\nAgent: Bring the degree and the two board sheets.\nJoiner: Will you keep them?\nAgent: No. We look, we stamp the copies, you walk out with the set.`,
+  `keep originals in your pocket at the exam hall at AAI Chennai.`,
+  `keep the originals in your bag until the verification is over at India Post GPO.`,
+  `The academic set should remain in your backpack at all times after the tick-mark at HWB Kota.`,
+  `carry your originals with you at the venue on 5 March at BEL Kotdwara.`,
+  `Please keep the original diploma in your pocket once the verification stamp is on the copies at BHEL Bhopal.`,
+  `The original certificates should remain in your suitcase after the officer returns them at the hall at NTPC Ramagundam.`,
+  `Original testimonials are not handed over to CWC under this appointment letter.`,
+  `New officers are not asked to surrender academic papers at MSTC Kolkata.`,
+  `Originals are not kept by us and will not be taken back later at Bridge & Roof.`,
+  `wapas lene ki zarurat nahi; the degree aapke paas hi rahenge after the stamp.`,
+  `The personal file holds xerox copies only; the academic set remains in your briefcase at CLW Chittaranjan.`,
+  `मूल प्रमाण पत्र अपने पास रखें।`,
+  `A subsequent circular will say whether any academic paper is to be left in deposit after induction week at IOCL Barauni.`,
+  `कृपया मूल शैक्षणिक प्रमाण पत्र सत्यापन के लिए साथ लाएँ; उसी दोपहर लौटा दिए जाएँगे।`,
+  `Document verification of original certificates is completed the same afternoon at GAIL Pata, and every sheet goes home with you.`,
+  `Please hold your original marksheet in front of the webcam during the remote DV at KIOCL.`,
+  `Background verification will ask to see original marksheets, which remain in the candidate's folder.`,
+  `The board does not normally retain academic degrees except when a sponsored bond is still open at NPCIL Kaiga.`,
+  `Kindly bring academic papers for DV at DLW Varanasi; nothing is collected for overnight storage.`,
+  `Join with originals for attestation at SBI LHO, then take every paper home the same evening.`,
+  `A posted notice at Bank of Maharashtra reads: academic papers are to be shown, not surrendered; the joiner leaves with the set after the tick-mark.`,
+  `The office neither collects academic papers nor asks for them back afterwards at AAI Chennai.`,
+  `There is no provision under which the academic set stays with India Post after the sight-check.`,
+  `This letter of engagement forbids HWB Kota from parking a joiner's academic papers overnight.`,
+  `The corporation does not keep original educational certificates after the induction formalities close at BEL Kotdwara.`,
+  `Staff are not required to surrender original marksheets at BHEL Bhopal.`,
+  `Please file only attested photocopies and keep the original degree with you at NTPC Ramagundam.`,
+  `Original certificates remain in your wallet after the joining check at CWC.`,
+  `Please keep the original marksheets in your hands after the stamp is applied at MSTC.`,
+  `The original certificates are listed on the back of annex L for ease of reference.`,
+  `A short sight-check of the academic set is done at Bridge & Roof; nothing from that set is entered in the deed chest.`,
+  `People operations will write later if any paper from the academic set is to be held after the first-week check at CLW; this letter leaves that open.`,
+  `Minutes. Academic papers will be viewed once, against the uploaded scans, and collected again by the candidate before the briefing closes. No sheet from that set is booked into the strong room.`,
+  `Schedule of papers — IOCL Barauni. The degree and board sheets are merely exhibited and thereafter carried away by the candidate.`,
+  `Onboarding leaflet. Come at 8:50. Have the degree and board sheets on you. The inspector looks at them, ticks the list, and you put them back in your papers. Copies only are clipped to the file.`,
+];
+
+test('offer: fresh held-out 40+40 FAQ/tables/email/SMS after DOCUMENT_SUBJECT', () => {
+  assert.ok(FRESH8_HOLD.length >= 40 && FRESH8_LEGIT.length >= 40);
+  const missed = FRESH8_HOLD.filter((s) => docTier(s) === 'clean');
+  const falseRed = FRESH8_LEGIT.filter((s) => docTier(s) === 'red');
+  assert.equal(missed.length, 0, 'fresh8 holds must not be clean:\n' + missed.join('\n'));
+  assert.equal(falseRed.length, 0, 'fresh8 legit must not be red:\n' + falseRed.join('\n'));
+  const hc = { red: 0, amber: 0, clean: 0 }, lc = { red: 0, amber: 0, clean: 0 };
+  for (const s of FRESH8_HOLD) hc[docTier(s)]++;
+  for (const s of FRESH8_LEGIT) lc[docTier(s)]++;
+  console.log('fresh8 holds', hc, 'legit', lc);
+});

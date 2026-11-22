@@ -34,28 +34,68 @@ export function offerClauses(t: string): string[] {
   return protectedText.split(/(?<=[.;!?।])\s+/)
     .map((s) => s.replace(/\0/g, '.').trim()).filter((s) => s.length > 6);
 }
-const ORIG_SUBJ = /\boriginals\b|\boriginal\s+TC\b|\bTC\s*\/\s*transfer\s+certificates?|\boriginal(?:\s+[\w.-]+){0,5}\s+(?:certificates?|documents?|mark\s*-?sheets?|marksheets?|degree|diplomas?|licen[cs]es?|papers?|testimonials?|academic\s+records|educational\s+(?:documents?|papers?|certificates?)|transfer\s+certificates?|TC)\b|मूल.{0,32}(?:प्रमाण\s*)?पत्र(?:ों)?|मूल.{0,24}(?:दस्तावेज(?:ों)?|डिग्री|अंक\s*पत्र(?:ों)?|ट्रांसफर|लाइसेंस)/i;
-const YOUR_CERTS = /\b(?:your|aapke)\s+(?:original\s+)?(?:certificates?|documents?|mark\s*-?sheets?|marksheets?|degree(?:\s+certificates?)?|papers?|testimonials?|TC|transfer\s+certificates?)\b|आपके\s+मूल/i;
-const ANAPHORA = /\b(they|them|those(?:\s+(?:papers?|certificates?|documents?|originals?))?|the\s+(?:same|said)\s+(?:papers?|certificates?|documents?)|the\s+paper(?:\s+itself)?|unhe|unki)\b/i;
+/** One document-subject class used by every hold path (deposit, leave, hand over, submit, until-return, give back, keep, retain, store). */
+const DOC_NOUN = '(?:certificates?|documents?|mark\\s*-?sheets?|marksheets?|board\\s+sheets?|degrees?(?:\\s+certificates?)?|diplomas?|licen[cs]es?|papers?|testimonials?|academic\\s+(?:records|set|papers?|documents?|certificates?)|educational\\s+(?:documents?|papers?|certificates?|records|set)|transfer\\s+certificates?|TC)';
+const DEGREE_ABBR = '(?:LL\\.?B\\.?|LL\\.?M\\.?|M\\.?Sc\\.?|B\\.?Sc\\.?|B\\.?Tech\\.?|M\\.?Tech\\.?|B\\.?E\\.?|B\\.?A\\.?|M\\.?A\\.?|B\\.?Com\\.?|M\\.?Com\\.?|B\\.?Ed\\.?|M\\.?Ed\\.?|M\\.?Phil\\.?|Ph\\.?D\\.?|M\\.?B\\.?A\\.?|B\\.?Arch\\.?|B\\.?Pharm\\.?|D\\.?Pharm\\.?|B\\.?L\\.?|M\\.?L\\.?|[A-Z](?:\\.[A-Za-z]{1,5}){1,3}\\.?)';
+const DOCUMENT_SUBJECT = new RegExp(
+  [
+    String.raw`\boriginals?\b`,
+    String.raw`\boriginal(?:\s+[\w.-]+){0,6}\s+(?:` + DOC_NOUN + ')',
+    String.raw`\b(?:your|aapke|the|an?)\s+(?:original\s+)?(?:` + DEGREE_ABBR + String.raw`\s+)?` + DOC_NOUN,
+    String.raw`\b(?:your|the|an?)\s+` + DEGREE_ABBR + String.raw`(?:\s+(?:degree|diploma|certificates?))?`,
+    String.raw`\b` + DEGREE_ABBR + String.raw`\s+(?:degree|diploma|certificates?|mark\s*-?sheets?)`,
+    String.raw`\b(?:academic\s+set|academic\s+papers?|academic\s+documents?|academic\s+certificates?|academic\s+records|board\s+sheets?|degree\s+certificates?)\b`,
+    String.raw`शैक्षणिक\s+(?:कागजात|कागदपत्रे|प्रमाणपत्र(?:े|ों)?|दस्तावेज(?:ों)?)`,
+    String.raw`पदवी\s+प्रमाण\s*पत्र(?:े|ों)?`,
+    String.raw`\b(?:degree|diploma)s?\s*[/,-]\s*(?:degree|diploma)s?\b`,
+    String.raw`(?:मूल|मूळ).{0,40}(?:प्रमाण\s*)?पत्र(?:े|ों)?|(?:मूल|मूळ).{0,32}(?:कागदपत्रे|पदवी|अंक\s*पत्र|दस्तावेज(?:ों)?|प्रमाणपत्रे|डिग्री)`,
+    String.raw`आपके\s+मूल|मूळ\s+कागदपत्रे`,
+  ].join('|'),
+  'i'
+);
+const ANAPHORA = /\b(they|them|those(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|the\s+(?:same|said|academic)\s+(?:papers?|certificates?|documents?|set)|the\s+(?:paper(?:\s+itself)?|set)|unhe|unki)\b/i;
 const NEG_WORD = /\b(not|never|neither|nor|forbids?|forbidden|prohibit(?:s|ed)?|won['’]?t|shan['’]?t|aren['’]?t)\b|\bno\b(?!\.)|नहीं|नही|\bnahi[n]?\b|\bna\s+(?:to|hi)\b|ना\s+(?:तो|ही)|न\s+तो|न\s+ही/i;
 const COPY_OBJ = /\b((?:photo)?cop(?:y|ies)|scanned\s+copies|self[- ]attested\s+copies|attested\s+(?:photo)?cop(?:y|ies)|scanned\s+(?:photo)?cop(?:y|ies)|xerox)\b|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि/i;
-const HOLD_VERB = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|custody)\b|\bjama\b|\brakh(?:na|ne|ene|enge|ega|i|hi|waane|wane|waana|waayi|wayi|waaya|waya)?(?:\s+jaa?ye(?:gi|ga))?\b|\brah(?:enge|ega|egi|ena)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े|ें|ी|वाई)?|रोक(?:ी|ेगा|ेगी|ेंगे)?/i;
-const HOLD_PHRASE = /\bsubmit(?:s|ted|ting)?\b[\s\S]{0,90}?\b(?:until|till|unless)\b|\b(?:will\s+|shall\s+|are\s+|is\s+|to\s+)?not\s+(?:be\s+)?(?:return(?:ed|s)?|releas(?:e|ed|es|ing))[\s\S]{0,80}?\b(?:until|till|unless)\b|\breleas(?:e|ed|es|ing)\s+only\s+after\b|\b(?:remain(?:s|ed|ing)?|stays?|stay)\s+(?:with|in)\b|\btaken?\s+into\s+(?:safe\s+)?custody\b|\bin\s+(?:safe\s+)?custody\b|\bin\s+deposit\b|\bplaced\s+with\b|\bjab\s+tak\b|जब तक|तभी\s*जारी[\s\S]{0,48}जब|वापस\s*नहीं[\s\S]{0,40}(?:तक|जब)|के पास[\s\S]{0,48}रह|अभिरक्षा/i;
+const HOLD_VERB = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|custody)\b|\bjama\b|\brakh(?:na|ne|ene|enge|ega|i|hi|waane|wane|waana|waayi|wayi|waaya|waya)?(?:\s+jaa?ye(?:gi|ga))?\b|\brah(?:enge|ega|egi|ena)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah|\bveidunga\b|\bdeposit\s+panni\b|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े|ें|ी|वाई)?|रोक(?:ी|ेगा|ेगी|ेंगे)?|ठेवली|ठेवले|ठेवावे|जमा\s*करावे/i;
+const HOLD_PHRASE = /\bsubmit(?:s|ted|ting)?\b[\s\S]{0,90}?\b(?:until|till|unless)\b|\b(?:will\s+|shall\s+|are\s+|is\s+|to\s+)?not\s+(?:be\s+)?(?:return(?:ed|s)?|releas(?:e|ed|es|ing))[\s\S]{0,80}?\b(?:until|till|unless)\b|\breleas(?:e|ed|es|ing)\s+only\s+after\b|\b(?:remain(?:s|ed|ing)?|stays?|stay)\s+(?:with|in)\b|\btaken?\s+into\s+(?:safe\s+)?custody\b|\bin\s+(?:safe\s+)?custody\b|\bin\s+deposit\b|\bplaced\s+with\b|\bjab\s+tak\b|जब तक|तभी\s*जारी[\s\S]{0,48}जब|वापस\s*नहीं[\s\S]{0,40}(?:तक|जब)|के पास[\s\S]{0,48}रह|अभिरक्षा|तिजोरी|locker-la|\bvarikkum\b|\breturn\s+aagadhu\b|\bthirupi\s+kidaikadhu\b|परत\s*दिले\s*जाणार\s*नाही|परत\s*मिळणार\s*नाही/i;
 const DURABLE = /\b(?:until|till|unless|bond(?:ed)?|lock[- ]?in|surety|for\s+the\s+duration|up\s+to|throughout|collateral)\b|\bjab\s+tak\b|जब तक|बॉन्ड|अभिरक्षा|तभी/i;
-function hasOrig(s: string) { return ORIG_SUBJ.test(s) || YOUR_CERTS.test(s); }
+function hasOrig(s: string) { return DOCUMENT_SUBJECT.test(s); }
 function hasHold(s: string) { return HOLD_VERB.test(s) || HOLD_PHRASE.test(s); }
 function isCameraHold(s: string) { return /webcam|\bcameras?\b|कैमरा|camera ke saamne|in\s+front\s+of\s+the\s+(?:web)?camera/i.test(s) && /\bhold/i.test(s); }
 /** Strict candidate-possession whitelist. The whole location phrase must be possession, not a compound workplace place. */
 const SELF_NOUN = '(?:briefcases?|wallets?|bags?|handbags?|backpacks?|folders?|files?|possession|pockets?|suitcases?|purses?|hands?)';
 const SELF_COMPOUND = /^(?:files?|lockers?|cupboards?|rooms?|cabinets?|almirahs?|drawers?|offices?|cells?|sections?|vaults?|stores?|units?|plants?|depots?|desks?|counters?|chambers?|safes?|godowns?|strong)\b/i;
 const SELF_CLAUSE = /^(?:after|once|when|then|and|throughout|afterwards|following|during|before|as\s+soon\s+as|so\s+that|while\s+you|only|safely|yourself|too|as\s+well|that\s+you|which\s+you)\b/i;
+function isVenueTail(r: string): boolean {
+  return /^(?:at\s+all\s+times|at\s+(?:the\s+)?(?:exam\s+)?(?:halls?|venues?|counters?|desks?|tables?|gates?|windows?|sittings?|centres?|centers?)\b)/i.test(r);
+}
+function isCustodyAt(r: string): boolean {
+  return /^(?:at|in)\s+(?:the\s+)?(?:establishment|personnel|welfare|admin|office|locker|cell|section|works|yard|institute|college|board|company|depot|unit|plant|circle|regional|strong\s+room|vault|almirah|cupboard|cabinet)\b/i.test(r);
+}
+function isHostileTimeBound(s: string): boolean {
+  return /\b(?:until|till|unless)\b[\s\S]{0,56}\b(?:bond|surety|indenture|notice\s+period|traineeship|service|probation|rural(?:\s+bond)?|posting|further\s+orders|lock[- ]?in)\b/i.test(s)
+    || /\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+(?:years?|months?)\b/i.test(s)
+    || /\bfor\s+the\s+(?:traineeship|bond|duration|indenture|surety|notice)\b/i.test(s)
+    || /\bjab\s+tak\b[\s\S]{0,40}\b(?:bond|seva|service)\b|जब तक[\s\S]{0,40}(?:बॉन्ड|सेवा)/i.test(s)
+    || /\bvarikkum\b/i.test(s);
+}
+function isVerifyWindow(s: string): boolean {
+  return /\b(?:until|till)\s+(?:the\s+)?(?:verification|DV|document[- ]verification|check|stamp|inspection|attestation|sitting|session)\b/i.test(s)
+    || /\b(?:until|till)\s+you\s+leave\b/i.test(s)
+    || /\b(?:until|till)\s+(?:the\s+)?(?:stamp\s+is\s+applied|verification\s+is\s+over|check\s+(?:is\s+)?(?:over|done|complete))\b/i.test(s);
+}
 function selfRemainderOk(rest: string): boolean {
   const r = rest.replace(/^\s+/, '');
   if (!r || /^[.,;:!?।]/.test(r)) return true;
   if (SELF_COMPOUND.test(r)) return false;
   if (/^of\s+(?:the\s+)?/i.test(r)) return false;
-  if (/^(?:at|in)\s+/i.test(r)) return false;
+  if (isVenueTail(r)) return true;
+  if (isCustodyAt(r)) return false;
   if (/^with\s+(?:your\s+)?(?:HR|hrs?|managers?|heads?|officers?|clerks?|admins?|companies?|offices?|boards?|cells?|controllers?|principals?|welfare|establishment|personnel)\b/i.test(r)) return false;
+  if (isVerifyWindow(r) || isVerifyWindow('until ' + r)) return true;
+  if (isHostileTimeBound(r) || isHostileTimeBound('until ' + r)) return false;
+  // Bare "at ORG" after a complete self-noun is a worksite tag, not possession; do not treat as clean.
+  if (/^(?:at|in)\s+/i.test(r)) return false;
   if (/^(?:until|till|unless|jab\s+tak|tak)\b/i.test(r) || /^(?:जब तक|तक\b)/.test(r)) return false;
   if (/^for\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+(?:years?|months?|weeks?)\b/i.test(r)) return false;
   if (/^for\s+the\s+(?:traineeship|bond|duration|indenture|surety)\b/i.test(r)) return false;
@@ -70,12 +110,22 @@ function hasWholeSelfLocation(s: string): boolean {
   }
   return ok;
 }
+function isHarmlessOrgTail(s: string): boolean {
+  const re = new RegExp('(?:in|with)\\s+(?:your(?:\\s+own)?|(?:the\\s+)?candidate[\'’]s(?:\\s+own)?)\\s+' + SELF_NOUN + '\\b', 'ig');
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) {
+    const rest = s.slice(m.index + m[0].length).replace(/^\s+/, '');
+    if (SELF_COMPOUND.test(rest) || /^of\s+/i.test(rest) || isCustodyAt(rest)) continue;
+    if (/^at\s+/i.test(rest) && !isVenueTail(rest) && !isHostileTimeBound(rest)) return true;
+  }
+  return false;
+}
 function isWhitelistSelf(s: string) {
   if (/\b(?:with you|with the candidate|yourself|handed to you|returned to you|given back to you)\b/i.test(s)
-    && !/\b(?:with you|with the candidate)\b[\s\S]{0,24}\b(?:until|till|unless|jab\s+tak)\b/i.test(s)) return true;
+    && !isHostileTimeBound(s)) return true;
   if (hasWholeSelfLocation(s)) return true;
-  if (/\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:yourself|handy|ready|available)\b/i.test(s) && !/\b(?:until|till|unless)\b/i.test(s)) return true;
-  if (/अपने पास रखें|अपने साथ रखें/i.test(s) && !/\b(?:jab\s+tak|until|till)\b|जब तक|तक/.test(s)) return true;
+  if (/\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:yourself|handy|ready|available)\b/i.test(s) && !isHostileTimeBound(s)) return true;
+  if (/अपने पास रखें|अपने साथ रखें/i.test(s) && !isHostileTimeBound(s)) return true;
   const hi = /(?:aapke paas|apne paas|आपके पास|अपने पास)\s*(?:hi\s+|ही\s+)?(?:rakhein|rakho|rahenge|rakhna|rahiye|rahenga|rahegi|rahengi|rah\w*|रखें|रखो|रहेंगे|रहेंगी|रहेगा|रखिए|रहें)/ig;
   let m: RegExpExecArray | null;
   while ((m = hi.exec(s))) {
@@ -89,13 +139,18 @@ function isPersonalInstructionAmber(s: string) {
   if (!/(?:\b(?:please|kindly)\s+(?:keep|leave|carry)|\bshould\s+(?:remain|stay|be kept))\b[\s\S]{0,80}\b(?:in|with)\s+your\b/i.test(s)) return false;
   const place = s.match(/\b(?:in|with)\s+your(?:\s+own)?\s+(.+)/i)?.[1] || '';
   if (WORK_PLACE.test(place) || SELF_COMPOUND.test(place.trim())) return false;
-  if (/\b(?:until|till|unless|jab\s+tak)\b|जब तक|\bfor\s+(?:the\s+)?(?:\d+|one|two|three)\s+years?|\bfor\s+the\s+(?:traineeship|bond|duration|indenture)/i.test(s)) return false;
+  if (isHostileTimeBound(s)) return false;
   return !isWhitelistSelf(s);
 }
 
 const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?)\b|\bbe\s+with\b|\bin\s+deposit\b|\bjama\b|\brakh\w*\b|रख|जमा/i;
+function isLeaveHold(s: string) {
+  if (!/\bleav(?:e|es|ing)\b/i.test(s)) return false;
+  if (/\b(?:before|when|as|after)\s+you\s+leave|you leave the (?:hall|room|campus|venue|counter)|leave with you|leave them with you|leaves with you/i.test(s)) return false;
+  return hasOrig(s);
+}
 function hasLocTransfer(s: string) {
-  return LOC_TRANSFER.test(s) || /\bleav(?:e|es|ing)\s+(?:the\s+|your\s+)?original/i.test(s);
+  return LOC_TRANSFER.test(s) || isLeaveHold(s);
 }
 /** Drop "copy/photocopy of (the/your) original …" so those originals are not treated as the hold object. */
 function withoutCopyOfOrig(s: string) {
@@ -108,7 +163,7 @@ function origHeldAsTarget(s: string) {
   return hasOrig(rest) && (hasHold(rest) || hasLocTransfer(rest));
 }
 function copiesAreHoldObject(s: string) {
-  return /(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|jama|जमा)\s+(?:only\s+)?(?:a\s+|the\s+)?(?:scanned\s+|attested\s+|self[- ]attested\s+|photo)?(?:cop(?:y|ies)|xerox|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/i.test(s)
+  return /(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|jama|जमा|placed)\s+(?:only\s+)?(?:a\s+|the\s+)?(?:scanned\s+|attested\s+|self[- ]attested\s+|photo)?(?:cop(?:y|ies)|xerox|scans?|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/i.test(s)
     || /\b(?:(?:photo)?cop(?:y|ies)|xerox)\b[\s\S]{0,24}(?:are|is|will\s+be|to\s+be)?\s*(?:only\s+)?(?:retained|kept|held|deposited|stored|filed)\b/i.test(s)
     || /(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि).{0,24}जमा|जमा.{0,24}(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/.test(s)
     || /\b(?:(?:photo)?cop(?:y|ies)|xerox|प्रति(?:याँ|यां)?)\b[\s\S]{0,40}\b(?:rahegi|rahenge|rahega|remain(?:s|ed|ing)?|stays?|filed|file par)/i.test(s);
@@ -122,14 +177,20 @@ function copyOnlyHold(s: string) {
 function copiesKeptOriginalsReturned(s: string) {
   return copiesAreHoldObject(s) && hasOrig(s) && /\b(?:returned|handed\s+(?:back|to you)|given\s+back|go(?:es)?\s+home)\b/i.test(s);
 }
+function withoutCopySpans(s: string) {
+  return s.replace(/\b(?:(?:photo)?cop(?:y|ies)|xerox|scans?|scanned\s+copies)[\s\S]{0,80}?(?=\n|•|$|\.(?:\s|$))/gi, ' ');
+}
+function isKeepQuestion(s: string) {
+  return /\?\s*$/.test(s.trim()) && /\b(?:keep|retain|hold|deposit|store)\b/i.test(s);
+}
 function isPlainVerify(s: string) {
-  const cue = /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|visual check|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with|dikhane|dikhana|viewing|viewed?|shown?|showing)\b|सत्यापन|दिखाना|दिखाने|जाँच|देखने/i.test(s)
-    || /\b(?:same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out|pack it away|collected again|handed to you|before you leave|take them home|in one sitting)\b|उसी\s+(?:दिन|बैठक|समय)|वापस ले/i.test(s);
+  const cue = /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|visual check|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with|dikhane|dikhana|viewing|viewed?|shown?|showing|glance|we look|tick[- ]?mark)\b|सत्यापन|दिखाना|दिखाने|जाँच|देखने/i.test(s)
+    || /\b(?:same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out|pack it away|collected again|handed to you|before you leave|take them (?:home|back)|in one sitting|returned in the same sitting|handed back at the counter|you walk out)\b|उसी\s+(?:दिन|बैठक|समय)|वापस ले/i.test(s);
   if (!cue) return false;
   if (isWhitelistSelf(s)) return true;
   if (/\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:ready|handy|available)\b/i.test(s) && !/\b(?:deposit|retain|store|lodge)\b/i.test(s)) return true;
-  // (c) only when there is no hold / location / transfer verb besides the verification itself
-  if (hasLocTransfer(s) || hasHold(s) || hasTimeOrReturn(s)) return false;
+  const rest = withoutCopySpans(s);
+  if (hasLocTransfer(rest) || hasHold(rest) || (hasTimeOrReturn(rest) && !isVerifyWindow(s))) return false;
   return true;
 }
 const RETURN_FAM = /(?:return(?:ed|s|ing)?|releas(?:e|ed|es|ing)|(?:giv(?:e|en|ing)|hand(?:s|ed|ing)?|get(?:s|ting)?|got|take[ns]?|taken|sent)\s+(?:\S+\s+){0,4}back|hand(?:s|ed|ing)?\s+over)/i;
@@ -140,15 +201,19 @@ function isUntilReturnHold(s: string) {
     || /वापस\s*नहीं[\s\S]{0,40}(?:तक|जब)/.test(s)
     || /तभी\s*जारी[\s\S]{0,48}जब/.test(s)
     || /(?:\btak\b|hone\s+tak|जब तक|तक)\s*[,.]?\s*(?:wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*मिल)/i.test(s)
-    || /(?:wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*मिल)[\s\S]{0,48}(?:\btak\b|जब तक|तक)/i.test(s);
+    || /(?:wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*मिल)[\s\S]{0,48}(?:\btak\b|जब तक|तक)/i.test(s)
+    || /(?:will\s+not|won['’]?t|shall\s+not)\s+return\b[\s\S]{0,80}?\b(?:until|till|unless|for\s+(?:the\s+)?(?:\d+|one|two|three)\s+years?)\b/i.test(s)
+    || /\bvarikkum\b[\s\S]{0,40}\b(?:return\s+aagadhu|thirupi\s+kidaikadhu)\b/i.test(s)
+    || /परत\s*(?:दिले\s*जाणार|मिळणार)\s*नाही/i.test(s);
 }
 /** Negation that only refuses a return never cancels a hold; it is a hold signal. */
 function returnNotGiven(s: string) {
-  return /wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*(?:मिल|दिए|किए)|(?:will\s+not|won['’]?t|shall\s+not|(?:is|are)\s+not)\s+(?:be\s+)?(?:returned|given\s+back|handed\s+back)|not\s+(?:be\s+)?returned\b/i.test(s);
+  return /wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*(?:मिल|दिए|किए)|(?:will\s+not|won['’]?t|shall\s+not|(?:is|are)\s+not)\s+(?:be\s+)?(?:returned|given\s+back|handed\s+back)|(?:will\s+not|won['’]?t|shall\s+not)\s+return\b|not\s+(?:be\s+)?returned\b|\breturn\s+aagadhu\b|\bthirupi\s+kidaikadhu\b|परत\s*(?:दिले\s*जाणार|मिळणार)\s*नाही/i.test(s);
 }
 function negCancelsHold(s: string) {
   if (isUntilReturnHold(s) || returnNotGiven(s)) return false;
-  return NEG_WORD.test(s);
+  const stripped = s.replace(/\bno\s+(?:date\s+of\s+return|return\s+date|period(?:\s+named)?|time\s+limit)\b/gi, ' ');
+  return NEG_WORD.test(stripped);
 }
 function isConditionalHold(s: string) {
   return /\b(?:whether|if)\b[\s\S]{0,120}\b(?:to\s+be\s+|has\s+to\s+)?(?:held|kept|retained|deposited|stored|left|placed|lodged|remain(?:s|ed|ing)?|stays?)\b/i.test(s)
@@ -168,7 +233,8 @@ function holdNegatedCleanly(s: string) {
     || /\bnothing\s+(?:is\s+)?(?:to\s+be\s+)?(?:stored|kept|retained|held|deposited|collected)\b/i.test(s)
     || /\bnot\s+a\s+request\s+to\s+(?:deposit|surrender|retain|keep)\b/i.test(s)
     || /जमा\s*नहीं|रखने\s*के\s*लिए\s*नहीं|rakhne ke liye nahi|jama nahi/i.test(s)
-    || /\bnot\s+required\s+to\s+(?:surrender|deposit|submit|hand\s+over)\b/i.test(s)
+    || /\bnot\s+(?:required|asked)\s+to\s+(?:surrender|deposit|submit|hand\s+over)\b/i.test(s)
+    || /\bkeep(?:s|ing)?\s+the\s+scans\b[\s\S]{0,24}\bnothing\s+else\b/i.test(s)
     || /\b(?:forbids?|prohibits?)\b[\s\S]{0,48}\b(?:hold(?:ing)?|keeping|retaining|storing|depositing)\b/i.test(s)
     || /\bno\s+(?:right|authority|power|clause|provision|condition)\s+(?:to\s+|under\s+which\s+)/i.test(s)
     || /\bneither\s+(?:retain|keep|hold|deposit|store|withhold|ask|leave)\b/i.test(s)
@@ -182,7 +248,7 @@ function mixedException(s: string) {
 export type DocsTier = 'red' | 'amber' | null;
 /** Time / return markers. Bare 'back' is not a marker; require give/hand/get … back. */
 function hasTimeOrReturn(s: string) {
-  return /\b(?:until|till|unless)\b|\bonly\s+after\b|\bfor\s+the\s+duration\b|\block[- ]?in\b|\bjab\s+tak\b|\btak\b|जब तक|तक|वापस/i.test(s);
+  return /\b(?:until|till|unless)\b|\bonly\s+after\b|\bfor\s+the\s+duration\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three)\s+years?\b|\block[- ]?in\b|\bjab\s+tak\b|\btak\b|जब तक|तक|वापस|\bvarikkum\b/i.test(s);
 }
 /** Three-tier documents rule. Time-marker fail-safe runs before keep-outs. Orig + location/transfer verb defaults to at least amber. */
 export function docsHeldRisk(text: string): DocsTier {
@@ -192,18 +258,19 @@ export function docsHeldRisk(text: string): DocsTier {
     const subj = hasOrig(s) || (prevSubj && ANAPHORA.test(s));
     const loc = hasLocTransfer(s);
     const hold = hasHold(s) || loc || !!(subj && /\bjab\s+tak\b|जब तक/i.test(s));
-    const time = hasTimeOrReturn(s);
+    const time = hasTimeOrReturn(s) && !isVerifyWindow(s);
     prevSubj = hasOrig(s) || prevSubj;
-    // 1. Orig + time/return marker is never clean. Run this before any keep-out or copy-only rule.
+    if (isKeepQuestion(s)) continue;
+    // 1. Orig + durable time/return marker is never clean. Verification-window tails on a self-noun do not count.
     if (subj && time) {
       if (isConditionalHold(s)) { amber = true; continue; }
       if (isUntilReturnHold(s) || returnNotGiven(s)) return 'red';
-      // orig + time is never clean. Whitelist applies only when the whole location phrase is possession and is not time-bounded.
-      if ((isWhitelistSelf(s) && !time) || (holdNegatedCleanly(s) && !mixedException(s) && !returnNotGiven(s)) || isCameraHold(s) || isPlainVerify(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSoftSubmit(s)) {
+      if (isWhitelistSelf(s) || (holdNegatedCleanly(s) && !mixedException(s) && !returnNotGiven(s)) || isCameraHold(s) || isPlainVerify(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSoftSubmit(s)) {
+        if (isWhitelistSelf(s) && !isHostileTimeBound(s)) continue;
         amber = true;
         continue;
       }
-      if (isPersonalInstructionAmber(s)) { amber = true; continue; }
+      if (isPersonalInstructionAmber(s) || isHarmlessOrgTail(s)) { amber = true; continue; }
       if (subj && hold && !negCancelsHold(s)) return 'red';
       amber = true;
       continue;
@@ -217,7 +284,7 @@ export function docsHeldRisk(text: string): DocsTier {
     if (isPlainVerify(s)) continue;
     if (copyOnlyHold(s) || copiesKeptOriginalsReturned(s)) continue;
     if (isSoftSubmit(s)) { amber = true; continue; }
-    if (isPersonalInstructionAmber(s)) { amber = true; continue; }
+    if (isPersonalInstructionAmber(s) || isHarmlessOrgTail(s)) { amber = true; continue; }
     if (isUntilReturnHold(s) && subj) return 'red';
     if (returnNotGiven(s) && subj) return 'red';
     if (subj && hold && !negCancelsHold(s)) return 'red';
