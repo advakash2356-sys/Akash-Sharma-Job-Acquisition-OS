@@ -10,7 +10,7 @@ import { LocalNote } from '../components/LocalNote';
 import { Steps } from '../components/Steps';
 import { usePersisted, clearPersisted } from '../lib/persist';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '../components/ui';
-import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, type Cat, type Edu, type Gender, type Profile , type Spec, RANK} from '../lib/govJobs';
+import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, ageLimitText, radarText, type Cat, type Edu, type Gender, type Profile , type Spec, RANK} from '../lib/govJobs';
 import { userLevel } from '../lib/gov/rank';
 import { CREDIT } from '../lib/brand';
 
@@ -28,7 +28,7 @@ export default function GovJobs() {
   const res = useMemo(() => (p.dob && !dobInvalid(p.dob) ? match(p) : []), [p]);
   // t385u: graduates and professionals do not see exams far below their level (10th/12th-only entry exams) unless they ask.
   const [allLevels, setAllLevels] = useState(false); const far = (e: (typeof EXAMS)[number]) => userLevel(p) >= 3 && !e.edu.includes('eng') && Math.min(...e.edu.map((x) => RANK[x])) <= 1;
-  const list = res.filter((m) => (!lesserOnly || m.exam.lesser) && (showAll || m.ok) && (allLevels || !far(m.exam))); const farN = res.filter((m) => m.ok && far(m.exam)).length;
+  const list = res.filter((m) => (!lesserOnly || m.exam.lesser) && (showAll || m.fit !== 'no') && (allLevels || !far(m.exam))); const farN = res.filter((m) => m.ok && far(m.exam)).length;
   const n = res.filter((m) => m.ok).length, nl = res.filter((m) => m.ok && m.exam.lesser).length;
   return (
     <>
@@ -73,21 +73,21 @@ export default function GovJobs() {
         </div>
         {!allLevels && farN > 0 && <p className="text-xs text-muted-foreground" data-testid="gov-exam-hidden">{farN} entry-level exam{farN === 1 ? '' : 's'} for Class 10 / 12 (MTS, GD constable, clerk, Group D) hidden because they are far below your qualification. Tick "Show all levels" to see them.</p>}
         {p.esm && <p className="text-sm text-muted-foreground">Ex-servicemen relaxation is calculated from your service period, so it is not added below. See the note on each exam and the notification.</p>}
-        <ul className="grid gap-3">{list.map(({ exam: e, age, upper, ok, why }) => <li key={e.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-exam">
-          <div className="flex flex-wrap items-center gap-2"><b>{e.name}</b>{e.lesser && <Badge tone="gold">Lesser-known</Badge>}<Badge tone={ok ? 'primary' : 'danger'}>{ok ? 'Likely eligible' : 'Not eligible'}</Badge><span className="text-xs text-muted-foreground">{e.group} · {e.body}</span></div>
+        <ul className="grid gap-3">{list.map((m) => { const { exam: e, age, ok, why, fit, ageStatus } = m; const lim = ageLimitText(m); const rad = radarText(m); return <li key={e.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-exam">
+          <div className="flex flex-wrap items-center gap-2"><b>{e.name}</b>{e.lesser && <Badge tone="gold">Lesser-known</Badge>}<Badge tone={fit === 'ok' ? 'primary' : fit === 'check' ? 'gold' : 'danger'}>{fit === 'ok' ? 'Likely eligible' : fit === 'check' ? 'Check notice' : 'Not eligible'}</Badge><span className="text-xs text-muted-foreground">{e.group} · {e.body}</span></div>
           <div className="mt-2 grid gap-2 sm:grid-cols-3" data-testid="gov-age">
             <div className="rounded-lg bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Your age (on {e.asOn})</div><div className="font-mono text-lg">{age} yrs</div></div>
-            <div className="rounded-lg bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Eligible age limit</div><div className="font-mono text-lg">{e.minAge} to {upper} yrs</div><div className="text-xs text-muted-foreground">{upper - e.maxAge > 0 ? `after ${upper - e.maxAge} yrs relaxation` : 'no relaxation applied'}</div></div>
-            <div className="flex items-center rounded-lg bg-muted/50 p-2"><Badge tone={age >= e.minAge && age <= upper ? 'primary' : 'danger'}>{age >= e.minAge && age <= upper ? '✓ Age: pass' : '✗ Age: fail'}</Badge></div>
+            <div className="rounded-lg bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Eligible age limit</div><div className="font-mono text-lg">{lim.heading}</div><div className="text-xs text-muted-foreground">{lim.detail}</div></div>
+            <div className="flex items-center rounded-lg bg-muted/50 p-2"><Badge tone={ageStatus === 'pass' ? 'primary' : ageStatus === 'check' ? 'gold' : 'danger'}>{ageStatus === 'pass' ? '✓ Age: pass' : ageStatus === 'check' ? 'Check notice' : '✗ Age: fail'}</Badge></div>
           </div>
           <div className="mt-1 text-sm">Qualification: {e.qual}.</div>
           <div className="text-sm" data-testid="gov-pay">Pay: {e.pay ? <>{e.pay.text} <a className="text-primary underline" href={e.pay.src} target="_blank" rel="noopener noreferrer">source</a></> : <span className="text-muted-foreground">see the official notification (not yet verified here)</span>}</div>
-          {ok && <div className={upper - age <= 1 ? 'text-sm font-medium text-red-700' : 'text-sm'} data-testid="gov-radar">Deadline radar (beta): {upper - age <= 0 ? 'this is your last eligible cycle by age' : `about ${upper - age} more year${upper - age === 1 ? '' : 's'} before you cross the age limit`}, counted on this notification's date.</div>}
+          {rad && <div className={ok && m.upper - age <= 1 ? 'text-sm font-medium text-red-700' : 'text-sm'} data-testid="gov-radar">{fit === 'ok' ? <>Deadline radar (beta): {rad}</> : rad}</div>}
           {e.note && <div className="text-sm text-muted-foreground">{e.note}</div>}
           {p.esm && e.esmNote && <div className="text-sm text-muted-foreground">{e.esmNote}</div>}
-          {!ok && <ul className="mt-1 list-disc pl-5 text-sm text-red-700">{why.map((w) => <li key={w}>{w}</li>)}</ul>}
+          {why.filter((w) => !/^Check notice/i.test(w)).length > 0 && <ul className="mt-1 list-disc pl-5 text-sm text-red-700">{why.filter((w) => !/^Check notice/i.test(w)).map((w) => <li key={w}>{w}</li>)}</ul>}
           <div className="mt-1 flex flex-wrap gap-3 text-sm"><a className="text-primary underline" href={e.src} target="_blank" rel="noopener noreferrer">Official notification / source</a><a className="text-primary underline" href={e.site} target="_blank" rel="noopener noreferrer">Official site</a><span className="text-xs text-muted-foreground">Last verified {e.verified}{daysSince(e.verified) > STALE_DAYS && <b className="text-red-700"> · may be out of date</b>}. Check the official notice for updates.</span></div>
-        </li>)}</ul>
+        </li>; })}</ul>
         {list.length === 0 && <p className="text-sm">Nothing matches these filters.</p>}
       </Card>}
       <Card className="grid min-w-0 gap-2"><h2 className="text-xl font-medium">How this works</h2>

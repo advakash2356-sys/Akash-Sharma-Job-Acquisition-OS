@@ -8,7 +8,7 @@ export type Gender = 'male' | 'female' | 'other';
 export interface Profile { /** optional city or district, used to pre-fill the advanced search */ city?: string; dob: string; edu: Edu; stream12?: 'pcm' | 'other'; cat: Cat; pwbd: boolean; esm: boolean; gender: Gender; state: string; expYears?: number; spec?: Spec; /** true once the user picked education on this page themselves */ eduSet?: boolean }
 export interface Exam {
   id: string; name: string; body: string; group: 'UPSC' | 'SSC' | 'Banking' | 'Railways' | 'Defence' | 'Courts' | 'PSU / Research' | 'Postal';
-  minAge: number; maxAge: number; asOn: string; // age reckoning date in the notification used
+  minAge: number; maxAge: number; maxAgeByPost?: number[]; asOn: string; // age reckoning date in the notification used; maxAgeByPost when the cap varies by post
   edu: Edu[]; // any one of these qualifies
   qual: string; relax: 'central' | 'none' | 'obcScOnly'; esmNote?: string; maleOnly?: boolean; note?: string;
   lesser?: boolean; pay?: { text: string; src: string }; src: string; site: string; verified: string;
@@ -22,7 +22,7 @@ export const EXAMS: Exam[] = [
   { id: 'upsc-ese', name: 'UPSC Engineering Services (ESE)', body: 'UPSC', group: 'UPSC', minAge: 21, maxAge: 30, asOn: '2027-01-01', edu: ['eng', 'pg'], qual: 'Engineering degree', relax: 'central', src: 'https://www.upsc.gov.in/sites/default/files/Notif-ESEP-2027-Engl-160926.pdf', site: 'https://upsc.gov.in', verified: V },
   { id: 'upsc-nda', name: 'NDA & NA (Army/Navy/Air Force)', body: 'UPSC', group: 'Defence', minAge: 15, maxAge: 18, asOn: '2026-01-01', edu: ['12', 'iti', 'diploma', 'grad', 'eng', 'pg'], qual: 'Class 12 (Air Force/Navy wings need Physics & Maths)', relax: 'none', note: 'Unmarried. NDA II 2026: born 1 Jan 2008 to 1 Jan 2011.', src: 'https://www.upsc.gov.in/sites/default/files/Notif-NDA-II-2026-Engl-200526.pdf', site: 'https://upsc.gov.in', verified: V },
   { id: 'upsc-cds', name: 'CDS (IMA / INA)', body: 'UPSC', group: 'Defence', minAge: 19, maxAge: 24, asOn: '2027-07-01', edu: G, qual: 'Graduate (final-year students may apply)', relax: 'none', maleOnly: true, note: 'Unmarried men. OTA: 19 to 25, open to women. CDS II 2026: IMA born 2 Jul 2003 to 1 Jul 2008.', src: 'https://www.upsc.gov.in/sites/default/files/Notif-CDS-II-2026-Engl-200526.pdf', site: 'https://upsc.gov.in', verified: V },
-  { id: 'ssc-cgl', pay: { text: '7th CPC Pay Level 4 to 8 (₹25,500 to ₹1,51,100 basic), by post', src: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf' }, name: 'SSC CGL', body: 'SSC', group: 'SSC', minAge: 18, maxAge: 32, asOn: '2026-08-01', edu: G, qual: 'Graduate', relax: 'central', esmNote: 'Ex-servicemen: 3 years after deducting military service.', note: 'Upper limit is 27, 30 or 32 by post.', src: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf', site: 'https://ssc.gov.in', verified: V },
+  { id: 'ssc-cgl', pay: { text: '7th CPC Pay Level 4 to 8 (₹25,500 to ₹1,51,100 basic), by post', src: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf' }, name: 'SSC CGL', body: 'SSC', group: 'SSC', minAge: 18, maxAge: 32, maxAgeByPost: [27, 30, 32], asOn: '2026-08-01', edu: G, qual: 'Graduate', relax: 'central', esmNote: 'Ex-servicemen: 3 years after deducting military service.', note: 'Upper limit is 27, 30 or 32 by post.', src: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf', site: 'https://ssc.gov.in', verified: V },
   { id: 'ssc-chsl', name: 'SSC CHSL (LDC/JSA/DEO)', body: 'SSC', group: 'SSC', minAge: 18, maxAge: 27, asOn: '2026-08-01', edu: ['12', 'diploma', ...G], qual: 'Class 12', relax: 'central', src: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_chsl_2026.pdf', site: 'https://ssc.gov.in', verified: V },
   { id: 'ssc-mts', name: 'SSC MTS & Havaldar', body: 'SSC', group: 'SSC', minAge: 18, maxAge: 27, asOn: '2026-01-01', edu: ['10', '12', 'iti', 'diploma', ...G], qual: 'Class 10', relax: 'central', note: 'MTS 18 to 25; Havaldar and some MTS posts 18 to 27.', src: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_RHQ_2026_phase_xiv.pdf', site: 'https://ssc.gov.in', verified: V },
   { id: 'ssc-gd', name: 'SSC GD Constable (CAPFs, SSF, Assam Rifles)', body: 'SSC', group: 'SSC', minAge: 18, maxAge: 23, asOn: '2026-01-01', edu: ['10', '12', 'iti', 'diploma', ...G], qual: 'Class 10', relax: 'central', note: 'Physical standards apply.', src: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_CTGD_2026.pdf', site: 'https://ssc.gov.in', verified: V },
@@ -64,15 +64,55 @@ export function eduOk(e: Exam, p: Profile) {
   if (p.edu === 'eng') return e.edu.includes('grad');
   return false;
 }
-export interface Match { exam: Exam; age: number; upper: number; ok: boolean; why: string[] }
+export type AgeStatus = 'pass' | 'fail' | 'check';
+export type FitStatus = 'ok' | 'check' | 'no';
+export interface Match { exam: Exam; age: number; upper: number; upperHigh: number; relax: number; ageStatus: AgeStatus; fit: FitStatus; ok: boolean; why: string[]; ageClause?: string; postMaxAge?: number }
+export function postAges(e: Exam): number[] {
+  const raw = e.maxAgeByPost?.length ? e.maxAgeByPost : [e.maxAge];
+  return [...new Set(raw)].sort((a, b) => a - b);
+}
+/** Age check for one exam. When limits vary by post, use postMaxAge if it is a listed cap; otherwise fail closed to Check notice naming the clause. Strong / likely eligible needs a confirmed age. */
+export function matchExam(e: Exam, p: Profile, postMaxAge?: number): Match {
+  const age = ageOn(p.dob, e.asOn), r = relaxation(e, p), posts = postAges(e);
+  const clause = posts.length > 1 ? (e.note || 'Age limit varies by post. Check the official notice.') : undefined;
+  let used: number[] | 'unknown' = posts;
+  if (postMaxAge != null) used = posts.includes(postMaxAge) ? [postMaxAge] : 'unknown';
+  const caps = (used === 'unknown' ? posts : used).map((x) => x + r);
+  const tight = Math.min(...caps), loose = Math.max(...caps), why: string[] = [];
+  let ageStatus: AgeStatus = 'pass';
+  if (age < e.minAge) { why.push(`Too young: ${age} on ${e.asOn}, minimum ${e.minAge}`); ageStatus = 'fail'; }
+  else if (used === 'unknown') { ageStatus = 'check'; why.push(`Check notice: ${clause || 'age limit varies by post'}`); }
+  else if (age > loose) { why.push(`Over age: ${age} on ${e.asOn}, limit ${loose}${r ? ` incl. ${r} yr relaxation` : ''}`); ageStatus = 'fail'; }
+  else if (used.length > 1 && age > tight) { ageStatus = 'check'; why.push(`Check notice: ${clause}`); }
+  if (!eduOk(e, p)) why.push(`Needs: ${e.qual}`);
+  if (e.maleOnly && p.gender !== 'male') why.push('Men only for this entry');
+  const blockers = why.filter((w) => !/^Check notice/i.test(w));
+  const fit: FitStatus = blockers.length ? 'no' : ageStatus === 'check' ? 'check' : ageStatus === 'fail' ? 'no' : 'ok';
+  const upper = used === 'unknown' ? tight : used.length === 1 ? used[0] + r : tight;
+  return { exam: e, age, upper, upperHigh: loose, relax: r, ageStatus, fit, ok: fit === 'ok', why, ageClause: ageStatus === 'check' || (posts.length > 1 && postMaxAge == null) ? clause : undefined, postMaxAge };
+}
 export function match(p: Profile): Match[] {
-  return EXAMS.map((e) => {
-    const age = ageOn(p.dob, e.asOn), r = relaxation(e, p), upper = e.maxAge + r, why: string[] = [];
-    if (age < e.minAge) why.push(`Too young: ${age} on ${e.asOn}, minimum ${e.minAge}`);
-    if (age > upper) why.push(`Over age: ${age} on ${e.asOn}, limit ${upper}${r ? ` incl. ${r} yr relaxation` : ''}`);
-    if (!eduOk(e, p)) why.push(`Needs: ${e.qual}`);
-    if (e.maleOnly && p.gender !== 'male') why.push('Men only for this entry');
-    return { exam: e, age, upper, ok: why.length === 0, why };
-  }).sort((a, b) => Number(b.ok) - Number(a.ok));
+  const order = { ok: 0, check: 1, no: 2 } as const;
+  return EXAMS.map((e) => matchExam(e, p)).sort((a, b) => order[a.fit] - order[b.fit]);
+}
+export function ageLimitText(m: Match): { heading: string; detail: string } {
+  const posts = postAges(m.exam), r = m.relax;
+  if (m.ageStatus === 'check') return { heading: 'Check notice', detail: m.ageClause || m.exam.note || 'Age limit varies by post. Check the official notice.' };
+  if (posts.length > 1 && m.postMaxAge == null) {
+    const caps = posts.map((x) => x + r);
+    const list = caps.length === 2 ? `${caps[0]} or ${caps[1]}` : `${caps.slice(0, -1).join(', ')} or ${caps[caps.length - 1]}`;
+    return { heading: `${m.exam.minAge} to ${list} yrs`, detail: r > 0 ? `by post, after ${r} yrs relaxation` : 'by post, no relaxation applied' };
+  }
+  return { heading: `${m.exam.minAge} to ${m.upper} yrs`, detail: r > 0 ? `after ${r} yrs relaxation` : 'no relaxation applied' };
+}
+export function radarText(m: Match): string | null {
+  if (m.fit === 'check' && m.ageStatus === 'check') return `Check notice: ${m.ageClause || m.exam.note || 'age limit varies by post'}`;
+  if (m.fit !== 'ok') return null;
+  const years = m.upper - m.age;
+  const lowest = postAges(m.exam).length > 1 && m.postMaxAge == null;
+  const counted = "counted on this notification's date.";
+  if (years <= 0) return `this is your last eligible cycle by age${lowest ? ' for the lowest post limit' : ''}, ${counted}`;
+  const more = `about ${years} more year${years === 1 ? '' : 's'}`;
+  return lowest ? `${more} before you cross the lowest post limit, ${counted}` : `${more} before you cross the age limit, ${counted}`;
 }
 export { RANK };

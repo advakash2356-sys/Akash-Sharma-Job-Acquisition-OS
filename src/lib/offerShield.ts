@@ -8,7 +8,14 @@ export function toDays(m: RegExpMatchArray | null): number | null {
   if (!m) return null; const n = W[m[1].toLowerCase()] ?? Number(m[1]); const u = m[2].toLowerCase();
   return u.startsWith('day') ? n : u.startsWith('week') ? n * 7 : u.startsWith('month') ? n * 30 : n * 365;
 }
-const RULES: { kind: string; re: RegExp; why: string; risk: (s: string) => Risk }[] = [
+
+const PAY_W = /\b(salary|pay|remuneration|compensation|wages?|stipend|fixed pay)\b/i;
+const NO_PAY = /\b(no\s+(?:salary|pay|remuneration)|not\s+(?:be\s+)?(?:paid|entitled)|unpaid|without\s+(?:salary|pay)|salary\s+(?:is\s+|will\s+be\s+)?(?:withheld|stopped|paused|not\s+paid)|will\s+not\s+pay\s+salary|not\s+pay\s+salary)\b/i;
+const BENCH_W = /\bbench\b/i;
+const ONLY_WHEN = /\b(only\s+(?:after|when|once|upon|if)|payable\s+only|paid\s+only|draw(?:s|n)?\s+(?:salary\s+|remuneration\s+)?only|starts?\s+only|begins?\s+only|commences?\s+only|solely\s+(?:after|upon)|contingent\s+upon|subject\s+to\s+being|unless\s+(?:allocated|assigned|deployed|staffed))\b/i;
+const ALLOC_W = /\b(billable|deploy(?:ed|ment)|allocat(?:ed|ion)|staffed|client\s+project|client\s+assignment)\b/i;
+function benchPayHit(s: string) { return (NO_PAY.test(s) && BENCH_W.test(s)) || (PAY_W.test(s) && ONLY_WHEN.test(s) && ALLOC_W.test(s)); }
+const RULES: { kind: string; re: RegExp; hit?: (s: string) => boolean; why: string; risk: (s: string) => Risk }[] = [
   { kind: 'Service bond', re: /\b(service (bond|agreement)|bond(?!\s+period)|minimum (service|tenure)|lock[- ]in)\b/i, why: 'You may have to pay money if you leave before a set time. Ask for the amount, how it reduces over time, and what it covers.', risk: (s) => (AMT.test(s) || /penalt/i.test(s) ? 'red' : 'amber') },
   { kind: 'Pay to join / deposit', re: /\b((refundable |security |caution )deposit|deposit (of|amount)|pay(ment)? (to|before) (join|joining)|joining (fee|charges?)|registration (fee|charges?)|kit (fee|charges?)|laptop (deposit|charges?))\b/i, why: 'Asking a new hire to pay a deposit or fee to join is a serious warning sign. Genuine employers do not charge candidates. Do not pay; ask for this in writing.', risk: () => 'red' },
   { kind: 'Non-compete', re: /\b(non[- ]?compete|shall not (join|work for|engage)|competitor|competing business)\b/i, why: 'Limits where you can work after leaving. In India, section 27 of the Indian Contract Act, 1872 generally makes restraints on trade after employment void, but read it and ask: https://www.indiacode.nic.in/bitstream/123456789/2187/2/A187209.pdf', risk: () => 'amber' },
@@ -16,7 +23,8 @@ const RULES: { kind: string; re: RegExp; why: string; risk: (s: string) => Risk 
   { kind: 'Notice period', re: /\b(notice period|(\d+|one|two|three|six)\s*(days?|months?)['’]?\s*(written )?notice|notice of (\d+|one|two|three))/i, why: 'Long notice periods make it harder to join your next job. 30 to 60 days is common; 90 days is long.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d >= 90 ? 'red' : d != null && d > 60 ? 'amber' : 'info'; } },
   { kind: 'Clawback / repayment', re: /\b(claw ?back|repay|refund (the|any)|recover(y|ed)? (of|from)|reimburse the company|joining bonus|relocation (assistance|bonus|allowance)|sign[- ]on bonus)\b/i, why: 'Money you may have to return if you leave early. Ask for the exact amount and time period in writing.', risk: (s) => (/repay|claw|recover|refund|reimburse/i.test(s) ? 'amber' : 'info') },
   { kind: 'Training cost recovery', re: /\btraining (cost|fee|expense|charges)/i, why: 'Some employers recover training costs if you leave. Ask what the real cost is and how it is calculated.', risk: () => 'amber' },
-  { kind: 'Original documents held', re: /\b(original (certificates?|documents?|mark ?sheets?|degree)|retain (your|the) (original|certificates))\b/i, why: 'Holding original certificates is a serious warning sign. Offer only copies, and ask for this in writing.', risk: (s) => (/submit|retain|deposit|keep|hold/i.test(s) ? 'red' : 'amber') },
+  { kind: 'Original documents held', re: /\b(original (certificates?|documents?|mark ?sheets?|degree)|retain (your|the) (original|certificates))\b/i, why: 'Holding original certificates is a serious warning sign. Offer only copies, and ask for this in writing.', risk: () => 'red' },
+  { kind: 'Pay depends on project allocation / bench', re: /\b(bench|billable|deploy(?:ed|ment)|allocat(?:ed|ion))\b/i, hit: benchPayHit, why: 'Pay may stop, or start only, when you are assigned to a billable project (including time on the bench). Ask in writing whether you are paid between projects, and from which date salary starts.', risk: (s) => (NO_PAY.test(s) ? 'red' : 'amber') },
   { kind: 'Liquidated damages', re: /\b(liquidated damages|penalty of|pay (a )?penalty|damages of)\b/i, why: 'A fixed sum payable if you break the terms. Ask how the figure was set.', risk: () => 'red' },
   { kind: 'Probation', re: /\bprobation/i, why: 'During probation notice is often shorter and confirmation is not automatic. Check the length and notice.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d > 180 ? 'amber' : 'info'; } },
   { kind: 'Garden leave / notice buy-out', re: /\b(garden leave|buy[- ]?out|salary in lieu)\b/i, why: 'Check whether you can pay to leave early and how the amount is worked out.', risk: () => 'info' },
@@ -26,7 +34,7 @@ const RULES: { kind: string; re: RegExp; why: string; risk: (s: string) => Risk 
 const sentences = (t: string) => t.replace(/\r/g, '').replace(/([.;!?:])?[ \t]*\n{2,}/g, (_m, p) => (p ? p + ' ' : '. ')).replace(/(?<!\.)\.\s*\.(?!\.)/g, '.').replace(/\s+/g, ' ').split(/(?<=[.;!?])\s+(?=[A-Z0-9(•-])/).map((s) => s.trim()).filter((s) => s.length > 15);
 export function scanOffer(text: string): Clause[] {
   const out: Clause[] = [];
-  for (const s of sentences(text || '')) for (const r of RULES) if (r.re.test(s)) {
+  for (const s of sentences(text || '')) for (const r of RULES) if (r.hit ? r.hit(s) : r.re.test(s)) {
     if (out.some((c) => c.kind === r.kind && c.sentence === s)) continue;
     const d = s.match(DUR), a = s.match(AMT);
     out.push({ kind: r.kind, risk: r.risk(s), sentence: s.slice(0, 400), why: r.why, detail: [a?.[0], d?.[0]].filter(Boolean).join(' · ') || undefined });

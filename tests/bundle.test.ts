@@ -87,7 +87,7 @@ import { EXAMS as GOV, match as govMatch } from '../src/lib/govJobs';
 test('gov jobs: every exam has an official source and verified date', () => { for (const e of GOV) { assert.ok(/^https:\/\//.test(e.src) && e.verified, e.id); } assert.ok(GOV.some((e) => e.lesser)); });
 test('gov jobs: OBC relaxation and qualification', () => {
   const base = { dob: '1997-01-01', edu: 'grad' as const, cat: 'GEN' as const, pwbd: false, esm: false, gender: 'male' as const, state: '' };
-  const cgl = (c: any) => govMatch({ ...base, cat: c }).find((m) => m.exam.id === 'ssc-cgl')!; assert.equal(cgl('GEN').upper, 32); assert.equal(cgl('OBC').upper, 35); assert.equal(cgl('SC').upper, 37);
+  const cse = (c: any) => govMatch({ ...base, cat: c }).find((m) => m.exam.id === 'upsc-cse')!; assert.equal(cse('GEN').upper, 32); assert.equal(cse('OBC').upper, 35); assert.equal(cse('SC').upper, 37);
   assert.ok(!govMatch({ ...base, edu: '10' }).find((m) => m.exam.id === 'upsc-cse')!.ok);
   assert.ok(!govMatch({ ...base, dob: '2002-01-01', gender: 'female' }).find((m) => m.exam.id === 'upsc-cds')!.ok); });
 import { dobInvalid } from '../src/lib/govJobs';

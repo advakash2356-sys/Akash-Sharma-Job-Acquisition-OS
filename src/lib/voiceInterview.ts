@@ -66,7 +66,8 @@ export function naturalize(t: string) {
   for (const w of [...FILLERS].sort((a, b) => b.length - a.length)) s = s.replace(new RegExp(`[,\\s]*\\b${reEscape(w).replace(/ /g, '\\s+')}\\b[,]?`, 'gi'), ' '); // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
   const swap: [RegExp, string][] = [[/\bgonna\b/gi, 'going to'], [/\bwanna\b/gi, 'want to'], [/\bgotta\b/gi, 'have to'], [/\bkinda\b/gi, 'somewhat'], [/\byeah\b/gi, 'yes'], [/\bstuff\b/gi, 'work'], [/\bdo the needful\b/gi, 'take care of it'], [/\brevert back\b/gi, 'reply'], [/\bkindly\b/gi, 'please'], [/\bherewith\b/gi, '']];
   for (const [re, r] of swap) s = s.replace(re, r);
-  return s.replace(/\s+/g, ' ').replace(/\s([,.?!])/g, '$1').trim().replace(/^./, (c) => c.toUpperCase());
+  const out = s.replace(/\s+/g, ' ').replace(/\s([,.?!])/g, '$1').trim().replace(/^(so|well)[,.]?\s+/i, '').trim();
+  return out ? out.replace(/^./, (c) => c.toUpperCase()) : '';
 }
 export function highlight(t: string): { text: string; filler: boolean }[] {
   const re = new RegExp(`\\b(${[...FILLERS].sort((a, b) => b.length - a.length).map((w) => w.replace(/ /g, '\\s+')).join('|')})\\b`, 'gi'); // nosemgrep: detect-non-literal-regexp -- reviewed: input escaped or a fixed constant pattern
