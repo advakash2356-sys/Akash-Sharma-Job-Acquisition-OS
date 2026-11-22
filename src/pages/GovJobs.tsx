@@ -10,7 +10,7 @@ import { LocalNote } from '../components/LocalNote';
 import { Steps } from '../components/Steps';
 import { usePersisted, clearPersisted } from '../lib/persist';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '../components/ui';
-import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, ageLimitText, radarText, type Cat, type Edu, type Gender, type Profile , type Spec, RANK} from '../lib/govJobs';
+import { daysSince, STALE_DAYS, dobInvalid, DISCLAIMER, EXAMS, VERIFIED, match, ageLimitText, radarText, CGL_POSTS, type Cat, type Edu, type Gender, type Profile , type Spec, RANK} from '../lib/govJobs';
 import { userLevel } from '../lib/gov/rank';
 import { CREDIT } from '../lib/brand';
 
@@ -58,6 +58,7 @@ export default function GovJobs() {
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={p.pwbd} onChange={set('pwbd')} /> Person with benchmark disability (PwBD)</label>
           <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={p.esm} onChange={set('esm')} /> Ex-serviceman</label>
+          {p.esm && <div className="min-w-0"><Label htmlFor="gesm" hint="military service only">Years of military service</Label><Input id="gesm" type="number" min={0} max={40} value={p.esmYears ?? ''} onChange={(e) => setP({ ...p, esmYears: e.target.value === '' ? undefined : Math.max(0, Math.min(40, Number(e.target.value))) })} data-testid="gov-esm-years" /></div>}
         </div>
         <div className="flex flex-wrap gap-2"><Button onClick={freshRun} data-testid="gov-fresh"><RefreshCw size={15} /> Fresh run</Button><Button variant="ghost" className="w-fit" onClick={() => setP({ ...p, dob: '2001-05-10', edu: 'grad', cat: 'OBC' })}>Try a sample profile (made up)</Button></div>
         {fresh && <p className="text-sm" role="status" data-testid="gov-fresh-msg">{fresh}</p>}
@@ -72,9 +73,10 @@ export default function GovJobs() {
           <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={allLevels} onChange={(e) => setAllLevels(e.target.checked)} data-testid="gov-exam-all-levels" /> Show all levels</label>
         </div>
         {!allLevels && farN > 0 && <p className="text-xs text-muted-foreground" data-testid="gov-exam-hidden">{farN} entry-level exam{farN === 1 ? '' : 's'} for Class 10 / 12 (MTS, GD constable, clerk, Group D) hidden because they are far below your qualification. Tick "Show all levels" to see them.</p>}
-        {p.esm && <p className="text-sm text-muted-foreground">Ex-servicemen relaxation is calculated from your service period, so it is not added below. See the note on each exam and the notification.</p>}
+        {p.esm && <p className="text-sm text-muted-foreground">Ex-servicemen: enter your years of military service. The age limit then deducts that service and adds 3 years, as in the SSC CGL notice. If years are missing, the card stays on Check notice rather than a pass or a fail. See each exam note and the official notification.</p>}
         <ul className="grid gap-3">{list.map((m) => { const { exam: e, age, ok, why, fit, ageStatus } = m; const lim = ageLimitText(m); const rad = radarText(m); return <li key={e.id} className="min-w-0 rounded-lg border border-border p-3 [overflow-wrap:anywhere]" data-testid="gov-exam">
           <div className="flex flex-wrap items-center gap-2"><b>{e.name}</b>{e.lesser && <Badge tone="gold">Lesser-known</Badge>}<Badge tone={fit === 'ok' ? 'primary' : fit === 'check' ? 'gold' : 'danger'}>{fit === 'ok' ? 'Likely eligible' : fit === 'check' ? 'Check notice' : 'Not eligible'}</Badge><span className="text-xs text-muted-foreground">{e.group} · {e.body}</span></div>
+          {e.id === 'ssc-cgl' && <div className="mt-2 min-w-0 sm:max-w-md"><Label htmlFor="g-cgl-post">CGL post (optional)</Label><Select id="g-cgl-post" className="w-full" data-testid="gov-post" value={p.cglPost || ''} onChange={set('cglPost')}><option value="">Any post / not sure — check the notice</option>{CGL_POSTS.map((x) => <option key={x.id} value={x.id}>{x.name}, {x.org} ({x.minAge}–{x.maxAge})</option>)}</Select></div>}
           <div className="mt-2 grid gap-2 sm:grid-cols-3" data-testid="gov-age">
             <div className="rounded-lg bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Your age (on {e.asOn})</div><div className="font-mono text-lg">{age} yrs</div></div>
             <div className="rounded-lg bg-muted/50 p-2"><div className="text-xs text-muted-foreground">Eligible age limit</div><div className="font-mono text-lg">{lim.heading}</div><div className="text-xs text-muted-foreground">{lim.detail}</div></div>
