@@ -44,25 +44,57 @@ const HOLD_PHRASE = /\bsubmit(?:s|ted|ting)?\b[\s\S]{0,90}?\b(?:until|till|unles
 const DURABLE = /\b(?:until|till|unless|bond(?:ed)?|lock[- ]?in|surety|for\s+the\s+duration|up\s+to|throughout|collateral)\b|\bjab\s+tak\b|जब तक|बॉन्ड|अभिरक्षा|तभी/i;
 function hasOrig(s: string) { return ORIG_SUBJ.test(s) || YOUR_CERTS.test(s); }
 function hasHold(s: string) { return HOLD_VERB.test(s) || HOLD_PHRASE.test(s); }
-function isCameraHold(s: string) { return hasHold(s) && /webcam|\bcameras?\b|कैमरा|camera ke saamne/i.test(s); }
-function isKeepSelf(s: string) {
-  return /\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:yourself|handy|ready|available)\b/i.test(s)
-    || /\b(?:remain(?:s|ed|ing)?|stays?|keep(?:s|ing)?|kept)\b[\s\S]{0,48}\b(?:with you|(?:in|with)\s+your\s+\w+)/i.test(s)
-    || /अपने पास रखें|अपने साथ रखें|आपके पास ही रह|aapke paas hi rah|\baapke paas hi\b/i.test(s);
+function isCameraHold(s: string) { return /webcam|\bcameras?\b|कैमरा|camera ke saamne|in\s+front\s+of\s+the\s+(?:web)?camera/i.test(s) && /\bhold/i.test(s); }
+/** Strict candidate-possession whitelist. Workplace places (office, locker, manager, unit) do not qualify. */
+const SELF_NOUN = '(?:briefcases?|wallets?|bags?|handbags?|backpacks?|folders?|files?|possession)';
+function isWhitelistSelf(s: string) {
+  const inSelf = new RegExp('(?:in|with)\\s+(?:your(?:\\s+own)?|(?:the\\s+)?candidate[\'’]s(?:\\s+own)?)\\s+' + SELF_NOUN + '\\b', 'i');
+  return /\b(?:with you|with the candidate|yourself|in your possession|handed to you|returned to you|given back to you)\b/i.test(s)
+    || new RegExp('\\b(?:remain(?:s|ed|ing)?|stays?|keep(?:s|ing)?|kept|left)\\b[\\s\\S]{0,48}\\b(?:with you\\b|with the candidate\\b|' + inSelf.source + ')', 'i').test(s)
+    || inSelf.test(s)
+    || /\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:yourself|handy|ready|available)\b/i.test(s)
+    || /आपके पास|अपने पास रखें|अपने साथ रखें|aapke paas/i.test(s);
 }
+const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?)\b|\bbe\s+with\b|\bin\s+deposit\b|\bjama\b|\brakh\w*\b|रख|जमा/i;
+function hasLocTransfer(s: string) {
+  return LOC_TRANSFER.test(s) || /\bleav(?:e|es|ing)\s+(?:the\s+|your\s+)?original/i.test(s);
+}
+/** Drop "copy/photocopy of (the/your) original …" so those originals are not treated as the hold object. */
+function withoutCopyOfOrig(s: string) {
+  return s
+    .replace(/\b(?:(?:photo)?cop(?:y|ies)|xerox|scanned\s+copies|self[- ]attested\s+copies)\s+(?:of\s+)?(?:your\s+|the\s+)?original(?:\s+[\w.-]+){0,5}(?:\s+(?:certificates?|documents?|mark\s*-?sheets?|marksheets?|degree|diplomas?|licen[cs]es?|papers?|testimonials?))?/gi, ' ')
+    .replace(/मूल.{0,32}की\s+(?:फोटो)?प्रति(?:लिपि)?/g, ' ');
+}
+function origHeldAsTarget(s: string) {
+  const rest = withoutCopyOfOrig(s);
+  return hasOrig(rest) && (hasHold(rest) || hasLocTransfer(rest));
+}
+function copiesAreHoldObject(s: string) {
+  return /(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|jama|जमा)\s+(?:only\s+)?(?:a\s+|the\s+)?(?:scanned\s+|attested\s+|self[- ]attested\s+|photo)?(?:cop(?:y|ies)|xerox|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/i.test(s)
+    || /\b(?:(?:photo)?cop(?:y|ies)|xerox)\b[\s\S]{0,24}(?:are|is|will\s+be|to\s+be)?\s*(?:only\s+)?(?:retained|kept|held|deposited|stored|filed)\b/i.test(s)
+    || /(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि).{0,24}जमा|जमा.{0,24}(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/.test(s)
+    || /\b(?:(?:photo)?cop(?:y|ies)|xerox|प्रति(?:याँ|यां)?)\b[\s\S]{0,40}\b(?:rahegi|rahenge|rahega|remain(?:s|ed|ing)?|stays?|filed|file par)/i.test(s);
+}
+/** Copy-only when copies are the object of the hold verb and originals are not themselves the subject or object of that verb. */
 function copyOnlyHold(s: string) {
-  if (!COPY_OBJ.test(s) || !hasHold(s)) return false;
-  const holdsOrig = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|surrender(?:s|ed)?)\s+(?:the\s+)?originals?\b/i.test(s)
-    || /\boriginals?\s+(?:will\s+be\s+|are\s+|to\s+be\s+)?(?:retained|kept|held|deposited|stored|surrendered)\b/i.test(s);
-  return !holdsOrig;
+  if (!COPY_OBJ.test(s) && !/फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि/.test(s)) return false;
+  if (origHeldAsTarget(s)) return false;
+  return copiesAreHoldObject(s);
 }
-function isVerifyNoHold(s: string) {
-  if (DURABLE.test(s) && hasHold(s)) return false;
-  return /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|visual check|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with)\b|सत्यापन|दिखाना|दिखाने|दिखाना|जाँच/i.test(s)
+function copiesKeptOriginalsReturned(s: string) {
+  return copiesAreHoldObject(s) && hasOrig(s) && /\b(?:returned|handed\s+(?:back|to you)|given\s+back|go(?:es)?\s+home)\b/i.test(s);
+}
+function isPlainVerify(s: string) {
+  const cue = /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|visual check|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with|dikhane|dikhana|viewing|viewed?|shown?|showing)\b|सत्यापन|दिखाना|दिखाने|जाँच|देखने/i.test(s)
     || /\b(?:same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out|pack it away|collected again|handed to you|before you leave|take them home|in one sitting)\b|उसी\s+(?:दिन|बैठक|समय)|वापस ले/i.test(s);
+  if (!cue) return false;
+  if (isWhitelistSelf(s)) return true;
+  if (/\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:ready|handy|available)\b/i.test(s) && !/\b(?:deposit|retain|store|lodge)\b/i.test(s)) return true;
+  // (c) only when there is no hold / location / transfer verb besides the verification itself
+  if (hasLocTransfer(s) || hasHold(s) || hasTimeOrReturn(s)) return false;
+  return true;
 }
-function isKeepOut(s: string) { return isCameraHold(s) || isKeepSelf(s) || copyOnlyHold(s) || isVerifyNoHold(s); }
-const RETURN_FAM = /(?:return(?:ed|s|ing)?|releas(?:e|ed|es|ing)|giv(?:e|en|ing)\s+back|hand(?:s|ed|ing)?(?:\s+\w+){0,4}\s+back|hand(?:s|ed|ing)?\s+over)/i;
+const RETURN_FAM = /(?:return(?:ed|s|ing)?|releas(?:e|ed|es|ing)|(?:giv(?:e|en|ing)|hand(?:s|ed|ing)?|get(?:s|ting)?|got|take[ns]?|taken|sent)\s+(?:\S+\s+){0,4}back|hand(?:s|ed|ing)?\s+over)/i;
 function isUntilReturnHold(s: string) {
   const negAux = /(?:won['’]?t|will\s+not|shan['’]?t|shall\s+not|aren['’]?t|are\s+not|isn['’]?t|is\s+not|(?:will\s+|shall\s+|are\s+|is\s+|to\s+)?not)/i;
   return new RegExp('\\b(?:' + negAux.source + ')\\s+(?:be\\s+)?' + RETURN_FAM.source + '[\\s\\S]{0,80}?\\b(?:until|till|unless)\\b', 'i').test(s)
@@ -71,15 +103,27 @@ function isUntilReturnHold(s: string) {
     || /तभी\s*जारी[\s\S]{0,48}जब/.test(s);
 }
 function isConditionalHold(s: string) {
-  return /\b(?:if|whether)\b[\s\S]{0,80}\b(?:to\s+be\s+)?(?:held|kept|retained|deposited|stored)\b/i.test(s);
+  return /\b(?:whether|if)\b[\s\S]{0,120}\b(?:to\s+be\s+|has\s+to\s+)?(?:held|kept|retained|deposited|stored|left|placed|lodged|remain(?:s|ed|ing)?|stays?)\b/i.test(s)
+    || /\bwill\s+(?:say|advise|write|confirm)\s+(?:whether|if)\b/i.test(s)
+    || /\bmay\s+be\b[\s\S]{0,80}\b(?:held|kept|retained|deposited|stored|left|placed)\b/i.test(s)
+    || /\bwhether\b[\s\S]{0,120}\b(?:left\s+in\s+deposit|placed\s+in\s+custody|to\s+be\s+deposited)\b/i.test(s);
+}
+function isSoftSubmit(s: string) {
+  return /\bsubmit(?:s|ted|ting)?\b/i.test(s)
+    && /\b(?:along with|with the joining form|for (?:verification|joining|onboarding|scrutiny|inspection|DV))\b/i.test(s)
+    && !hasTimeOrReturn(s)
+    && !/\b(?:retain(?:s|ed|ing)?|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|kept|held|custody)\b/i.test(s);
 }
 function holdNegatedCleanly(s: string) {
-  return /\b(?:does\s+not|do\s+not|will\s+not|shall\s+not|are\s+not|is\s+not|won['’]?t|shan['’]?t|not)\s+(?:be\s+)?(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|collect(?:s|ed|ing)?)\b/i.test(s)
-    || /\bno\s+original[\s\S]{0,48}?\b(?:are\s+|is\s+|will\s+be\s+)?(?:kept|stored|held|deposited|retained|collected)\b/i.test(s)
+  return /\b(?:does\s+not|do\s+not|will\s+not|shall\s+not|are\s+not|is\s+not|won['’]?t|shan['’]?t|not)\s+(?:be\s+)?(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|collect(?:s|ed|ing)?|left)\b/i.test(s)
+    || /\bno\s+original[\s\S]{0,64}?\b(?:are\s+|is\s+|will\s+be\s+)?(?:kept|stored|held|deposited|retained|collected|left|placed)\b/i.test(s)
+    || /\bnothing\s+(?:is\s+)?(?:to\s+be\s+)?(?:stored|kept|retained|held|deposited|collected)\b/i.test(s)
+    || /\bnot\s+a\s+request\s+to\s+(?:deposit|surrender|retain|keep)\b/i.test(s)
+    || /जमा\s*नहीं|रखने\s*के\s*लिए\s*नहीं|rakhne ke liye nahi|jama nahi/i.test(s)
     || /\bnot\s+required\s+to\s+(?:surrender|deposit|submit|hand\s+over)\b/i.test(s)
     || /\b(?:forbids?|prohibits?)\b[\s\S]{0,48}\b(?:hold(?:ing)?|keeping|retaining|storing|depositing)\b/i.test(s)
     || /\bno\s+(?:right|authority|power|clause|provision|condition)\s+(?:to\s+|under\s+which\s+)/i.test(s)
-    || /\bneither\s+(?:retain|keep|hold|deposit|store|withhold|ask)\b/i.test(s)
+    || /\bneither\s+(?:retain|keep|hold|deposit|store|withhold|ask|leave)\b/i.test(s)
     || /नहीं\s*रखेग[ाी]|नहीं\s*रखती|\bnahi[n]?\s+rakh(?:egi|ega|ti|te)\b/i.test(s);
 }
 function mixedException(s: string) {
@@ -88,23 +132,45 @@ function mixedException(s: string) {
     || /\bmay\s+still\b/i.test(s);
 }
 export type DocsTier = 'red' | 'amber' | null;
-/** Three-tier documents rule: red = unambiguous hold, amber = mixed/uncertain, null = clean. */
-const TIME_OR_RETURN = /\b(?:until|till|unless|back)\b|\bonly\s+after\b|\bfor\s+the\s+duration\b|\bjab\s+tak\b|जब तक|वापस/i;
+/** Time / return markers. Bare 'back' is not a marker; require give/hand/get … back. */
+function hasTimeOrReturn(s: string) {
+  return /\b(?:until|till|unless)\b|\bonly\s+after\b|\bfor\s+the\s+duration\b|\block[- ]?in\b|\bjab\s+tak\b|\btak\b|जब तक|तक|वापस/i.test(s);
+}
+/** Three-tier documents rule. Time-marker fail-safe runs before keep-outs. Orig + location/transfer verb defaults to at least amber. */
 export function docsHeldRisk(text: string): DocsTier {
   const sentences = offerClauses(text || '');
   let prevSubj = false, amber = false;
   for (const s of sentences) {
     const subj = hasOrig(s) || (prevSubj && ANAPHORA.test(s));
-    const hold = hasHold(s) || !!(subj && /\bjab\s+tak\b|जब तक/i.test(s));
+    const loc = hasLocTransfer(s);
+    const hold = hasHold(s) || loc || !!(subj && /\bjab\s+tak\b|जब तक/i.test(s));
+    const time = hasTimeOrReturn(s);
     prevSubj = hasOrig(s) || prevSubj;
-    if (isKeepOut(s)) continue;
+    // 1. Orig + time/return marker is never clean. Run this before any keep-out or copy-only rule.
+    if (subj && time) {
+      if (isConditionalHold(s)) { amber = true; continue; }
+      if (isUntilReturnHold(s)) return 'red';
+      // orig + time is never clean, but a whitelist / denial / verify / copy-only sentence must not go red
+      if (isWhitelistSelf(s) || (holdNegatedCleanly(s) && !mixedException(s)) || isCameraHold(s) || isPlainVerify(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSoftSubmit(s)) {
+        amber = true;
+        continue;
+      }
+      if (subj && hold && !NEG_WORD.test(s)) return 'red';
+      amber = true;
+      continue;
+    }
+    // 2. whether / if / will say whether / may be about a later hold: amber, never red.
+    if (isConditionalHold(s) && (subj || hold)) { amber = true; continue; }
+    // 3. Clean only via (a) possession whitelist, (b) clear denial, (c) plain verification / camera, or strict copy-only.
+    if (isWhitelistSelf(s)) continue;
+    if (holdNegatedCleanly(s) && !mixedException(s)) continue;
+    if (isCameraHold(s)) continue;
+    if (isPlainVerify(s)) continue;
+    if (copyOnlyHold(s) || copiesKeptOriginalsReturned(s)) continue;
+    if (isSoftSubmit(s)) { amber = true; continue; }
     if (isUntilReturnHold(s) && subj) return 'red';
-    if (isConditionalHold(s)) { amber = true; continue; }
     if (subj && hold && !NEG_WORD.test(s)) return 'red';
-    if (hold && holdNegatedCleanly(s) && !mixedException(s)) continue;
-    if (hold) { amber = true; continue; }
-    // Fail-safe: originals + a return/time marker, and no other rule decided the sentence, is amber never clean.
-    if (subj && TIME_OR_RETURN.test(s)) amber = true;
+    if ((subj && hold) || hold) amber = true;
   }
   return amber ? 'amber' : null;
 }

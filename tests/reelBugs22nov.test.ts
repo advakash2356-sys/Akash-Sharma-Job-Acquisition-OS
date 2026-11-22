@@ -814,7 +814,7 @@ test('offer: retest-4 Highs, Medium abbrevs/denials, and fail-safe combinations'
   assert.equal(docTier('कंपनी किसी भी चरण में मूल डिग्री प्रमाण पत्र नहीं रखेगी; केवल सत्यापित प्रतियाँ फ़ाइल में रहेंगी।'), 'clean');
 
   const subjects = ['original certificates', 'the originals', 'original degree', 'मूल प्रमाण पत्र', 'original marksheets'];
-  const markers = ['until', 'till', 'jab tak', 'जब तक', 'only after', 'unless', 'for the duration', 'back', 'वापस'];
+  const markers = ['until', 'till', 'jab tak', 'जब तक', 'only after', 'unless', 'for the duration', 'give back until', 'hand back till', 'get back unless', 'वापस'];
   const fillers = ['the posting is over', 'the bond ends', 'HR closes the file', 'year two is complete'];
   const clean: string[] = [];
   for (const subj of subjects) for (const mark of markers) for (const fill of fillers) {
@@ -823,4 +823,52 @@ test('offer: retest-4 Highs, Medium abbrevs/denials, and fail-safe combinations'
   }
   assert.ok(subjects.length * markers.length * fillers.length >= 30, 'need a generated set');
   assert.equal(clean.length, 0, 'fail-safe missed (must be amber or red, never clean):\n' + clean.join('\n'));
+});
+
+test('offer: retest-5 invert default, whitelist, copy-only, conditionals', () => {
+  // Highs from retest 5: workplace "your <place>" is a hold, never clean
+  for (const t of [
+    'Originals remain in your regional office strong room.',
+    'The original degree will stay with your reporting manager.',
+    'Original educational certificates are kept in your unit locker at the plant.',
+    'The original marksheets stay with your departmental head at the depot.',
+    'Originals are to remain in your circle office until further orders.',
+  ]) assert.notEqual(docTier(t), 'clean', 'workplace your-place must not be clean: ' + t);
+
+  // HO33: incidental "copies" must not clean a deposit of originals
+  const ho33 = 'Your original LL.B. and original M.Ed. certificates listed at Sr. No. 2 and Sr. No. 6, e.g. the convocation copies (i.e., the university originals), shall be deposited with the clinical cell and released only after the pupillage year.';
+  assert.equal(docTier(ho33), 'red');
+  assert.equal(offerClauses(ho33).length, 1);
+
+  // AM04: hypothetical "will say whether" / left in deposit is amber, never red
+  assert.equal(docTier('A subsequent circular will say whether any original paper is to be left in deposit after induction week ends.'), 'amber');
+  assert.notEqual(docTier('The office may be asked later whether original marksheets are to be deposited after probation.'), 'red');
+
+  // LOW: give/hand/get … back with words in between; bare "back" is not a time marker
+  assert.equal(docTier("The institute won't give the original degree back till the two-year posting is served."), 'red');
+  assert.equal(docTier('The original certificates are listed on the back of annex A for ease of reference.'), 'clean');
+
+  const subjects = ['original certificates', 'the originals', 'original degree', 'मूल प्रमाण पत्र', 'original marksheets'];
+  const verbs = ['remain', 'stay', 'are kept', 'will keep', 'are left', 'are deposited', 'are stored', 'are lodged', 'are placed'];
+  const workPlaces = ['office', 'strong room', 'manager', 'locker', 'unit', 'depot', 'head'];
+  const workClean: string[] = [];
+  for (const subj of subjects) for (const verb of verbs) for (const place of workPlaces) {
+    const s = `The ${subj} ${verb} in your ${place}.`;
+    if ((docsHeldRisk(s) ?? 'clean') === 'clean') workClean.push(s);
+  }
+  assert.ok(subjects.length * verbs.length * workPlaces.length >= 30, 'need a generated workplace set');
+  assert.equal(workClean.length, 0, 'orig + loc/transfer + workplace your-place must never be clean:\n' + workClean.join('\n'));
+
+  const selfPlaces = ['briefcase', 'wallet', 'bag', 'handbag', 'backpack', 'folder', 'file', 'possession'];
+  const selfRed: string[] = [];
+  for (const subj of subjects) for (const place of selfPlaces) {
+    const s = `The ${subj} remain in your ${place}.`;
+    if (docsHeldRisk(s) === 'red') selfRed.push(s);
+  }
+  for (const s of [
+    'The originals remain with you after the joining check.',
+    'Keep the original degree yourself during the appointment.',
+    'मूल प्रमाण पत्र अपने पास रखें।',
+  ]) if (docsHeldRisk(s) === 'red') selfRed.push(s);
+  assert.equal(selfRed.length, 0, 'orig + whitelist possession must never be red:\n' + selfRed.join('\n'));
 });
