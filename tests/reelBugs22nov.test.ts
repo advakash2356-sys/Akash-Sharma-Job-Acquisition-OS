@@ -1290,3 +1290,27 @@ test('offer: retest-13 — split same-sitting and copy-return clean paths, bound
   assert.equal(docTier('The academic papers are released upon resignation only, at UCO Bank Kolkata.'), 'red');
   assert.notEqual(docTier('keep originals in your pocket at the exam hall until you leave the sitting.'), 'red');
 });
+
+test('offer: retest-13 Highs — trailing hold, anaphor-only, and new subjects are not clean', () => {
+  const rows = [
+    'Show the diploma at the tally kiosk. You walk out with the set the same morning. They will be locked away.',
+    'Show the diploma at the tally kiosk. You walk out with the set the same morning. Next month they are locked away.',
+    'Show the diploma at the tally kiosk. You walk out with the set the same morning. Ye sab hum rakh lenge.',
+    'Collect them from the tray the same afternoon. They will be locked away after dusk.',
+    'They will be locked away after you sign at the contract desk.',
+    'Ye sab hum rakh lenge jab tak bond khatam na ho.',
+    'Unhe vault mein rakhna hai till the lock-in ends.',
+    'Joining formalities are listed below. Ye sab hum rakh lenge.',
+    'The provisional is retained by Establishment at IFFCO Phulpur.',
+    'The convocation scroll is archived at VECC Kolkata.',
+    'The CLC shall be deposited with Establishment until the bond ends, at IGCAR Kalpakkam.',
+    'डिग्री जमा रहेगी कार्यालय में जब तक बॉन्ड पूरा न हो, पीएनबी नई दिल्ली।',
+    'प्रमाणपत्र अभिरक्षा में रखे जाएँगे, यूनियन बैंक मुंबई।',
+  ];
+  for (const s of rows) {
+    assert.notEqual(docTier(s), 'clean', s + ' => ' + docTier(s));
+  }
+  assert.equal(docTier('The CLC shall be deposited with Establishment until the bond ends, at IGCAR Kalpakkam.'), 'red');
+  assert.notEqual(docTier('Show the degree at the enrolment kiosk. After the light turns green, pick the set up and leave. Only scans sit on the server.'), 'red');
+  assert.equal(docTier('The notice period is 90 days and joining is on 1 April 2027.'), 'clean');
+});
