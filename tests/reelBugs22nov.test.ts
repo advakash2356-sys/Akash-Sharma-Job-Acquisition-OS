@@ -847,7 +847,7 @@ test('offer: retest-5 invert default, whitelist, copy-only, conditionals', () =>
 
   // LOW: give/hand/get … back with words in between; bare "back" is not a time marker
   assert.equal(docTier("The institute won't give the original degree back till the two-year posting is served."), 'red');
-  assert.equal(docTier('The original certificates are listed on the back of annex A for ease of reference.'), 'clean');
+  assert.notEqual(docTier('The original certificates are listed on the back of annex A for ease of reference.'), 'red');
 
   const subjects = ['original certificates', 'the originals', 'original degree', 'मूल प्रमाण पत्र', 'original marksheets'];
   const verbs = ['remain', 'stay', 'are kept', 'will keep', 'are left', 'are deposited', 'are stored', 'are lodged', 'are placed'];
@@ -1251,4 +1251,30 @@ test('offer: retest-11 — delayed collect-after and later safekeeping/registrar
   assert.equal(docTier(ho37), 'red', ho37 + ' => ' + docTier(ho37));
   assert.notEqual(docTier(ho38), 'clean');
   assert.equal(docTier(ho39), 'red', ho39 + ' => ' + docTier(ho39));
+});
+
+test('offer: retest-12 — non-clean subject/anaphor is amber or red by default', () => {
+  const rows = [
+    'The original degree goes into escrow at AVNL Avadi.',
+    'The original degree is put in escrow at Canara Bank, Bengaluru.',
+    'The academic set is archived at MIL Khamaria.',
+    'The board sheets go into the warehouse at YIL Ambajhari.',
+    'The diploma is consigned to the treasury at RITES, Gurgaon.',
+    'The academic set will be warehoused for the engagement at BALCO Korba.',
+    'Bring the degree on day one at NFC Hyderabad. The said documents then go into escrow.',
+    'Bring the degree on day one at HWP Kota. These then go into escrow.',
+    'Bring the academic papers on day one at IPR Gandhinagar. The bundle is then archived.',
+    'Bring the diploma on day one at MIDHANI Hyderabad. It is then archived.',
+    'Bring the academic papers on day one at BEL Ghaziabad. The set is then archived.',
+    'Original marksheets are produced at joining at HAL Nashik. These go into the warehouse.',
+    'The academic papers are released upon resignation only, at UCO Bank Kolkata.',
+    'मूल अंकतालिकाएँ सुरक्षित रखेंगे, एनएफसी हैदराबाद।',
+  ];
+  for (const s of rows) {
+    assert.notEqual(docTier(s), 'clean', s + ' => ' + docTier(s));
+  }
+  assert.equal(
+    docTier('The academic papers are released upon resignation only, at UCO Bank Kolkata.'),
+    'red',
+  );
 });

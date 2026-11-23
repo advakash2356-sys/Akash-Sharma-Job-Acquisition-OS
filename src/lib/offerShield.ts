@@ -62,10 +62,11 @@ const DOCUMENT_SUBJECT = new RegExp(
     String.raw`\b(?:degree|diploma)s?\s*[/,-]\s*(?:degree|diploma)s?\b`,
     String.raw`(?:मूल|मूळ).{0,40}(?:प्रमाण\s*)?पत्र(?:े|ों)?|(?:मूल|मूळ).{0,32}(?:कागदपत्रे|पदवी|अंक\s*पत्र|दस्तावेज(?:ों)?|प्रमाणपत्रे|डिग्री)`,
     String.raw`आपके\s+मूल|मूळ\s+कागदपत्रे`,
+    String.raw`अंकतालिका(?:एँ|एं|ये|यें)?`,
   ].join('|'),
   'i'
 );
-const ANAPHORA = /\b(they|them|which|those(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|the\s+(?:same|said|academic)\s+(?:papers?|certificates?|documents?|set)|the\s+(?:paper(?:\s+itself)?|set)|unhe|unki|ve|unhe[n]?)\b|वे|उन्हें|उनको|उन्हे/i;
+const ANAPHORA = /\b(they|them|which|these(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|those(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|the\s+(?:same|said|academic)\s+(?:papers?|certificates?|documents?|set)|the\s+(?:paper(?:\s+itself)?|set|bundle)|unhe|unki|ve|unhe[n]?)\b|वे|उन्हें|उनको|उन्हे/i;
 const NEG_WORD = /\b(not|never|neither|nor|forbids?|forbidden|prohibit(?:s|ed)?|won['’]?t|shan['’]?t|aren['’]?t)\b|\bno\b(?!\.)|नहीं|नही|\bnahi[n]?\b|\bna\s+(?:to|hi)\b|ना\s+(?:तो|ही)|न\s+तो|न\s+ही/i;
 const COPY_OBJ = /\b((?:photo)?cop(?:y|ies)|scanned\s+copies|self[- ]attested\s+copies|attested\s+(?:photo)?cop(?:y|ies)|stamped\s+(?:photo)?cop(?:y|ies)|scanned\s+(?:photo)?cop(?:y|ies)|xerox)\b|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि/i;
 const HOLD_VERB = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|custody)\b|\bjama\b|\bde(?:\s+de)?na\s+hai\b|\brakh(?:na|ne|ene|enge|ega|i|hi|waane|wane|waana|waayi|wayi|waaya|waya)?(?:\s+jaa?ye(?:gi|ga))?\b|\brah(?:enge|ega|egi|ena)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah|\bveidunga\b|\bdeposit\s+panni\b|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े|ें|ी|वाई)?|रोक(?:ी|ेगा|ेगी|ेंगे)?|ठेवली|ठेवले|ठेवावे|जमा\s*करावे/i;
@@ -243,7 +244,9 @@ function isUntilReturnHold(s: string) {
     || /\b(?:collect|give|hand|get|take)(?:s|ed|ing)?(?:\s+\S+){0,4}\s+(?:back\s+)?(?:only\s+)?after\s+(?:the\s+)?(?:service(?:\s+period)?|bond(?:\s+period)?|surety(?:\s+period)?|contract|traineeship|probation|funded\s+term|(?:\d+|one|two|three|four|five|[a-z]+)\s+years?)\b/i.test(s)
     || isAfterDurationBound(s) && /\b(?:collect|give|hand|get|take)(?:s|ed|ing)?\b/i.test(s)
     || /wapas\s+tab\s+mil(?:egi|ega|enge)\s+jab/i.test(s)
-    || /\bjab\s+(?:lock[- ]?in|bond|seva)\b[\s\S]{0,32}\bkhatam\b/i.test(s);
+    || /\bjab\s+(?:lock[- ]?in|bond|seva)\b[\s\S]{0,32}\bkhatam\b/i.test(s)
+    || /\b(?:releas(?:e|ed|es|ing)|return(?:s|ed|ing)?|given\s+back|handed\s+back)\s+(?:only\s+)?upon\s+(?:(?:your|the)\s+)?(?:resignation|exit)\b/i.test(s)
+    || /\b(?:releas(?:e|ed|es|ing)|return(?:s|ed|ing)?|given\s+back|handed\s+back)\s+upon\s+(?:(?:your|the)\s+)?(?:resignation|exit)\s+only\b/i.test(s);
 }
 /** Negation that only refuses a return never cancels a hold; it is a hold signal. */
 function staysWithCandidate(s: string) {
@@ -306,7 +309,7 @@ function hasCustodyPlace(s: string) {
   return /\b(?:lockers?|vaults?|strong\s+rooms?|offices?|cupboards?|files?|establishments?|managers?|almirahs?|cabinets?|deed\s+chests?|personnel|clerks?|registrar|safekeeping)\b|\bHR\b/i.test(rest);
 }
 function hasBlockingBound(s: string) {
-  return isHostileTimeBound(s) || isAfterDurationBound(s)
+  return isHostileTimeBound(s) || isAfterDurationBound(s) || isUntilReturnHold(s)
     || /\b(?:bond|lock[- ]?in|surety|indenture)\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+years?\b|\bfor the life of the (?:contract|bond)\b|बॉन्ड/i.test(s);
 }
 function isRetentionOrReturn(s: string) {
@@ -358,7 +361,7 @@ function isUnambiguousHold(s: string, subj: boolean) {
   if (isStrongCustody(s)) return true;
   return false;
 }
-/** Three-tier documents rule. Clean only via same-sitting verification, a clear denial, or copy-only — and never when a custody place or bond/until bound is in this sentence or the next. */
+/** Three-tier documents rule. A subject/anaphor sentence is amber unless it is itself an unblocked clean path (same-sitting verification, a clear denial, or copy-only). Custody and time words promote to red only. */
 export function docsHeldRisk(text: string): DocsTier {
   const sentences = offerClauses(text || '');
   let prevSubj = false, worst: DocsTier = null;
@@ -378,12 +381,8 @@ export function docsHeldRisk(text: string): DocsTier {
       || (hasCustodyPlace(s) && !isClearDenial(s) && !copyOnlyHold(s))
       || (hasCustodyPlace(next) && !isClearDenial(next) && !copyOnlyHold(next));
     const cleanPath = !blocked && (isSameSittingVerify(s) || isCameraHold(s) || isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s));
-    // A safe cue in this sentence never cleans another. Subject + custody/transfer/time is at least amber unless this sentence itself is an unblocked clean path.
-    if (subj && (hasLocTransfer(s) || hasHold(s) || hasTimeOrReturn(s) || hasCustodyPlace(s) || isAfterDurationBound(s))) {
-      if (!cleanPath) bump('amber');
-      continue;
-    }
-    if (cleanPath) continue;
+    // A safe cue in this sentence never cleans another. Subject or anaphor without a clean path is amber, whatever the verbs.
+    if (subj && !cleanPath) bump('amber');
   }
   return worst;
 }
