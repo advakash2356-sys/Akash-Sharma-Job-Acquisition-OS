@@ -1278,3 +1278,15 @@ test('offer: retest-12 — non-clean subject/anaphor is amber or red by default'
     'red',
   );
 });
+
+test('offer: retest-13 — split same-sitting and copy-return clean paths, bounds still block', () => {
+  assert.equal(docTier('Show the degree at the enrolment kiosk. After the light turns green, pick the set up and leave. Only scans sit on the server.'), 'clean');
+  assert.equal(docTier('Academic papers were viewed at appointment and returned in the same sitting.'), 'clean');
+  assert.equal(docTier('Scanned copies of your diploma will be retained. Date of joining: 1 April 2027. The original diploma is returned in the same sitting at NFC Hyderabad.'), 'clean');
+  assert.equal(docTier('आरआईटीईएस यह स्पष्ट करता है कि मूल प्रमाण पत्र अभ्यर्थी के पास रहेंगे; कार्यालय केवल छायाप्रतियाँ रखेगा।'), 'clean');
+  assert.notEqual(docTier('Attested copies of the degree are filed. The probation is two years. You take the paper degree home the same afternoon at SIDBI.'), 'clean');
+  assert.notEqual(docTier('Academic papers are shown at the desk and you walk out with them. Two weeks later the same set is taken into safekeeping.'), 'clean');
+  assert.notEqual(docTier('The original degree goes into escrow at AVNL Avadi.'), 'clean');
+  assert.equal(docTier('The academic papers are released upon resignation only, at UCO Bank Kolkata.'), 'red');
+  assert.notEqual(docTier('keep originals in your pocket at the exam hall until you leave the sitting.'), 'red');
+});

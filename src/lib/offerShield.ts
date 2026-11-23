@@ -32,6 +32,7 @@ export function offerClauses(t: string): string[] {
   const shield = (m: string) => m.replace(/\./g, '\0');
   for (const block of blocks) {
     const protectedText = block.replace(/\s+/g, ' ').trim()
+      .replace(/\bStep\s+\d+\./gi, shield)
       .replace(/\bSr\.\s*No\./gi, shield)
       .replace(/\b(?:e\.g|i\.e|etc|a\.m|p\.m)\./gi, shield)
       .replace(/\b(?:[A-Za-z]{1,4}\.){2,}[A-Za-z]{0,5}\.?/g, shield)
@@ -184,7 +185,7 @@ function hasLocTransfer(s: string) {
 /** Drop "copy/photocopy of (the/your) original …" so those originals are not treated as the hold object. */
 function withoutCopyOfOrig(s: string) {
   const ofDoc = new RegExp(
-    '\\b(?:(?:photo)?cop(?:y|ies)|xerox|scanned\\s+copies|self[- ]attested\\s+copies)\\s+(?:of\\s+)?(?:your\\s+|the\\s+)?(?:original(?:\\s+[\\w.-]+){0,5}\\s+)?(?:' + DOC_NOUN + ')',
+    '\\b(?:(?:photo)?cop(?:y|ies)|xerox|scanned\\s+copies|(?:self[- ]attested|attested|stamped)\\s+(?:photo)?cop(?:y|ies))\\s+(?:of\\s+)?(?:your\\s+|the\\s+)?(?:original(?:\\s+[\\w.-]+){0,5}\\s+)?(?:' + DOC_NOUN + ')',
     'gi'
   );
   return s.replace(ofDoc, ' ').replace(/मूल.{0,32}की\s+(?:फोटो)?प्रति(?:लिपि)?/g, ' ');
@@ -202,7 +203,9 @@ function copiesAreHoldObject(s: string) {
     || /\bas\s+a\s+copy\b|\bas\s+copies\b|\bnot\s+as\s+the\s+(?:paper\s+)?original/i.test(s)
     || /\b(?:(?:photo)?cop(?:y|ies)|xerox)\b[\s\S]{0,24}(?:are|is|will\s+be|to\s+be)?\s*(?:only\s+)?(?:retained|kept|held|deposited|stored|filed)\b/i.test(s)
     || /(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि).{0,24}जमा|जमा.{0,24}(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/.test(s)
-    || /\b(?:(?:photo)?cop(?:y|ies)|xerox|प्रति(?:याँ|यां)?)\b[\s\S]{0,40}\b(?:rahegi|rahenge|rahega|remain(?:s|ed|ing)?|stays?|filed|file par)/i.test(s);
+    || /\b(?:(?:photo)?cop(?:y|ies)|xerox|प्रति(?:याँ|यां)?)\b[\s\S]{0,40}\b(?:rahegi|rahenge|rahega|remain(?:s|ed|ing)?|stays?|filed|file par|scanned(?:\s+and\s+uploaded)?|uploaded)/i.test(s)
+    || /केवल\s*(?:छायाप्रति(?:याँ|यां)?|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)\s*रखेग[ाी]/.test(s)
+    || /\b(?:office|works|clinic|bank|cell|desk|employer|establishment|company)\b[\s\S]{0,56}\b(?:keeps?|holds?|files?|records?|stores?|retains?)\s+(?:only\s+)?(?:the\s+)?(?:portal\s+)?(?:scans?|(?:attested\s+|stamped\s+|scanned\s+|photo)?cop(?:y|ies))(?:\s+only)?\b/i.test(s);
 }
 /** Copy-only when copies are the object of the hold verb and originals are not themselves the subject or object of that verb. */
 function copyOnlyHold(s: string) {
@@ -220,8 +223,8 @@ function isKeepQuestion(s: string) {
   return /\?\s*$/.test(s.trim()) && /\b(?:keep|retain|hold|deposit|store)\b/i.test(s);
 }
 function isPlainVerify(s: string) {
-  const cue = /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|document[- ]check|sight[- ]check|visual check|photograph|photo(?:\s+session)?|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with|dikhane|dikhana|viewing|viewed?|shown?|showing|glance|we look|tick[- ]?mark|on the tray|kiosk)\b|सत्यापन|दिखाना|दिखाने|जाँच|देखने/i.test(s)
-    || /\b(?:same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out|pack it away|collected again|handed to you|before you leave|take them (?:home|back)|in one sitting|returned in the same sitting|handed back at the counter|you walk out|collect(?:s|ed|ing)?(?:\s+them)?(?:\s+from\s+the\s+tray)?|when the light turns green)\b|उसी\s+(?:दिन|बैठक|समय)|वापस ले/i.test(s);
+  const cue = /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|document[- ]check|sight[- ]check|visual check|photograph|photo(?:\s+session)?|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|looked at|comparison with|dikhane|dikhana|viewing|viewed?|show(?:s|n|ing)?|glance|we look|tick[- ]?mark|on the tray|kiosk)\b|सत्यापन|दिखाना|दिखाने|जाँच|देखने/i.test(s)
+    || /\b(?:same[- ](?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out|pack it away|collected again|handed to you|before you leave|take them (?:home|back)|in one sitting|returned in the same sitting|handed back at the counter|you walk out|collect(?:s|ed|ing)?(?:\s+them)?(?:\s+from\s+the\s+tray)?|when the light turns green)\b|उसी\s+(?:दिन|बैठक|समय)|वापस ले/i.test(s);
   if (!cue) return false;
   if (isWhitelistSelf(s)) return true;
   if (/\bkeep(?:s|ing|t)?\b[\s\S]{0,50}\b(?:ready|handy|available)\b/i.test(s) && !/\b(?:deposit|retain|store|lodge)\b/i.test(s)) return true;
@@ -287,7 +290,13 @@ function holdNegatedCleanly(s: string) {
     || /\bneither\s+(?:retain|keep|hold|deposit|store|withhold|ask|leave|collect(?:s|ed|ing)?)\b/i.test(s)
     || /\b(?:does\s+not|will\s+not|shall\s+not|do\s+not)\s+take\b[\s\S]{0,24}\binto\s+custody\b/i.test(s)
     || /\b(?:does\s+not\s+require|not\s+required)\b[\s\S]{0,24}\b(?:to\s+be\s+)?left\b/i.test(s)
-    || /नहीं\s*रखेग[ाी]|नहीं\s*रखती|\bnahi[n]?\s+rakh(?:egi|ega|ti|te)\b/i.test(s);
+    || /नहीं\s*रखेग[ाी]|नहीं\s*रखती|\bnahi[n]?\s+rakh(?:egi|ega|ti|te)\b/i.test(s)
+    || /\b(?:forbids?|prohibit(?:s|ed)?)\b[\s\S]{0,48}\bpark(?:ing|s|ed)?\b/i.test(s)
+    || /\bnot\s+collected\s+on\s+joining\b/i.test(s)
+    || /\bnothing\s+from\s+(?:that|the|this)\s+set\s+is\s+entered\b/i.test(s)
+    || /\bno\s+sheet\s+is\s+booked\s+into\b/i.test(s)
+    || /\bwill\s+not\s+ask\s+for\s+that\s+paper\b/i.test(s)
+    || /\bnot\s+to\s+(?:us|the\s+(?:employer|company|board|corporation))\b/i.test(s);
 }
 function mixedException(s: string) {
   return (/\b(?:except|unless)\b/i.test(s) && /\b(?:bond|deposit|custody|surety)\b/i.test(s) && !isUntilReturnHold(s))
@@ -305,12 +314,15 @@ function hasCustodyPlace(s: string) {
     .replace(/\b(?:personal\s+)?files?\s+(?:only\s+)?(?:attested|stamped|scanned|xerox)?\s*(?:photo)?cop(?:y|ies)\b/gi, ' ')
     .replace(/\b(?:photo)?cop(?:y|ies|xerox)[\s\S]{0,40}\b(?:file|office|HR)\b/gi, ' ')
     .replace(/\b(?:file|office|HR)\b[\s\S]{0,40}\b(?:photo)?cop(?:y|ies|xerox)\b/gi, ' ')
-    .replace(/कार्यालय[\s\S]{0,40}(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)|(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)[\s\S]{0,24}कार्यालय/g, ' ');
+    .replace(/कार्यालय[\s\S]{0,40}(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)|(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)[\s\S]{0,24}कार्यालय/g, ' ')
+    .replace(/\bHR\s*:/g, ' ')
+    .replace(/\bHR\s+official\b/gi, ' ');
   return /\b(?:lockers?|vaults?|strong\s+rooms?|offices?|cupboards?|files?|establishments?|managers?|almirahs?|cabinets?|deed\s+chests?|personnel|clerks?|registrar|safekeeping)\b|\bHR\b/i.test(rest);
 }
 function hasBlockingBound(s: string) {
   return isHostileTimeBound(s) || isAfterDurationBound(s) || isUntilReturnHold(s)
-    || /\b(?:bond|lock[- ]?in|surety|indenture)\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+years?\b|\bfor the life of the (?:contract|bond)\b|बॉन्ड/i.test(s);
+    || /\b(?:bond|lock[- ]?in|surety|indenture)\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+years?\b|\bfor the life of the (?:contract|bond)\b|बॉन्ड/i.test(s)
+    || /\b(?:the\s+)?(?:probation|bond|lock[- ]?in|engagement|tenure)\s+is\s+(?:for\s+)?(?:\d+|one|two|three|four|five|[a-z]+)\s+years?\b/i.test(s);
 }
 function isRetentionOrReturn(s: string) {
   if (isUntilReturnHold(s) || returnNotGiven(s) || isHostileTimeBound(s)) return true;
@@ -319,29 +331,33 @@ function isRetentionOrReturn(s: string) {
   return hasTimeOrReturn(s) && !isVerifyWindow(s);
 }
 function hasVerifyCue(s: string) {
-  return /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|document[- ]check|sight[- ]check|visual check|photograph|photo(?:\s+session)?|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|glance|shown?|showing|on the tray|kiosk|tick[- ]?mark|dikhane|dikhana|looks?|looked over)\b|सत्यापन|दिखाना|दिखाने|जाँच/i.test(s);
+  return /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|document[- ]check|sight[- ]check|sight verification|visual(?:\s+check|\s+comparison)?|comparison|photograph|photo(?:\s+session)?|still image|scanner glass|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|glance|show(?:s|n|ing)?|compared|on the tray|kiosk|tick[- ]?mark|ticks?|dikhane|dikhana|looks?|looked over|look over|viewed?|viewing|degree check)\b|सत्यापन|दिखाना|दिखाने|जाँच|दिखाए/i.test(s);
 }
 function hasSameSittingReturn(s: string) {
   if (isAfterDurationBound(s) || isUntilReturnHold(s) || isHostileTimeBound(s)) return false;
-  return /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?(?:\s+again)?(?:\s+back)?\s+(?:from\s+the\s+tray|(?:the\s+)?same\s+(?:day|sitting|morning|afternoon|evening)|on[ -]?the[ -]?spot|at\s+the\s+(?:counter|desk|window|tray)|when the light turns green)|returned(?:\s+in)?\s+the\s+same\s+(?:day|sitting|morning|afternoon|evening)|(?:the\s+)?same\s+(?:day|sitting|afternoon|evening|morning)|on[ -]?the[ -]?spot|goes?\s+home|walk(?:s)?\s+out(?:\s+with)?|pack(?:s|ed|ing)?\s+(?:it|them|the set)\s+away|handed\s+(?:back|to you)|take them (?:home|back)|you (?:put|carry) (?:them|it) back|put (?:them|it) back|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?\s+from\s+the\s+tray|when the light turns green|carried away by the candidate|come back at that (?:window|desk|counter)|carry them (?:back|home|away)|packed away by you)\b|उसी\s+(?:दिन|बैठक|समय)|वापस\s+(?:ले|मिल)|लौटा दिए|wapas\s+(?:usi\s+desk\s+se\s+)?mil/i.test(s);
+  return /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?(?:\s+again)?(?:\s+back)?\s+(?:from\s+the\s+tray|(?:the\s+)?same[- ](?:day|sitting|morning|afternoon|evening)|on[ -]?the[ -]?spot|at\s+the\s+(?:counter|desk|window|tray)|when the light turns green)|returned(?:\s+in)?\s+the\s+same[- ](?:day|sitting|morning|afternoon|evening)|(?:the\s+)?same[- ](?:day|sitting|afternoon|evening|morning)|on[ -]?the[ -]?spot|goes?\s+home(?:\s+with)?|walk(?:s)?\s+out(?:\s+with)?|pack(?:s|ed|ing)?\s+(?:it|them|the set)\s+away|hand(?:s|ed|ing)?(?:\s+(?:the\s+)?(?:papers?|certificates?|documents?|originals?|set|them|it))?\s+back|take them (?:home|back)|takes?\s+(?:the\s+)?(?:paper\s+)?(?:set|papers?|diploma|degree|originals?|testimonials?)\s+(?:home|away)|you (?:put|carry) (?:them|it) back|put(?:s|ting)?\s+(?:them|it|the set)\s+back|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?\s+from\s+the\s+tray|when the light turns green|carried away by the (?:candidate|joiner|you)|the candidate carries (?:it|them|the set) away|come back at that (?:window|desk|counter)|carr(?:y|ies)\s+(?:them|it|the set)\s+(?:back|home|away)|packed away by you|pick(?:s|ed|ing)?\s+(?:the set|them|it)\s+up|lift(?:s|ed|ing)?\s+(?:the set|them|it)\s+off|go(?:es)?\s+back(?:\s+the\s+same\s+(?:day|afternoon|morning|sitting))?|return(?:s|ed|ing)?(?:\s+(?:every|all|the|each|those|these|your))?\s+(?:sheets?|papers?|set|originals?|certificates?|documents?))\b|leave[s]?\s+with\s+the\s+set|in\s+one\s+sitting|packed(?:\s+away)?\s+by\s+(?:the\s+)?(?:candidate|joiner|trainee|you)|papers\s+packed\s+by\s+you|collected\s+again\s+by\s+the\s+(?:candidate|joiner|trainee|allotee|you)|collected\s+again\s+when\s+the\s+clerk\s+nods|take them \(?home\)?|goes?\s+home\s+with\s+you|उसी\s+(?:दिन|बैठक|समय|पूर्वाह्न)|वापस\s+(?:ले|मिल)|लौटा दिए|wapas\s+(?:usi\s+desk\s+se\s+)?mil|aapke pass wapas|set aapke pass wapas|pack(?:s|ed)?\s+them,\s+go/i.test(s);
 }
 /** Same-sitting verification is judged on this sentence alone; a safe cue never cleans another sentence. */
 function isSameSittingVerify(s: string) {
   if (isUntilReturnHold(s) || isHostileTimeBound(s) || isAfterDurationBound(s) || /\bback\s+only\s+after\b/i.test(s)) return false;
-  return (hasVerifyCue(s) && hasSameSittingReturn(s)) || /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+them)?\s+(?:back\s+)?(?:from\s+the\s+tray|(?:the\s+)?same\s+(?:day|sitting)))\b/i.test(s);
+  return (hasVerifyCue(s) && hasSameSittingReturn(s)) || /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+them)?\s+(?:back\s+)?(?:from\s+the\s+tray|(?:the\s+)?same[- ](?:day|sitting)))\b/i.test(s);
 }
 
 function isClearDenial(s: string) {
   if (mixedException(s) || (returnNotGiven(s) && !staysWithCandidate(s)) || (isUntilReturnHold(s) && !staysWithCandidate(s))) return false;
   return holdNegatedCleanly(s)
     || /(?:अभ्यर्थी|उम्मीदवार)\s+के\s+पास\s+(?:रहेंगे|रहेंगी|रहेगा|रहें)/.test(s)
-    || /अपने पास रखें|aapke paas hi rah|apne paas (?:hi )?rah|aapke paas hi rahega/i.test(s)
+    || /अपने पास रखें|aapke paas hi rah|apne paas (?:hi )?rah|aapke paas hi rahega|candidate ke paas/i.test(s)
     || staysWithCandidate(s)
     || /\bremain(?:s|ing)?\s+with\s+(?:the\s+)?(?:candidate|joiner|you)\b/i.test(s)
     || /\byou keep the (?:paper|set|originals?|them)\b/i.test(s)
     || /\bnot\s+handed\s+over\b/i.test(s)
     || /\bnone\s+is\s+to\s+be\s+left\b|\bnothing\s+is\s+to\s+be\s+left\b/i.test(s)
-    || /\bas\s+a\s+copy\b|\bas\s+copies\b/i.test(s);
+    || /\bas\s+a\s+copy\b|\bas\s+copies\b/i.test(s)
+    || /\b(?:certificates? of experience|experience certificates?|course[- ]completion certificates?)\b[\s\S]{0,48}\b(?:issued|prepared|handed)\b/i.test(s)
+    || /\bissued at exit\b/i.test(s)
+    || /\bdo(?:es)?\s+not\s+require\s+originals\s+to\s+be\s+left\b/i.test(s)
+    || /\bwill\s+not\s+ask\s+for\s+that\s+paper\b/i.test(s);
 }
 function carriesSubject(s: string) {
   return ANAPHORA.test(s) || /\bit\b/i.test(s) || isUntilReturnHold(s) || returnNotGiven(s) || hasCustodyPlace(s)
@@ -361,7 +377,103 @@ function isUnambiguousHold(s: string, subj: boolean) {
   if (isStrongCustody(s)) return true;
   return false;
 }
-/** Three-tier documents rule. A subject/anaphor sentence is amber unless it is itself an unblocked clean path (same-sitting verification, a clear denial, or copy-only). Custody and time words promote to red only. */
+function isOfficeCopiesOnly(s: string) {
+  return /कार्यालय\s*केवल\s*(?:छायाप्रति(?:याँ|यां)?|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)/.test(s)
+    || /केवल\s*(?:छायाप्रति(?:याँ|यां)?|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)\s*रखेग[ाी]/.test(s)
+    || /\bonly\s+scans\s+sit\b/i.test(s)
+    || /\b(?:already\s+)?(?:holds?|files?|records?|keeps?|stores?)\s+(?:the\s+)?portal\s+scans\b/i.test(s)
+    || /\b(?:files?|records?|keeps?|holds?)\s+(?:only\s+)?(?:attested\s+|stamped\s+|scanned\s+|photo)?cop(?:y|ies)\s+only\b/i.test(s)
+    || /\b(?:office|works|clinic|bank|cell|desk|employer|establishment|company)\b[\s\S]{0,56}\b(?:keeps?|holds?|files?|records?|stores?|retains?)\s+(?:only\s+)?(?:the\s+)?(?:portal\s+)?(?:scans?|(?:attested\s+|stamped\s+|scanned\s+|photo)?cop(?:y|ies))(?:\s+only)?\b/i.test(s)
+    || /\bfile par sirf attested\b/i.test(s)
+    || /\b(?:xerox|copies|photocopies|scans?)[\s\S]{0,40}\b(?:punched\s+into\s+the\s+file|enough\s+for\s+the\s+file)\b/i.test(s)
+    || /\battested\s+xerox\s+pages\b[\s\S]{0,32}\bfile\b/i.test(s)
+    || /फ़ाइल में केवल\s*(?:साक्षांकित\s+)?प्रतियाँ/.test(s)
+    || /\bOffice sirf photocopy rakhega\b/i.test(s)
+    || /sirf photocopy rakhega/i.test(s);
+}
+function custodyBlocksClean(s: string) {
+  if (isClearDenial(s) || copyOnlyHold(s) || isOfficeCopiesOnly(s) || copiesKeptOriginalsReturned(s)) return false;
+  if (isSameSittingVerify(s) || (hasVerifyCue(s) && isCandidateReturn(s))) return false;
+  return hasCustodyPlace(s);
+}
+function hasEmployerTransfer(s: string) {
+  if (isClearDenial(s) || copyOnlyHold(s) || isOfficeCopiesOnly(s) || isPlaceForPhoto(s) || isCameraHold(s)) return false;
+  return /\b(?:parked\s+with|taken\s+into\s+safekeeping|in\s+safekeeping|in\s+(?:our|its)\s+custody|held\s+in\s+trust|surrender(?:s|ed|ing)?|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|rakhwaayi|जमा)\b/i.test(s)
+    || /\b(?:go(?:es)?\s+into|put(?:s|ting)?\s+in|archived|consigned(?:\s+to)?|warehoused)\b/i.test(s);
+}
+function isPossessionTail(s: string) {
+  return /\b(?:in(?:to)?\s+your|in\s+the)\s+(?:bag|pocket|backpack|briefcase|purse|coat|wallet|suitcase|hands|folder)\b/i.test(s)
+    && /\b(?:keep|kept|carry|carries|remain(?:s|ing)?|stays?|until|till)\b/i.test(s)
+    && !/\bput(?:s|ting)?\s+(?:them|it|the set)\s+back\b/i.test(s);
+}
+function isCandidateReturn(s: string) {
+  if (isAfterDurationBound(s) || isUntilReturnHold(s) || isHostileTimeBound(s)) return false;
+  return hasSameSittingReturn(s);
+}
+function isBringLeadIn(s: string) {
+  return hasOrig(s)
+    && /\b(?:bring|have|produce|shall\s+bring|asked\s+only\s+to\s+produce)\b/i.test(s)
+    && !hasEmployerTransfer(s) && !hasBlockingBound(s) && !isPossessionTail(s);
+}
+function groupBlocksClean(group: string[]) {
+  return group.some((s) => hasBlockingBound(s) || custodyBlocksClean(s) || hasEmployerTransfer(s));
+}
+/** Complete same-sitting path in a 1–3 sentence window starting at `start` and covering `target`. */
+function sameSittingGroupCovers(sentences: string[], start: number, target: number) {
+  for (let span = 1; span <= 3; span++) {
+    const end = start + span - 1;
+    if (end >= sentences.length || target < start || target > end) continue;
+    const group = sentences.slice(start, end + 1);
+    if (group.some(isPossessionTail) || groupBlocksClean(group)) continue;
+    const vIdx = group.findIndex(hasVerifyCue);
+    const rIdx = group.findIndex(isCandidateReturn);
+    if (vIdx >= 0 && rIdx >= 0 && rIdx >= vIdx) return true;
+    if (isBringLeadIn(group[0]) && vIdx > 0 && rIdx >= vIdx) return true;
+  }
+  return false;
+}
+function letterHasBound(sentences: string[]) {
+  return sentences.some(hasBlockingBound);
+}
+function isCopyOrDenial(s: string) {
+  return isClearDenial(s) || copyOnlyHold(s) || isOfficeCopiesOnly(s) || copiesKeptOriginalsReturned(s);
+}
+function copyDenialThenReturnCovers(sentences: string[], i: number) {
+  if (letterHasBound(sentences)) return false;
+  const s = sentences[i];
+  if (isCopyOrDenial(s)) {
+    for (let j = i + 1; j < sentences.length; j++) {
+      const nxt = sentences[j];
+      if (hasEmployerTransfer(nxt) || custodyBlocksClean(nxt)) return false;
+      if (isCandidateReturn(nxt) || isClearDenial(nxt) || staysWithCandidate(nxt)) return true;
+    }
+  }
+  if (isCandidateReturn(s) || isClearDenial(s) || staysWithCandidate(s)) {
+    for (let j = 0; j < i; j++) {
+      if (!isCopyOrDenial(sentences[j])) continue;
+      const mid = sentences.slice(j + 1, i);
+      if (!mid.some((x) => hasEmployerTransfer(x) || custodyBlocksClean(x) || hasBlockingBound(x))) return true;
+    }
+  }
+  return false;
+}
+function sentenceOnCleanPath(sentences: string[], i: number) {
+  const s = sentences[i];
+  if (isCameraHold(s)) return true;
+  if (isPossessionTail(s)) return false;
+  if (isSameSittingVerify(s) && !hasBlockingBound(s) && !custodyBlocksClean(s) && !hasEmployerTransfer(s)) return true;
+  for (let start = Math.max(0, i - 2); start <= i; start++) {
+    if (sameSittingGroupCovers(sentences, start, i)) return true;
+  }
+  if (isCopyOrDenial(s) && !hasBlockingBound(s) && !custodyBlocksClean(s)) {
+    const next = sentences[i + 1] || '';
+    if (!hasBlockingBound(next) && !custodyBlocksClean(next)) return true;
+    if (isOfficeCopiesOnly(next) || isCopyOrDenial(next)) return true;
+  }
+  if (copyDenialThenReturnCovers(sentences, i)) return true;
+  return false;
+}
+/** Three-tier documents rule. A subject/anaphor sentence is amber unless it is on an unblocked clean path (same-sitting verification, including a split path in the next 1–2 sentences, a clear denial, or copy-only). Custody and time words promote to red only. */
 export function docsHeldRisk(text: string): DocsTier {
   const sentences = offerClauses(text || '');
   let prevSubj = false, worst: DocsTier = null;
@@ -371,18 +483,13 @@ export function docsHeldRisk(text: string): DocsTier {
   };
   for (let i = 0; i < sentences.length; i++) {
     const s = sentences[i];
-    const next = sentences[i + 1] || '';
     const subj = hasOrig(s) || (prevSubj && carriesSubject(s));
     if (hasOrig(s)) prevSubj = true;
     if (isKeepQuestion(s)) continue;
     if (isUnambiguousHold(s, subj)) return 'red';
     if (isConditionalHold(s) && (subj || hasHold(s) || hasLocTransfer(s))) { bump('amber'); continue; }
-    const blocked = hasBlockingBound(s) || hasBlockingBound(next)
-      || (hasCustodyPlace(s) && !isClearDenial(s) && !copyOnlyHold(s))
-      || (hasCustodyPlace(next) && !isClearDenial(next) && !copyOnlyHold(next));
-    const cleanPath = !blocked && (isSameSittingVerify(s) || isCameraHold(s) || isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s));
-    // A safe cue in this sentence never cleans another. Subject or anaphor without a clean path is amber, whatever the verbs.
-    if (subj && !cleanPath) bump('amber');
+    // A safe cue never cleans another sentence. Subject or anaphor without a clean path is amber.
+    if (subj && !sentenceOnCleanPath(sentences, i)) bump('amber');
   }
   return worst;
 }
