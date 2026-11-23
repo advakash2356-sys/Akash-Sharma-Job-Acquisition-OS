@@ -1314,3 +1314,35 @@ test('offer: retest-13 Highs — trailing hold, anaphor-only, and new subjects a
   assert.notEqual(docTier('Show the degree at the enrolment kiosk. After the light turns green, pick the set up and leave. Only scans sit on the server.'), 'red');
   assert.equal(docTier('The notice period is 90 days and joining is on 1 April 2027.'), 'clean');
 });
+test('offer: retest-14 Highs — mid-group holds, same-sentence lock/file, and new subjects are not clean', () => {
+  const rows = [
+    'View the diploma at the induction kiosk. The originals are locked away. Carry the set away the same morning.',
+    'View the diploma at the induction kiosk. Ye sab hum rakh lenge. Carry the set away the same morning.',
+    'View the diploma at the induction kiosk and carry the set away the same morning, after the originals are locked away.',
+    'View the diploma at the induction kiosk. Carry the set away the same morning after they are locked away.',
+    'View the diploma at the induction kiosk. Kindly leave your originals with us. Carry the set away the same morning.',
+    'View the diploma at the induction kiosk and, after we file the originals, carry the set away the same morning.',
+    'The office keeps only copies. You carry the diploma home the same afternoon after the originals are locked away.',
+    'We do not retain originals at this desk. Carry the set away the same morning after they are locked away.',
+    'View the degree at the induction kiosk, we will keep it, and you walk out with the copies the same morning.',
+    'View the marksheets at the induction kiosk. The originals are locked away. Carry the set away the same afternoon.',
+    'Your credentials will be locked away at IOCL Panipat.',
+    'Your credentials must stay with Establishment till the surety period ends, at HPCL Visakh.',
+    'Educational proofs are retained by HR at GAIL Pata.',
+    'Kaagaz hum rakh lenge jab tak bond khatam na ho, MRPL Mangalore.',
+    'Kaagzaat vault mein rakhna hai till the lock-in ends, at CIL Kolkata.',
+    'कागज़ात जमा रहेंगे जब तक बॉन्ड पूरा न हो, एसईसीएल बिलासपुर।',
+    'The certs must stay with Establishment till the surety period ends, at NCL Singrauli.',
+    'The orignal will be retained by Establishment until the bond ends, at WCL Nagpur.',
+    'Certficates shall be deposited with HR until the bond ends, at MCL Sambalpur.',
+    'CREDENTIALS TO BE DEPOSITED WITH THE CONTROLLER AT BCCL DHANBAD.',
+    'Educational proofs shall be locked away until the bond ends, at NBCC New Delhi.',
+  ];
+  for (const s of rows) {
+    assert.notEqual(docTier(s), 'clean', s + ' => ' + docTier(s));
+  }
+  assert.equal(docTier('The certs must stay with Establishment till the surety period ends, at NCL Singrauli.'), 'red');
+  assert.equal(docTier('View the diploma at the induction kiosk. Carry the set away the same morning.'), 'clean');
+  assert.equal(docTier('The notice period is 90 days and joining is on 1 April 2027.'), 'clean');
+});
+

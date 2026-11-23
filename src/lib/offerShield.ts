@@ -69,17 +69,55 @@ const DOCUMENT_SUBJECT = new RegExp(
     String.raw`\bCLCs?\b`,
     String.raw`डिग्री`,
     String.raw`प्रमाण\s*पत्र(?:े|ों)?`,
+    String.raw`\bcredentials?\b`,
+    String.raw`\beducational\s+proofs?\b`,
+    String.raw`\bcerts?\b`,
+    String.raw`\bkaagaz\b`,
+    String.raw`\bkaagzaat\b`,
+    String.raw`कागज़ात`,
+    String.raw`कागजात`,
   ].join('|'),
   'i'
 );
 const ANAPHORA = /\b(they|them|which|these(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|those(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|the\s+(?:same|said|academic)\s+(?:papers?|certificates?|documents?|set)|the\s+(?:paper(?:\s+itself)?|set|bundle)|ye\s+sab|inhe|unhe|unki|ve|unhe[n]?)\b|वे|उन्हें|उनको|उन्हे|इन्हें|ये\s*सब/i;
 const NEG_WORD = /\b(not|never|neither|nor|forbids?|forbidden|prohibit(?:s|ed)?|won['’]?t|shan['’]?t|aren['’]?t)\b|\bno\b(?!\.)|नहीं|नही|\bnahi[n]?\b|\bna\s+(?:to|hi)\b|ना\s+(?:तो|ही)|न\s+तो|न\s+ही/i;
 const COPY_OBJ = /\b((?:photo)?cop(?:y|ies)|scanned\s+copies|self[- ]attested\s+copies|attested\s+(?:photo)?cop(?:y|ies)|stamped\s+(?:photo)?cop(?:y|ies)|scanned\s+(?:photo)?cop(?:y|ies)|xerox)\b|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि/i;
-const HOLD_VERB = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|custody|locked\s+away|lock(?:s|ing)?\s+away)\b|\bjama\b|\bde(?:\s+de)?na\s+hai\b|\brakh(?:na|ne|ene|enge|ega|i|hi|waane|wane|waana|waayi|wayi|waaya|waya)?(?:\s+jaa?ye(?:gi|ga))?\b|\brakh\s+lenge\b|\brah(?:enge|ega|egi|ena)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah|\bveidunga\b|\bdeposit\s+panni\b|जमा\s*रहेग[ाी]|जमा\s*रहेंगी|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े|ें|ी|वाई)?|रोक(?:ी|ेगा|ेगी|ेंगे)?|ठेवली|ठेवले|ठेवावे|जमा\s*करावे|अभिरक्षा/i;
+const HOLD_VERB = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|custody|locked\s+away|lock(?:s|ing)?\s+away)\b|\bjama\b|\bde(?:\s+de)?na\s+hai\b|\brakh(?:na|ne|ene|enge|ega|i|hi|waane|wane|waana|waayi|wayi|waaya|waya)?(?:\s+jaa?ye(?:gi|ga))?\b|\brakh\s+lenge\b|\brah(?:enge|ega|egi|ena)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah|\bveidunga\b|\bdeposit\s+panni\b|जमा\s*रहें(?:गे|गी|गा)|जमा\s*रहेग[ाी]|जमा\s*रहेंगी|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े|ें|ी|वाई)?|रोक(?:ी|ेगा|ेगी|ेंगे)?|ठेवली|ठेवले|ठेवावे|जमा\s*करावे|अभिरक्षा/i;
 const HOLD_PHRASE = /\bsubmit(?:s|ted|ting)?\b[\s\S]{0,90}?\b(?:until|till|unless)\b|\b(?:will\s+|shall\s+|are\s+|is\s+|to\s+)?not\s+(?:be\s+)?(?:return(?:ed|s)?|releas(?:e|ed|es|ing))[\s\S]{0,80}?\b(?:until|till|unless)\b|\breleas(?:e|ed|es|ing)\s+only\s+after\b|\b(?:remain(?:s|ed|ing)?|stays?|stay)\s+(?:with|in)\b|\btaken?\s+into\s+(?:safe\s+)?custody\b|\bin\s+(?:safe\s+)?custody\b|\bin\s+deposit\b|\bplaced\s+with\b|\bjab\s+tak\b|जब तक|तभी\s*जारी[\s\S]{0,48}जब|वापस\s*नहीं[\s\S]{0,40}(?:तक|जब)|के पास[\s\S]{0,48}रह|अभिरक्षा|तिजोरी|locker-la|\bvarikkum\b|\breturn\s+aagadhu\b|\bthirupi\s+kidaikadhu\b|परत\s*दिले\s*जाणार\s*नाही|परत\s*मिळणार\s*नाही/i;
 const DURABLE = /\b(?:until|till|unless|bond(?:ed)?|lock[- ]?in|surety|for\s+the\s+duration|up\s+to|throughout|collateral)\b|\bjab\s+tak\b|जब तक|बॉन्ड|अभिरक्षा|तभी/i;
-function hasOrig(s: string) { return DOCUMENT_SUBJECT.test(s); }
-function hasHold(s: string) { return HOLD_VERB.test(s) || HOLD_PHRASE.test(s); }
+const FUZZY_DOC_WORDS = ['original', 'originals', 'certificate', 'certificates'];
+function editDistanceAtMost1(a: string, b: string): boolean {
+  if (a === b) return true;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  if (la === lb) {
+    let diffs = 0;
+    for (let i = 0; i < la; i++) if (a[i] !== b[i]) diffs++;
+    if (diffs === 1) return true;
+    let i = 0;
+    while (i < la && a[i] === b[i]) i++;
+    return i < la - 1 && a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2);
+  }
+  const longer = la > lb ? a : b, shorter = la > lb ? b : a;
+  let i = 0, j = 0, skipped = 0;
+  while (i < longer.length && j < shorter.length) {
+    if (longer[i] === shorter[j]) { i++; j++; }
+    else { skipped++; i++; if (skipped > 1) return false; }
+  }
+  return skipped + (longer.length - i) <= 1;
+}
+function hasTypoDocumentWord(s: string): boolean {
+  const words = s.toLowerCase().match(/[a-z]+/g) || [];
+  for (const w of words) {
+    for (const target of FUZZY_DOC_WORDS) {
+      if (w !== target && editDistanceAtMost1(w, target)) return true;
+    }
+  }
+  return false;
+}
+function mentionsDocument(s: string) { return DOCUMENT_SUBJECT.test(s) || hasTypoDocumentWord(s); }
+function hasOrig(s: string) { return mentionsDocument(s); }
+function hasHold(s: string) { return HOLD_VERB.test(s) || HOLD_PHRASE.test(s) || /\bfil(?:e|es|ed|ing)\s+(?:the\s+|your\s+)?originals?\b/i.test(s); }
 function isCameraHold(s: string) { return /webcam|\bcameras?\b|कैमरा|camera ke saamne|in\s+front\s+of\s+the\s+(?:web)?camera/i.test(s) && /\bhold/i.test(s); }
 /** Strict candidate-possession whitelist. The whole location phrase must be possession, not a compound workplace place. */
 const SELF_NOUN = '(?:briefcases?|wallets?|bags?|handbags?|backpacks?|folders?|files?|possession|pockets?|suitcases?|purses?|hands?)';
@@ -380,7 +418,7 @@ function isStrongCustody(s: string) {
 }
 function isUnambiguousHold(s: string, subj: boolean) {
   if (!subj || isConditionalHold(s) || isCameraHold(s)) return false;
-  if (isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSameSittingVerify(s)) return false;
+  if (isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s)) return false;
   if (negCancelsHold(s)) return false;
   if (isUntilReturnHold(s) || returnNotGiven(s)) return true;
   const transfer = hasHold(s) || hasLocTransfer(s);
@@ -499,13 +537,25 @@ function hasDocAnaphor(s: string) {
 }
 function hasKeepCustodyTransferOrTime(s: string) {
   return hasHold(s) || hasLocTransfer(s) || hasCustodyPlace(s) || hasTimeOrReturn(s) || isAfterDurationBound(s) || isUntilReturnHold(s)
-    || /\blocked\s+away\b|\brakh\s+lenge\b|जमा\s*रहेग[ाी]|जमा\s*रहेंगी|अभिरक्षा/i.test(s);
+    || /\blocked\s+away\b|\brakh\s+lenge\b|जमा\s*रहें(?:गे|गी|गा)|जमा\s*रहेग[ाी]|जमा\s*रहेंगी|अभिरक्षा/i.test(s);
 }
 /** Anaphor plus a keep, custody, transfer or time cue is a document subject even with no earlier mention. */
 function isAnaphorWithCue(s: string) {
   return hasDocAnaphor(s) && hasKeepCustodyTransferOrTime(s);
 }
-/** Three-tier documents rule. A subject/anaphor sentence is amber unless it is on an unblocked clean path (same-sitting verification, including a split path in the next 1–2 sentences, a clear denial, or copy-only). Custody and time words promote to red only. */
+/** Hold, custody, transfer or hostile-time cue in this sentence (copy-only / clean denial with no leftover originals-hold is not a cue). */
+function hasOwnHoldOrCustodyCue(s: string) {
+  if (/\blocked\s+away\b|\bafter\s+(?:they|them|these|the\s+originals?|we)\s+(?:are\s+)?(?:locked\s+away|fil(?:e|es|ed|ing))|\bfil(?:e|es|ed|ing)\s+(?:the\s+|your\s+)?originals?\b|\brakh\s+lenge\b|जमा\s*रहें(?:गे|गी|गा)|जमा\s*रहेग[ाी]|अभिरक्षा/i.test(s)) {
+    if (!(isClearDenial(s) || copyOnlyHold(s) || isOfficeCopiesOnly(s) || copiesKeptOriginalsReturned(s))) return true;
+  }
+  if (isClearDenial(s) || copyOnlyHold(s) || isOfficeCopiesOnly(s) || copiesKeptOriginalsReturned(s)) return false;
+  return hasHold(s) || hasLocTransfer(s) || hasEmployerTransfer(s) || isLeaveHold(s)
+    || isHostileTimeBound(s) || isUntilReturnHold(s) || isAfterDurationBound(s);
+}
+function isLiftableCleanSentence(s: string) {
+  return hasVerifyCue(s) || isCandidateReturn(s) || isSameSittingVerify(s) || isCopyOrDenial(s) || isBringLeadIn(s) || isCameraHold(s) || staysWithCandidate(s);
+}
+/** Three-tier documents rule. A subject/anaphor sentence is amber unless it is on an unblocked clean path (same-sitting verification, including a split path in the next 1–2 sentences, a clear denial, or copy-only). Custody and time words promote to red only. Clean-path cues only lift a sentence that is itself a verify, return, denial or copy sentence and that scored as neutral (no hold, custody, transfer or time cue of its own). */
 export function docsHeldRisk(text: string): DocsTier {
   const sentences = offerClauses(text || '');
   let prevSubj = false, worst: DocsTier = null;
@@ -521,13 +571,15 @@ export function docsHeldRisk(text: string): DocsTier {
     if (isKeepQuestion(s)) { if (hasOrig(s) || isAnaphorWithCue(s)) sawCleanDoc = true; continue; }
     if (isUnambiguousHold(s, subj)) return 'red';
     if (isConditionalHold(s) && (subj || hasHold(s) || hasLocTransfer(s))) { bump('amber'); continue; }
-    const clean = sentenceOnCleanPath(sentences, i);
+    // Hold/custody/transfer/time is scored first. Clean-path cues only lift a neutral verify, return, denial or copy sentence.
+    if (subj && hasOwnHoldOrCustodyCue(s)) { bump('amber'); continue; }
+    const clean = isLiftableCleanSentence(s) && sentenceOnCleanPath(sentences, i);
     if (subj && clean) sawCleanDoc = true;
     // A safe cue never cleans another sentence. Subject or anaphor without a clean path is amber.
     if (subj && !clean) bump('amber');
   }
   // Backstop: a document mention anywhere with no documents clause (no scored hold and no clean path) is amber. No document mention stays clean.
-  if (worst == null && DOCUMENT_SUBJECT.test(text || '') && !sawCleanDoc) bump('amber');
+  if (worst == null && mentionsDocument(text || '') && !sawCleanDoc) bump('amber');
   return worst;
 }
 export function docsHeldHit(text: string): boolean { return docsHeldRisk(text) != null; }
