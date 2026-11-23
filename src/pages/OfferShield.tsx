@@ -33,6 +33,7 @@ export default function OfferShield() {
   return (
     <>
       <PageHeader eyebrow="Free · runs in your browser" title="Offer Shield: read an offer letter before you sign" subtitle="Upload a PDF, Word file, scan or photo of an offer. It flags bonds, non-competes, long notice, clawbacks and held documents, and estimates your monthly in-hand pay. Compare two offers side by side. Nothing leaves this device." />
+      <p className="mb-4 text-sm text-muted-foreground" data-testid="offer-language-note">Checks English, Hindi and Hinglish wording; other languages may not be fully checked, so read document clauses yourself.</p>
       <p className="mb-5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm" data-testid="offer-disclaimer">{DISCLAIMER}</p>
       <LocalNote onClear={() => { clearPersisted('jaos_offer_onestop', 'jaos_steps_offer'); location.reload(); }} />
       <div className="mb-5"><ConsentBoxes where="offer-shield" /></div>

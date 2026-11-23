@@ -46,12 +46,19 @@ export function reminderIcs(hour: number, url: string, now = new Date()) {
 }
 /** "Prepare for any designation": question templates for any job title plus how to answer. Templates, not facts about the job. */
 export function designationPack(title: string) {
-  const t = title.trim() || 'this role';
+  const named = title.trim();
+  const asRole = named ? `as a ${named}` : 'in this role';
+  const aRole = named ? `a ${named}` : 'this role';
+  const asCap = named ? `As a ${named}` : 'In this role';
+  const forRole = named ? `for a ${named}` : 'for this role';
+  const forCap = named ? `For a ${named}` : 'For this role';
+  const closeTo = named ? `${named} work` : 'this kind of work';
+  const being = named ? `being a ${named}` : 'this role';
   return [
-    { q: `Why do you want to work as a ${t}?`, what: 'Name 1 or 2 things in your past work that match the job, then why this job is the next step.', model: `"In my last role I [one task close to ${t} work]. I enjoyed [what], and I did it well: [result with a number]. As a ${t} I want to do more of that, especially [one part of the job]."`, how: 'Calm, about 140 words a minute, under 1 minute. Smile on the first line.' },
-    { q: `What does a good first 90 days look like for you as a ${t}?`, what: 'Learn, then small wins, then own something. Ask how they measure success.', model: `"First month: learn the team, the tools and how success is measured for a ${t}. Second: fix one small problem I spot, with my manager's OK. Third: own [a measurable area] and report progress weekly."`, how: 'Count the three phases out loud ("First… second… third…") so it is easy to follow on a call.' },
-    { q: `Tell me about a time you solved a problem that a ${t} would face.`, what: 'Use STAR: situation, task, action (what YOU did), result with a number.', model: '"At [company], [situation]. I had to [task]. I [2 or 3 concrete actions]. As a result, [measurable result]. I learned [one lesson]."', how: 'Spend most of the time on the action and result. Stop after the result.' },
-    { q: `Which skills make someone good at being a ${t}, and which of them do you have?`, what: 'Pick 3 skills from the job post, and give one proof for each.', model: `"For a ${t}, I'd say [skill 1], [skill 2] and [skill 3]. For [skill 1], I [proof]. For [skill 2], [proof]. [Skill 3] I am still building: I am [how]."`, how: 'Honest about the gap, confident about the rest. No "I think maybe".' },
+    { q: `Why do you want to work ${asRole}?`, what: 'Name 1 or 2 things in your past work that match the job, then why this job is the next step.', model: `"In my last role I [one task close to ${closeTo}]. I enjoyed [what], and I did it well: [result with a number]. ${asCap} I want to do more of that, especially [one part of the job]."`, how: 'Calm, about 140 words a minute, under 1 minute. Smile on the first line.' },
+    { q: `What does a good first 90 days look like for you ${asRole}?`, what: 'Learn, then small wins, then own something. Ask how they measure success.', model: `"First month: learn the team, the tools and how success is measured ${forRole}. Second: fix one small problem I spot, with my manager's OK. Third: own [a measurable area] and report progress weekly."`, how: 'Count the three phases out loud ("First… second… third…") so it is easy to follow on a call.' },
+    { q: `Tell me about a time you solved a problem that ${aRole} would face.`, what: 'Use STAR: situation, task, action (what YOU did), result with a number.', model: '"At [company], [situation]. I had to [task]. I [2 or 3 concrete actions]. As a result, [measurable result]. I learned [one lesson]."', how: 'Spend most of the time on the action and result. Stop after the result.' },
+    { q: `Which skills make someone good at ${being}, and which of them do you have?`, what: 'Pick 3 skills from the job post, and give one proof for each.', model: `"${forCap}, I'd say [skill 1], [skill 2] and [skill 3]. For [skill 1], I [proof]. For [skill 2], [proof]. [Skill 3] I am still building: I am [how]."`, how: 'Honest about the gap, confident about the rest. No "I think maybe".' },
     { q: 'What is your biggest weakness?', what: 'A real but not job-breaking weakness, and what you are doing about it.', model: '"I used to [weakness]. It caused [small impact] once, so now I [habit or tool]. Last quarter that meant [result]."', how: 'Short and matter-of-fact. Do not apologise.' },
   ];
 }
