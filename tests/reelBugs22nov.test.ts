@@ -1238,3 +1238,17 @@ test('offer: retest-10 — narrow clean paths, no whitelist clean, custody/bond 
   assert.ok(page.includes('Checks English, Hindi and Hinglish wording; other languages may not be fully checked, so read document clauses yourself.'));
   assert.ok(readFileSync(new URL('../src/lib/offerShield.ts', import.meta.url), 'utf8').includes('Ask about it: confirm whether originals are kept'));
 });
+
+test('offer: retest-11 — delayed collect-after and later safekeeping/registrar are not clean', () => {
+  const ho36 = 'Place the diploma on the tray for a photograph at NPCIL Kakrapar and collect them after the service period.';
+  const ho37 = 'Bring the academic papers for a sight-check at BHAVINI Kalpakkam and collect them after three years.';
+  const ho38 = 'Board minutes, UCIL Jaduguda. Academic papers are shown at the desk and you walk out with them. Two weeks later the same set is taken into safekeeping.';
+  const ho39 = 'Audit observation, WCL Nagpur. Candidates exhibit academic papers at the counter and take them home. Subsequently those papers will be parked with the registrar for the life of the contract.';
+  for (const s of [ho36, ho37, ho38, ho39]) {
+    assert.notEqual(docTier(s), 'clean', s + ' => ' + docTier(s));
+  }
+  assert.equal(docTier(ho36), 'red', ho36 + ' => ' + docTier(ho36));
+  assert.equal(docTier(ho37), 'red', ho37 + ' => ' + docTier(ho37));
+  assert.notEqual(docTier(ho38), 'clean');
+  assert.equal(docTier(ho39), 'red', ho39 + ' => ' + docTier(ho39));
+});

@@ -84,10 +84,16 @@ function isVenueTail(r: string): boolean {
 function isCustodyAt(r: string): boolean {
   return /^(?:at|in)\s+(?:the\s+)?(?:establishment|personnel|welfare|admin|office|locker|cell|section|works|yard|institute|college|board|company|depot|unit|plant|circle|regional|strong\s+room|vault|almirah|cupboard|cabinet)\b/i.test(r);
 }
+function isAfterDurationBound(s: string): boolean {
+  return /\bafter\s+(?:the\s+)?(?:service(?:\s+period)?|bond(?:\s+period)?|surety(?:\s+period)?|contract|traineeship|probation|funded\s+term|lock[- ]?in|(?:\d+|one|two|three|four|five|[a-z]+)\s+years?)\b/i.test(s)
+    || /\bfor the life of the (?:contract|bond)\b/i.test(s);
+}
 function isHostileTimeBound(s: string): boolean {
   return /\b(?:until|till|unless)\b[\s\S]{0,56}\b(?:bond|surety|indenture|notice\s+period|traineeship|service|probation|rural(?:\s+bond)?|posting|further\s+orders|lock[- ]?in)\b/i.test(s)
     || /\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+(?:years?|months?)\b/i.test(s)
     || /\bfor\s+the\s+(?:traineeship|bond|duration|indenture|surety|notice)\b/i.test(s)
+    || /\bfor the life of the (?:contract|bond)\b/i.test(s)
+    || isAfterDurationBound(s)
     || /\bjab\s+tak\b[\s\S]{0,40}\b(?:bond|seva|service)\b|जब तक[\s\S]{0,40}(?:बॉन्ड|सेवा)/i.test(s)
     || /\bvarikkum\b/i.test(s);
 }
@@ -158,7 +164,7 @@ function isPersonalInstructionAmber(s: string) {
   return !isWhitelistSelf(s);
 }
 
-const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?|mov(?:e|es|ed|ing)\s+to)\b|\bbe\s+with\b|\bin\s+deposit\b|\bjama\b|\bde(?:\s+de)?na\s+hai\b|\brakh\w*\b|रख|जमा/i;
+const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?|mov(?:e|es|ed|ing)\s+to|parked\s+with|taken\s+into\s+safekeeping)\b|\bbe\s+with\b|\bin\s+deposit\b|\bin\s+safekeeping\b|\bjama\b|\bde(?:\s+de)?na\s+hai\b|\brakh\w*\b|रख|जमा/i;
 function isLeaveHold(s: string) {
   if (!/\bleav(?:e|es|ing)\b/i.test(s)) return false;
   if (/\b(?:before|when|as|after)\s+you\s+leave|you leave the (?:hall|room|campus|venue|counter)|leave with you|leave them with you|leaves with you/i.test(s)) return false;
@@ -234,7 +240,8 @@ function isUntilReturnHold(s: string) {
     || /(?:will\s+not|won['’]?t|shall\s+not)\s+return\b[\s\S]{0,80}?\b(?:until|till|unless|for\s+(?:the\s+)?(?:\d+|one|two|three)\s+years?)\b/i.test(s)
     || /\bvarikkum\b[\s\S]{0,40}\b(?:return\s+aagadhu|thirupi\s+kidaikadhu)\b/i.test(s)
     || /परत\s*(?:दिले\s*जाणार|मिळणार)\s*नाही/i.test(s)
-    || /\b(?:collect|give|hand|get)(?:s|ed|ing)?(?:\s+\S+){0,4}\s+back\s+only\s+after\b/i.test(s)
+    || /\b(?:collect|give|hand|get|take)(?:s|ed|ing)?(?:\s+\S+){0,4}\s+(?:back\s+)?(?:only\s+)?after\s+(?:the\s+)?(?:service(?:\s+period)?|bond(?:\s+period)?|surety(?:\s+period)?|contract|traineeship|probation|funded\s+term|(?:\d+|one|two|three|four|five|[a-z]+)\s+years?)\b/i.test(s)
+    || isAfterDurationBound(s) && /\b(?:collect|give|hand|get|take)(?:s|ed|ing)?\b/i.test(s)
     || /wapas\s+tab\s+mil(?:egi|ega|enge)\s+jab/i.test(s)
     || /\bjab\s+(?:lock[- ]?in|bond|seva)\b[\s\S]{0,32}\bkhatam\b/i.test(s);
 }
@@ -296,11 +303,11 @@ function hasCustodyPlace(s: string) {
     .replace(/\b(?:photo)?cop(?:y|ies|xerox)[\s\S]{0,40}\b(?:file|office|HR)\b/gi, ' ')
     .replace(/\b(?:file|office|HR)\b[\s\S]{0,40}\b(?:photo)?cop(?:y|ies|xerox)\b/gi, ' ')
     .replace(/कार्यालय[\s\S]{0,40}(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)|(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)[\s\S]{0,24}कार्यालय/g, ' ');
-  return /\b(?:lockers?|vaults?|strong\s+rooms?|offices?|cupboards?|files?|establishments?|managers?|almirahs?|cabinets?|deed\s+chests?|personnel|clerks?)\b|\bHR\b/i.test(rest);
+  return /\b(?:lockers?|vaults?|strong\s+rooms?|offices?|cupboards?|files?|establishments?|managers?|almirahs?|cabinets?|deed\s+chests?|personnel|clerks?|registrar|safekeeping)\b|\bHR\b/i.test(rest);
 }
 function hasBlockingBound(s: string) {
-  return isHostileTimeBound(s)
-    || /\b(?:bond|lock[- ]?in|surety|indenture)\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+years?\b|बॉन्ड/i.test(s);
+  return isHostileTimeBound(s) || isAfterDurationBound(s)
+    || /\b(?:bond|lock[- ]?in|surety|indenture)\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+years?\b|\bfor the life of the (?:contract|bond)\b|बॉन्ड/i.test(s);
 }
 function isRetentionOrReturn(s: string) {
   if (isUntilReturnHold(s) || returnNotGiven(s) || isHostileTimeBound(s)) return true;
@@ -312,14 +319,13 @@ function hasVerifyCue(s: string) {
   return /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|document[- ]check|sight[- ]check|visual check|photograph|photo(?:\s+session)?|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|glance|shown?|showing|on the tray|kiosk|tick[- ]?mark|dikhane|dikhana|looks?|looked over)\b|सत्यापन|दिखाना|दिखाने|जाँच/i.test(s);
 }
 function hasSameSittingReturn(s: string) {
-  return /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?(?:\s+again)?(?:\s+back)?(?:\s+(?:the\s+)?same\s+(?:day|sitting|morning|afternoon|evening))?|returned(?:\s+in)?\s+the\s+same\s+(?:day|sitting|morning|afternoon|evening)|same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out(?:\s+with)?|pack(?:s|ed|ing)?\s+(?:it|them|the set)\s+away|handed\s+(?:back|to you)|take them (?:home|back)|you (?:put|carry) (?:them|it) back|put (?:them|it) back|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?(?:\s+(?:again|from the tray))?|when the light turns green|carried away by the candidate|come back at that (?:window|desk|counter)|carry them (?:back|home|away)|packed away by you)\b|उसी\s+(?:दिन|बैठक|समय)|वापस\s+(?:ले|मिल)|लौटा दिए|wapas\s+(?:usi\s+desk\s+se\s+)?mil/i.test(s);
+  if (isAfterDurationBound(s) || isUntilReturnHold(s) || isHostileTimeBound(s)) return false;
+  return /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?(?:\s+again)?(?:\s+back)?\s+(?:from\s+the\s+tray|(?:the\s+)?same\s+(?:day|sitting|morning|afternoon|evening)|on[ -]?the[ -]?spot|at\s+the\s+(?:counter|desk|window|tray)|when the light turns green)|returned(?:\s+in)?\s+the\s+same\s+(?:day|sitting|morning|afternoon|evening)|(?:the\s+)?same\s+(?:day|sitting|afternoon|evening|morning)|on[ -]?the[ -]?spot|goes?\s+home|walk(?:s)?\s+out(?:\s+with)?|pack(?:s|ed|ing)?\s+(?:it|them|the set)\s+away|handed\s+(?:back|to you)|take them (?:home|back)|you (?:put|carry) (?:them|it) back|put (?:them|it) back|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?\s+from\s+the\s+tray|when the light turns green|carried away by the candidate|come back at that (?:window|desk|counter)|carry them (?:back|home|away)|packed away by you)\b|उसी\s+(?:दिन|बैठक|समय)|वापस\s+(?:ले|मिल)|लौटा दिए|wapas\s+(?:usi\s+desk\s+se\s+)?mil/i.test(s);
 }
-function isSameSittingVerify(s: string, next = '', prev = '') {
-  if (isUntilReturnHold(s) || isHostileTimeBound(s) || /\bback\s+only\s+after\b/i.test(s)) return false;
-  if (isUntilReturnHold(next) || isHostileTimeBound(next) || /\bback\s+only\s+after\b/i.test(next)) return false;
-  const verify = hasVerifyCue(s) || hasVerifyCue(next) || hasVerifyCue(prev);
-  const ret = hasSameSittingReturn(s) || hasSameSittingReturn(next) || hasSameSittingReturn(prev);
-  return (verify && ret) || /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+them)?\s+back(?:\s+(?:the\s+)?same\s+(?:day|sitting)))\b/i.test(s);
+/** Same-sitting verification is judged on this sentence alone; a safe cue never cleans another sentence. */
+function isSameSittingVerify(s: string) {
+  if (isUntilReturnHold(s) || isHostileTimeBound(s) || isAfterDurationBound(s) || /\bback\s+only\s+after\b/i.test(s)) return false;
+  return (hasVerifyCue(s) && hasSameSittingReturn(s)) || /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+them)?\s+(?:back\s+)?(?:from\s+the\s+tray|(?:the\s+)?same\s+(?:day|sitting)))\b/i.test(s);
 }
 
 function isClearDenial(s: string) {
@@ -335,12 +341,12 @@ function isClearDenial(s: string) {
     || /\bas\s+a\s+copy\b|\bas\s+copies\b/i.test(s);
 }
 function carriesSubject(s: string) {
-  return ANAPHORA.test(s) || isUntilReturnHold(s) || returnNotGiven(s) || hasCustodyPlace(s)
-    || hasHold(s) || hasLocTransfer(s) || hasTimeOrReturn(s)
-    || /wapas|rakhenge|rakh diye|dena hai|jab tak|locker|vault|तिजोरी/i.test(s);
+  return ANAPHORA.test(s) || /\bit\b/i.test(s) || isUntilReturnHold(s) || returnNotGiven(s) || hasCustodyPlace(s)
+    || hasHold(s) || hasLocTransfer(s) || hasTimeOrReturn(s) || isAfterDurationBound(s)
+    || /wapas|rakhenge|rakh diye|dena hai|jab tak|locker|vault|safekeeping|registrar|तिजोरी/i.test(s);
 }
 function isStrongCustody(s: string) {
-  return /\b(?:retain(?:s|ed|ing)?|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld)\b|\bjama\b|\brakhwaayi|\brakh(?:waane|wane)|जमा|रखवाई|ठेवली|ठेवले|\bveidunga\b|\bdeposit\s+panni\b/i.test(s);
+  return /\b(?:retain(?:s|ed|ing)?|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|parked\s+with|taken\s+into\s+safekeeping)\b|\bsafekeeping\b|\bjama\b|\brakhwaayi|\brakh(?:waane|wane)|जमा|रखवाई|ठेवली|ठेवले|\bveidunga\b|\bdeposit\s+panni\b/i.test(s);
 }
 function isUnambiguousHold(s: string, subj: boolean) {
   if (!subj || isConditionalHold(s) || isCameraHold(s)) return false;
@@ -355,7 +361,11 @@ function isUnambiguousHold(s: string, subj: boolean) {
 /** Three-tier documents rule. Clean only via same-sitting verification, a clear denial, or copy-only — and never when a custody place or bond/until bound is in this sentence or the next. */
 export function docsHeldRisk(text: string): DocsTier {
   const sentences = offerClauses(text || '');
-  let prevSubj = false, amber = false;
+  let prevSubj = false, worst: DocsTier = null;
+  const bump = (tier: DocsTier) => {
+    if (tier === 'red') worst = 'red';
+    else if (tier === 'amber' && worst !== 'red') worst = 'amber';
+  };
   for (let i = 0; i < sentences.length; i++) {
     const s = sentences[i];
     const next = sentences[i + 1] || '';
@@ -363,15 +373,19 @@ export function docsHeldRisk(text: string): DocsTier {
     if (hasOrig(s)) prevSubj = true;
     if (isKeepQuestion(s)) continue;
     if (isUnambiguousHold(s, subj)) return 'red';
-    if (isConditionalHold(s) && (subj || hasHold(s) || hasLocTransfer(s))) { amber = true; continue; }
-    const prev = sentences[i - 1] || '';
+    if (isConditionalHold(s) && (subj || hasHold(s) || hasLocTransfer(s))) { bump('amber'); continue; }
     const blocked = hasBlockingBound(s) || hasBlockingBound(next)
       || (hasCustodyPlace(s) && !isClearDenial(s) && !copyOnlyHold(s))
       || (hasCustodyPlace(next) && !isClearDenial(next) && !copyOnlyHold(next));
-    if (!blocked && (isSameSittingVerify(s, next, prev) || isCameraHold(s) || isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s))) continue;
-    if (subj && (hasLocTransfer(s) || hasHold(s) || hasTimeOrReturn(s) || hasCustodyPlace(s))) amber = true;
+    const cleanPath = !blocked && (isSameSittingVerify(s) || isCameraHold(s) || isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s));
+    // A safe cue in this sentence never cleans another. Subject + custody/transfer/time is at least amber unless this sentence itself is an unblocked clean path.
+    if (subj && (hasLocTransfer(s) || hasHold(s) || hasTimeOrReturn(s) || hasCustodyPlace(s) || isAfterDurationBound(s))) {
+      if (!cleanPath) bump('amber');
+      continue;
+    }
+    if (cleanPath) continue;
   }
-  return amber ? 'amber' : null;
+  return worst;
 }
 export function docsHeldHit(text: string): boolean { return docsHeldRisk(text) != null; }
 
