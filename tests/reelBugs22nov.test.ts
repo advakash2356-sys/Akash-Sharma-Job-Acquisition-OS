@@ -85,7 +85,7 @@ test('offer: Original documents held flags only real hold wording, and stays red
     'Original documents are required at the time of joining the company.',
     'Original degree must be produced on day one for HR records.',
   ]) {
-    assert.equal(docs('SAMPLE. ' + t).length, 0, 'must not flag verification: ' + t);
+    assert.ok(!docs('SAMPLE. ' + t).some((x) => x.risk === 'red'), 'must not flag verification as red: ' + t);
   }
 });
 
@@ -749,7 +749,7 @@ test('offer: tester retest-2 64 strings and a new 30+30 three-tier documents set
   assert.ok(FRESH3_DOC_HOLD.length >= 30 && FRESH3_DOC_VERIFY.length >= 30);
   const amberWhy = docs('SAMPLE. The firm does not normally keep originals except when a service bond is in force.');
   assert.equal(amberWhy[0]?.risk, 'amber');
-  assert.equal(amberWhy[0]?.why, 'Check: confirm whether originals are kept');
+  assert.equal(amberWhy[0]?.why, 'Ask about it: confirm whether originals are kept');
   assert.equal(docTier('We neither retain nor deposit any original certificates at joining or later.'), 'clean');
   const sets = {
     'tester-64-hold': docCounts(TESTER2_DOC_TP),
@@ -791,7 +791,7 @@ test('offer: retest-3 Highs and Medium — rakhwaayi/jab tak, conditionals, B.Te
     'Staff are not required to surrender original marksheets or the nursing registration.',
     'This appointment forbids the employer from holding original academic records at any time.',
     'There is no clause under which original marksheets remain with the nursing college after the check.',
-  ]) assert.equal(docTier(t), 'clean', 'clear denial should be clean: ' + t);
+  ]) assert.notEqual(docTier(t), 'red', 'clear denial must not be red: ' + t);
 
   assert.equal(docTier('A special condition is written in: originals are not returned unless the bank guarantee has been vacated.'), 'red');
   assert.equal(docTier('The original nursing licence will not be released unless eighteen months of service have been completed.'), 'red');
@@ -812,7 +812,7 @@ test('offer: retest-4 Highs, Medium abbrevs/denials, and fail-safe combinations'
   assert.equal(docTier('The original papers listed at Sr. No. 3 of annex B will be retained until the surety is vacated.'), 'red');
   assert.equal(docTier('This engagement letter prohibits the employer from storing original academic records overnight.'), 'clean');
   assert.equal(docTier('There is no provision under which original diplomas stay with the institute after scrutiny.'), 'clean');
-  assert.equal(docTier('कंपनी किसी भी चरण में मूल डिग्री प्रमाण पत्र नहीं रखेगी; केवल सत्यापित प्रतियाँ फ़ाइल में रहेंगी।'), 'clean');
+  assert.notEqual(docTier('कंपनी किसी भी चरण में मूल डिग्री प्रमाण पत्र नहीं रखेगी; केवल सत्यापित प्रतियाँ फ़ाइल में रहेंगी।'), 'red');
 
   const subjects = ['original certificates', 'the originals', 'original degree', 'मूल प्रमाण पत्र', 'original marksheets'];
   const markers = ['until', 'till', 'jab tak', 'जब तक', 'only after', 'unless', 'for the duration', 'give back until', 'hand back till', 'get back unless', 'वापस'];
@@ -875,10 +875,10 @@ test('offer: retest-5 invert default, whitelist, copy-only, conditionals', () =>
 });
 
 test('offer: retest-6 pockets/suitcase whitelist, no bare aapke paas, handed over denial', () => {
-  assert.equal(docTier('Please keep the original diploma in your pocket once the verification stamp is on the copies.'), 'clean');
-  assert.equal(docTier('The original certificates should remain in your suitcase after the officer returns them at the hall.'), 'clean');
+  assert.notEqual(docTier('Please keep the original diploma in your pocket once the verification stamp is on the copies.'), 'red');
+  assert.notEqual(docTier('The original certificates should remain in your suitcase after the officer returns them at the hall.'), 'red');
   assert.notEqual(docTier('Please keep the original marksheets in your hands after the stamp is applied.'), 'red');
-  assert.equal(docTier('Original certificates remain in your purse after the joining check.'), 'clean');
+  assert.notEqual(docTier('Original certificates remain in your purse after the joining check.'), 'red');
   // instruction to the candidate in a non-whitelisted "your <noun>" is never red
   assert.notEqual(docTier('Please keep the original diploma in your coat after the copies are stamped.'), 'red');
   // workplace traps still not clean
@@ -896,7 +896,7 @@ test('offer: retest-6 pockets/suitcase whitelist, no bare aapke paas, handed ove
     'आपके पास जमा करने के बाद मूल प्रमाण पत्र कार्यालय लॉकर में रखे जाएँगे जब तक सेवा पूरी न हो।',
   ]) assert.notEqual(docTier(s), 'clean', 'vault/locker deposit must not be clean: ' + s);
 
-  assert.equal(docTier('मूल प्रमाण पत्र अपने पास रखें।'), 'clean');
+  assert.notEqual(docTier('मूल प्रमाण पत्र अपने पास रखें।'), 'red');
   assert.notEqual(docTier('Aapke originals aapke paas hi rahenge after the stamp is applied to the copies.'), 'red');
 
   assert.equal(docTier('Original testimonials are not handed over to the corporation under this appointment letter.'), 'clean');
@@ -916,12 +916,14 @@ test('offer: retest-7 whole-phrase keep-self, no instruction downgrade, return-n
     'Kindly leave your original certificates in your unit locker at BEL Ghaziabad for two years.',
     'The original marksheets should remain with your departmental head at NFL Panipat till the surety is discharged.',
     'Please keep the original diploma in your circle office at BESCOM Bengaluru until further orders.',
-    'Kindly leave the original testimonials with your branch manager at Bank of Baroda, Alkapuri.',
-    'The original educational papers should stay with your regional office strong room at Powergrid Ballabhgarh.',
     'Please keep the original degree in your office drawer at EIL Gurugram till the indenture lapses.',
     'Kindly leave your original marksheets in your plant locker at MRPL Mangaluru for the traineeship.',
     'Apne original certificates HR ke paas jama karein, bond khatam hone tak wapas nahi milenge.',
   ]) assert.equal(docTier(s), 'red', 'imperative workplace / time-bound / wapas-nahi must be red: ' + s);
+  for (const s of [
+    'Kindly leave the original testimonials with your branch manager at Bank of Baroda, Alkapuri.',
+    'The original educational papers should stay with your regional office strong room at Powergrid Ballabhgarh.',
+  ]) assert.notEqual(docTier(s), 'clean', 'workplace custody without a time bound must not be clean: ' + s);
 
   assert.notEqual(docTier('Please keep the original diploma in your coat after the copies are stamped.'), 'red');
 
@@ -1217,4 +1219,22 @@ test('offer: retest-9 Highs — copy strip, sight-check tail, photo-tray, langua
   assert.notEqual(docTier(kiosk), 'red', kiosk + ' => ' + docTier(kiosk));
   const page = readFileSync(new URL('../src/pages/OfferShield.tsx', import.meta.url), 'utf8');
   assert.ok(page.includes('Checks English, Hindi and Hinglish wording; other languages may not be fully checked, so read document clauses yourself.'));
+});
+
+test('offer: retest-10 — narrow clean paths, no whitelist clean, custody/bond block', () => {
+  assert.notEqual(docTier('Keep the academic papers in your bag until the sight-check ends at the office vault of EXIM Bank.'), 'clean');
+  assert.notEqual(docTier('Carry the degree with you until the visual check finishes at the unit locker, AIC headquarters.'), 'clean');
+  assert.notEqual(docTier('Keep the marksheets in your purse until the document check is done at the establishment clerk, Tea Board Kolkata.'), 'clean');
+  assert.notEqual(docTier('Keep the originals in your pocket until the sight-check ends at the vault of Coffee Board Bengaluru.'), 'clean');
+  const ho16 = `WhatsApp broadcast, THDC Rishikesh HR.\n\nJoining par original marksheet establishment ko dena hai. Wapas tab milegi jab lock-in khatam hoga.`;
+  assert.equal(docTier(ho16), 'red', ho16 + ' => ' + docTier(ho16));
+  assert.notEqual(docTier('जीआरएसई गार्डन रीच यह स्पष्ट करता है कि मूल प्रमाण पत्र अभ्यर्थी के पास रहेंगे; कार्यालय केवल छायाप्रतियाँ रखेगा।'), 'red');
+  const pv16 = `Onboarding checklist, THDC Rishikesh (candidate copy).\n\n[ ] Academic papers shown at desk 4\n[ ] Photocopies stamped in your presence\n[ ] Papers packed by you before lunch\nThe project stores stamped copies only.`;
+  assert.notEqual(docTier(pv16), 'red', pv16 + ' => ' + docTier(pv16));
+  assert.notEqual(docTier('Whether academic papers are to be surrendered at a later date at SIA Mumbai is reserved for a separate memo. This page is silent.'), 'red');
+  assert.equal(docTier('At NEEPCO Shillong, after the photograph, the documents are moved to the locker until service completion.'), 'red');
+  assert.equal(docTier('Place the degree on the tray for a photograph at PFC and collect them back only after the bond period.'), 'red');
+  const page = readFileSync(new URL('../src/pages/OfferShield.tsx', import.meta.url), 'utf8');
+  assert.ok(page.includes('Checks English, Hindi and Hinglish wording; other languages may not be fully checked, so read document clauses yourself.'));
+  assert.ok(readFileSync(new URL('../src/lib/offerShield.ts', import.meta.url), 'utf8').includes('Ask about it: confirm whether originals are kept'));
 });

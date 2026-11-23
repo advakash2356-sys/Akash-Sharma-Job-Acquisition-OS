@@ -23,16 +23,25 @@ function benchPayHit(s: string) {
 }
 /** Sentence split only. Do not break on ', and', and do not split on dotted abbreviations (B.E., LL.B., Ph.D., Sr. No., e.g., i.e., etc.). */
 export function offerClauses(t: string): string[] {
-  const raw = (t || '').replace(/\r/g, ' ').replace(/\s+/g, ' ').trim();
+  const raw = (t || '').replace(/\r\n?/g, '\n');
+  const blocks = raw.split(/\n+/)
+    .flatMap((line) => line.split(/(?:^|\s)(?:\[[ xX]?\]|[•‣▪▸])\s+/))
+    .map((s) => s.replace(/^[-*]\s+/, '').trim())
+    .filter((s) => s.length > 0);
+  const out: string[] = [];
   const shield = (m: string) => m.replace(/\./g, '\0');
-  const protectedText = raw
-    .replace(/\bSr\.\s*No\./gi, shield)
-    .replace(/\b(?:e\.g|i\.e|etc|a\.m|p\.m)\./gi, shield)
-    .replace(/\b(?:[A-Za-z]{1,4}\.){2,}[A-Za-z]{0,5}\.?/g, shield)
-    .replace(/\b((?:[A-Z](?:\.[A-Za-z]+)+)|(?:a|p)\.m)\./gi, shield)
-    .replace(/\b([A-Z](?:\.[A-Za-z]+)+)\b/g, shield);
-  return protectedText.split(/(?<=[.;!?।])\s+/)
-    .map((s) => s.replace(/\0/g, '.').trim()).filter((s) => s.length > 6);
+  for (const block of blocks) {
+    const protectedText = block.replace(/\s+/g, ' ').trim()
+      .replace(/\bSr\.\s*No\./gi, shield)
+      .replace(/\b(?:e\.g|i\.e|etc|a\.m|p\.m)\./gi, shield)
+      .replace(/\b(?:[A-Za-z]{1,4}\.){2,}[A-Za-z]{0,5}\.?/g, shield)
+      .replace(/\b((?:[A-Z](?:\.[A-Za-z]+)+)|(?:a|p)\.m)\./gi, shield)
+      .replace(/\b([A-Z](?:\.[A-Za-z]+)+)\b/g, shield);
+    out.push(...protectedText.split(/(?<=[.;!?।])\s+/)
+      .map((s) => s.replace(/\0/g, '.').trim())
+      .filter((s) => s.length > 6));
+  }
+  return out;
 }
 /** One document-subject class used by every hold path (deposit, leave, hand over, submit, until-return, give back, keep, retain, store). */
 const DOC_NOUN = '(?:certificates?|documents?|mark\\s*-?sheets?|marksheets?|board\\s+sheets?|degrees?(?:\\s+certificates?)?|diplomas?|licen[cs]es?|papers?|testimonials?|academic\\s+(?:records|set|papers?|documents?|certificates?)|educational\\s+(?:documents?|papers?|certificates?|records|set)|transfer\\s+certificates?|TC)';
@@ -41,10 +50,13 @@ const DOCUMENT_SUBJECT = new RegExp(
   [
     String.raw`\boriginals?\b`,
     String.raw`\boriginal(?:\s+[\w.-]+){0,6}\s+(?:` + DOC_NOUN + ')',
-    String.raw`\b(?:your|aapke|the|an?)\s+(?:original\s+)?(?:` + DEGREE_ABBR + String.raw`\s+)?` + DOC_NOUN,
+    String.raw`\b(?:your|aapke|(?:the\s+)?(?:trainee|candidate|joiner|officer|employee|holder|student)['’]s|the|an?)\s+(?:original\s+)?(?:` + DEGREE_ABBR + String.raw`\s+)?` + DOC_NOUN,
     String.raw`\b(?:your|the|an?)\s+` + DEGREE_ABBR + String.raw`(?:\s+(?:degree|diploma|certificates?))?`,
     String.raw`\b` + DEGREE_ABBR + String.raw`\s+(?:degree|diploma|certificates?|mark\s*-?sheets?)`,
     String.raw`\b(?:academic\s+set|academic\s+papers?|academic\s+documents?|academic\s+certificates?|academic\s+records|board\s+sheets?|degree\s+certificates?)\b`,
+    '\\b(?:' + DOC_NOUN + ')\\b',
+    String.raw`आपके\s+(?:मूल\s+)?प्रमाण\s*पत्र(?:े|ों)?`,
+    String.raw`(?:मूल\s+)?(?:ट्रांसफर\s+)?सर्टिफिकेट`,
     String.raw`शैक्षणिक\s+(?:कागजात|कागदपत्रे|प्रमाणपत्र(?:े|ों)?|दस्तावेज(?:ों)?)`,
     String.raw`पदवी\s+प्रमाण\s*पत्र(?:े|ों)?`,
     String.raw`\b(?:degree|diploma)s?\s*[/,-]\s*(?:degree|diploma)s?\b`,
@@ -53,10 +65,10 @@ const DOCUMENT_SUBJECT = new RegExp(
   ].join('|'),
   'i'
 );
-const ANAPHORA = /\b(they|them|those(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|the\s+(?:same|said|academic)\s+(?:papers?|certificates?|documents?|set)|the\s+(?:paper(?:\s+itself)?|set)|unhe|unki)\b/i;
+const ANAPHORA = /\b(they|them|which|those(?:\s+(?:papers?|certificates?|documents?|originals?|sheets?|set))?|the\s+(?:same|said|academic)\s+(?:papers?|certificates?|documents?|set)|the\s+(?:paper(?:\s+itself)?|set)|unhe|unki|ve|unhe[n]?)\b|वे|उन्हें|उनको|उन्हे/i;
 const NEG_WORD = /\b(not|never|neither|nor|forbids?|forbidden|prohibit(?:s|ed)?|won['’]?t|shan['’]?t|aren['’]?t)\b|\bno\b(?!\.)|नहीं|नही|\bnahi[n]?\b|\bna\s+(?:to|hi)\b|ना\s+(?:तो|ही)|न\s+तो|न\s+ही/i;
-const COPY_OBJ = /\b((?:photo)?cop(?:y|ies)|scanned\s+copies|self[- ]attested\s+copies|attested\s+(?:photo)?cop(?:y|ies)|scanned\s+(?:photo)?cop(?:y|ies)|xerox)\b|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि/i;
-const HOLD_VERB = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|custody)\b|\bjama\b|\brakh(?:na|ne|ene|enge|ega|i|hi|waane|wane|waana|waayi|wayi|waaya|waya)?(?:\s+jaa?ye(?:gi|ga))?\b|\brah(?:enge|ega|egi|ena)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah|\bveidunga\b|\bdeposit\s+panni\b|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े|ें|ी|वाई)?|रोक(?:ी|ेगा|ेगी|ेंगे)?|ठेवली|ठेवले|ठेवावे|जमा\s*करावे/i;
+const COPY_OBJ = /\b((?:photo)?cop(?:y|ies)|scanned\s+copies|self[- ]attested\s+copies|attested\s+(?:photo)?cop(?:y|ies)|stamped\s+(?:photo)?cop(?:y|ies)|scanned\s+(?:photo)?cop(?:y|ies)|xerox)\b|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि/i;
+const HOLD_VERB = /\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld|custody)\b|\bjama\b|\bde(?:\s+de)?na\s+hai\b|\brakh(?:na|ne|ene|enge|ega|i|hi|waane|wane|waana|waayi|wayi|waaya|waya)?(?:\s+jaa?ye(?:gi|ga))?\b|\brah(?:enge|ega|egi|ena)?\b|\bpaas\s+rakh|\bke\s+paas\s+rah|\bveidunga\b|\bdeposit\s+panni\b|जमा|रख(?:ना|ने|ेगा|ेगी|ेंगे|ा|े|ें|ी|वाई)?|रोक(?:ी|ेगा|ेगी|ेंगे)?|ठेवली|ठेवले|ठेवावे|जमा\s*करावे/i;
 const HOLD_PHRASE = /\bsubmit(?:s|ted|ting)?\b[\s\S]{0,90}?\b(?:until|till|unless)\b|\b(?:will\s+|shall\s+|are\s+|is\s+|to\s+)?not\s+(?:be\s+)?(?:return(?:ed|s)?|releas(?:e|ed|es|ing))[\s\S]{0,80}?\b(?:until|till|unless)\b|\breleas(?:e|ed|es|ing)\s+only\s+after\b|\b(?:remain(?:s|ed|ing)?|stays?|stay)\s+(?:with|in)\b|\btaken?\s+into\s+(?:safe\s+)?custody\b|\bin\s+(?:safe\s+)?custody\b|\bin\s+deposit\b|\bplaced\s+with\b|\bjab\s+tak\b|जब तक|तभी\s*जारी[\s\S]{0,48}जब|वापस\s*नहीं[\s\S]{0,40}(?:तक|जब)|के पास[\s\S]{0,48}रह|अभिरक्षा|तिजोरी|locker-la|\bvarikkum\b|\breturn\s+aagadhu\b|\bthirupi\s+kidaikadhu\b|परत\s*दिले\s*जाणार\s*नाही|परत\s*मिळणार\s*नाही/i;
 const DURABLE = /\b(?:until|till|unless|bond(?:ed)?|lock[- ]?in|surety|for\s+the\s+duration|up\s+to|throughout|collateral)\b|\bjab\s+tak\b|जब तक|बॉन्ड|अभिरक्षा|तभी/i;
 function hasOrig(s: string) { return DOCUMENT_SUBJECT.test(s); }
@@ -146,7 +158,7 @@ function isPersonalInstructionAmber(s: string) {
   return !isWhitelistSelf(s);
 }
 
-const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?)\b|\bbe\s+with\b|\bin\s+deposit\b|\bjama\b|\brakh\w*\b|रख|जमा/i;
+const LOC_TRANSFER = /\b(?:remain(?:s|ed|ing)?|stays?|kept|keep(?:s|ing)?|left|lie[sd]?|lying|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|lodg(?:e|es|ed|ing)|plac(?:e|es|ed|ing)|hand(?:s|ed|ing)?\s+over|submit(?:s|ted|ting)?|mov(?:e|es|ed|ing)\s+to)\b|\bbe\s+with\b|\bin\s+deposit\b|\bjama\b|\bde(?:\s+de)?na\s+hai\b|\brakh\w*\b|रख|जमा/i;
 function isLeaveHold(s: string) {
   if (!/\bleav(?:e|es|ing)\b/i.test(s)) return false;
   if (/\b(?:before|when|as|after)\s+you\s+leave|you leave the (?:hall|room|campus|venue|counter)|leave with you|leave them with you|leaves with you/i.test(s)) return false;
@@ -176,7 +188,11 @@ function origHeldAsTarget(s: string) {
   return hasOrig(rest) && (hasHold(rest) || hasLocTransfer(rest));
 }
 function copiesAreHoldObject(s: string) {
-  return /(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|jama|जमा|placed)\s+(?:only\s+)?(?:a\s+|the\s+)?(?:scanned\s+|attested\s+|self[- ]attested\s+|photo)?(?:cop(?:y|ies)|xerox|scans?|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/i.test(s)
+  return /(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|hold(?:s|ing)?|held|deposit(?:s|ed|ing)?|stor(?:e|es|ed|ing)|jama|जमा|placed)\s+(?:only\s+)?(?:a\s+|the\s+)?(?:scanned\s+|attested\s+|self[- ]attested\s+|stamped\s+|photo)?(?:cop(?:y|ies)|xerox|scans?|फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)(?:\s+only)?/i.test(s)
+    || /\b(?:stores?|keeps?|retains?|holds?|files?)\s+(?:only\s+)?(?:stamped|attested|self[- ]attested|scanned)\s+(?:photo)?cop(?:y|ies)\s+only\b/i.test(s)
+    || /\b(?:stamped|attested|self[- ]attested|scanned)\s+(?:photo)?cop(?:y|ies)\s+only\b/i.test(s)
+    || /\bcopies\s+only\b/i.test(s)
+    || /\bas\s+a\s+copy\b|\bas\s+copies\b|\bnot\s+as\s+the\s+(?:paper\s+)?original/i.test(s)
     || /\b(?:(?:photo)?cop(?:y|ies)|xerox)\b[\s\S]{0,24}(?:are|is|will\s+be|to\s+be)?\s*(?:only\s+)?(?:retained|kept|held|deposited|stored|filed)\b/i.test(s)
     || /(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि).{0,24}जमा|जमा.{0,24}(?:फोटोप्रति|फोटोकॉपी|छायाप्रति|प्रतिलिपि)/.test(s)
     || /\b(?:(?:photo)?cop(?:y|ies)|xerox|प्रति(?:याँ|यां)?)\b[\s\S]{0,40}\b(?:rahegi|rahenge|rahega|remain(?:s|ed|ing)?|stays?|filed|file par)/i.test(s);
@@ -217,10 +233,17 @@ function isUntilReturnHold(s: string) {
     || /(?:wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*मिल)[\s\S]{0,48}(?:\btak\b|जब तक|तक)/i.test(s)
     || /(?:will\s+not|won['’]?t|shall\s+not)\s+return\b[\s\S]{0,80}?\b(?:until|till|unless|for\s+(?:the\s+)?(?:\d+|one|two|three)\s+years?)\b/i.test(s)
     || /\bvarikkum\b[\s\S]{0,40}\b(?:return\s+aagadhu|thirupi\s+kidaikadhu)\b/i.test(s)
-    || /परत\s*(?:दिले\s*जाणार|मिळणार)\s*नाही/i.test(s);
+    || /परत\s*(?:दिले\s*जाणार|मिळणार)\s*नाही/i.test(s)
+    || /\b(?:collect|give|hand|get)(?:s|ed|ing)?(?:\s+\S+){0,4}\s+back\s+only\s+after\b/i.test(s)
+    || /wapas\s+tab\s+mil(?:egi|ega|enge)\s+jab/i.test(s)
+    || /\bjab\s+(?:lock[- ]?in|bond|seva)\b[\s\S]{0,32}\bkhatam\b/i.test(s);
 }
 /** Negation that only refuses a return never cancels a hold; it is a hold signal. */
+function staysWithCandidate(s: string) {
+  return /\b(?:stay|stays|remain(?:s|ing)?)\s+with\s+(?:the\s+)?(?:candidate|you|joiner)\b|(?:अभ्यर्थी|उम्मीदवार)\s+के\s+पास/i.test(s);
+}
 function returnNotGiven(s: string) {
+  if (staysWithCandidate(s)) return false;
   return /wapas\s+nahi[n]?\s+mil|वापस\s*नहीं\s*(?:मिल|दिए|किए)|(?:will\s+not|won['’]?t|shall\s+not|(?:is|are)\s+not)\s+(?:be\s+)?(?:returned|given\s+back|handed\s+back)|(?:will\s+not|won['’]?t|shall\s+not)\s+return\b|not\s+(?:be\s+)?returned\b|\breturn\s+aagadhu\b|\bthirupi\s+kidaikadhu\b|परत\s*(?:दिले\s*जाणार|मिळणार)\s*नाही/i.test(s);
 }
 function negCancelsHold(s: string) {
@@ -229,10 +252,11 @@ function negCancelsHold(s: string) {
   return NEG_WORD.test(stripped);
 }
 function isConditionalHold(s: string) {
-  return /\b(?:whether|if)\b[\s\S]{0,120}\b(?:to\s+be\s+|has\s+to\s+)?(?:held|kept|retained|deposited|stored|left|placed|lodged|remain(?:s|ed|ing)?|stays?)\b/i.test(s)
-    || /\bwill\s+(?:say|advise|write|confirm)\s+(?:whether|if)\b/i.test(s)
-    || /\bmay\s+be\b[\s\S]{0,80}\b(?:held|kept|retained|deposited|stored|left|placed)\b/i.test(s)
-    || /\bwhether\b[\s\S]{0,120}\b(?:left\s+in\s+deposit|placed\s+in\s+custody|to\s+be\s+deposited)\b/i.test(s);
+  return /\b(?:whether|if|in\s+case)\b[\s\S]{0,180}\b(?:to\s+be\s+|has\s+to\s+)?(?:held|kept|retained|deposited|stored|left|placed|lodged|remain(?:s|ed|ing)?|stays?|surrender(?:s|ed|ing)?|handed\s+over|deposit)\b/i.test(s)
+    || /\bwill\s+(?:say|advise|write|confirm)\s+(?:whether|if)\b[\s\S]{0,80}\b(?:left|held|kept|deposited|retained)?/i.test(s)
+    || /\bmay\s+be\b[\s\S]{0,80}\b(?:held|kept|retained|deposited|stored|left|placed|surrender(?:s|ed|ing)?|handed\s+over)\b/i.test(s)
+    || /\bwhether\b[\s\S]{0,160}\b(?:left\s+in\s+deposit|placed\s+in\s+custody|to\s+be\s+deposited|to\s+be\s+surrendered)\b/i.test(s)
+    || /\bmentions?\s+deposit\b/i.test(s);
 }
 function isSoftSubmit(s: string) {
   return /\bsubmit(?:s|ted|ting)?\b/i.test(s)
@@ -250,7 +274,9 @@ function holdNegatedCleanly(s: string) {
     || /\bkeep(?:s|ing)?\s+the\s+scans\b[\s\S]{0,24}\bnothing\s+else\b/i.test(s)
     || /\b(?:forbids?|prohibits?)\b[\s\S]{0,48}\b(?:hold(?:ing)?|keeping|retaining|storing|depositing)\b/i.test(s)
     || /\bno\s+(?:right|authority|power|clause|provision|condition)\s+(?:to\s+|under\s+which\s+)/i.test(s)
-    || /\bneither\s+(?:retain|keep|hold|deposit|store|withhold|ask|leave)\b/i.test(s)
+    || /\bneither\s+(?:retain|keep|hold|deposit|store|withhold|ask|leave|collect(?:s|ed|ing)?)\b/i.test(s)
+    || /\b(?:does\s+not|will\s+not|shall\s+not|do\s+not)\s+take\b[\s\S]{0,24}\binto\s+custody\b/i.test(s)
+    || /\b(?:does\s+not\s+require|not\s+required)\b[\s\S]{0,24}\b(?:to\s+be\s+)?left\b/i.test(s)
     || /नहीं\s*रखेग[ाी]|नहीं\s*रखती|\bnahi[n]?\s+rakh(?:egi|ega|ti|te)\b/i.test(s);
 }
 function mixedException(s: string) {
@@ -263,45 +289,87 @@ export type DocsTier = 'red' | 'amber' | null;
 function hasTimeOrReturn(s: string) {
   return /\b(?:until|till|unless)\b|\bonly\s+after\b|\bfor\s+the\s+duration\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three)\s+years?\b|\block[- ]?in\b|\bjab\s+tak\b|\btak\b|जब तक|तक|वापस|\bvarikkum\b/i.test(s);
 }
-/** Three-tier documents rule. Time-marker fail-safe runs before keep-outs. Orig + location/transfer verb defaults to at least amber. */
+function hasCustodyPlace(s: string) {
+  const rest = s
+    .replace(/\b(?:stores?|keeps?|retains?|holds?|files?|clips?|punched)\s+(?:only\s+)?(?:stamped|attested|self[- ]attested|scanned|xerox)?\s*(?:photo)?cop(?:y|ies)(?:\s+only)?\b/gi, ' ')
+    .replace(/\b(?:personal\s+)?files?\s+(?:only\s+)?(?:attested|stamped|scanned|xerox)?\s*(?:photo)?cop(?:y|ies)\b/gi, ' ')
+    .replace(/\b(?:photo)?cop(?:y|ies|xerox)[\s\S]{0,40}\b(?:file|office|HR)\b/gi, ' ')
+    .replace(/\b(?:file|office|HR)\b[\s\S]{0,40}\b(?:photo)?cop(?:y|ies|xerox)\b/gi, ' ')
+    .replace(/कार्यालय[\s\S]{0,40}(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)|(?:छायाप्रति|फोटोप्रति|फोटोकॉपी|प्रतियाँ|प्रतियां)[\s\S]{0,24}कार्यालय/g, ' ');
+  return /\b(?:lockers?|vaults?|strong\s+rooms?|offices?|cupboards?|files?|establishments?|managers?|almirahs?|cabinets?|deed\s+chests?|personnel|clerks?)\b|\bHR\b/i.test(rest);
+}
+function hasBlockingBound(s: string) {
+  return isHostileTimeBound(s)
+    || /\b(?:bond|lock[- ]?in|surety|indenture)\b|\bfor\s+(?:the\s+)?(?:\d+|one|two|three|[a-z]+)\s+years?\b|बॉन्ड/i.test(s);
+}
+function isRetentionOrReturn(s: string) {
+  if (isUntilReturnHold(s) || returnNotGiven(s) || isHostileTimeBound(s)) return true;
+  if (/\b(?:throughout|during|for)\s+the\s+(?:bond|surety|indenture|notice|traineeship|service|probation|funded\s+term|research\s+posting)\b|\bbond\s+period\b/i.test(s)) return true;
+  if (/(?:बॉन्ड|सेवा(?:काल)?).{0,16}(?:समाप्त|पूरी|पूर्ण).{0,8}तक|अवधि\s*तक|सेवाकाल/.test(s)) return true;
+  return hasTimeOrReturn(s) && !isVerifyWindow(s);
+}
+function hasVerifyCue(s: string) {
+  return /\b(?:verif(?:y|ied|ication|ies|ying)|DV|document[- ]verification|document[- ]check|sight[- ]check|visual check|photograph|photo(?:\s+session)?|inspection|inspect(?:ed)?|cross-check|attestation|exhibit(?:ed|tion)?|glance|shown?|showing|on the tray|kiosk|tick[- ]?mark|dikhane|dikhana|looks?|looked over)\b|सत्यापन|दिखाना|दिखाने|जाँच/i.test(s);
+}
+function hasSameSittingReturn(s: string) {
+  return /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?(?:\s+again)?(?:\s+back)?(?:\s+(?:the\s+)?same\s+(?:day|sitting|morning|afternoon|evening))?|returned(?:\s+in)?\s+the\s+same\s+(?:day|sitting|morning|afternoon|evening)|same\s+(?:day|sitting|afternoon|evening|morning)|goes?\s+home|walk(?:s)?\s+out(?:\s+with)?|pack(?:s|ed|ing)?\s+(?:it|them|the set)\s+away|handed\s+(?:back|to you)|take them (?:home|back)|you (?:put|carry) (?:them|it) back|put (?:them|it) back|collect(?:s|ed|ing)?(?:\s+(?:them|it|the set))?(?:\s+(?:again|from the tray))?|when the light turns green|carried away by the candidate|come back at that (?:window|desk|counter)|carry them (?:back|home|away)|packed away by you)\b|उसी\s+(?:दिन|बैठक|समय)|वापस\s+(?:ले|मिल)|लौटा दिए|wapas\s+(?:usi\s+desk\s+se\s+)?mil/i.test(s);
+}
+function isSameSittingVerify(s: string, next = '', prev = '') {
+  if (isUntilReturnHold(s) || isHostileTimeBound(s) || /\bback\s+only\s+after\b/i.test(s)) return false;
+  if (isUntilReturnHold(next) || isHostileTimeBound(next) || /\bback\s+only\s+after\b/i.test(next)) return false;
+  const verify = hasVerifyCue(s) || hasVerifyCue(next) || hasVerifyCue(prev);
+  const ret = hasSameSittingReturn(s) || hasSameSittingReturn(next) || hasSameSittingReturn(prev);
+  return (verify && ret) || /\b(?:verified and returned|shown\s+at\s+the\s+(?:counter|desk|window|gate)|collect(?:s|ed|ing)?(?:\s+them)?\s+back(?:\s+(?:the\s+)?same\s+(?:day|sitting)))\b/i.test(s);
+}
+
+function isClearDenial(s: string) {
+  if (mixedException(s) || (returnNotGiven(s) && !staysWithCandidate(s)) || (isUntilReturnHold(s) && !staysWithCandidate(s))) return false;
+  return holdNegatedCleanly(s)
+    || /(?:अभ्यर्थी|उम्मीदवार)\s+के\s+पास\s+(?:रहेंगे|रहेंगी|रहेगा|रहें)/.test(s)
+    || /अपने पास रखें|aapke paas hi rah|apne paas (?:hi )?rah|aapke paas hi rahega/i.test(s)
+    || staysWithCandidate(s)
+    || /\bremain(?:s|ing)?\s+with\s+(?:the\s+)?(?:candidate|joiner|you)\b/i.test(s)
+    || /\byou keep the (?:paper|set|originals?|them)\b/i.test(s)
+    || /\bnot\s+handed\s+over\b/i.test(s)
+    || /\bnone\s+is\s+to\s+be\s+left\b|\bnothing\s+is\s+to\s+be\s+left\b/i.test(s)
+    || /\bas\s+a\s+copy\b|\bas\s+copies\b/i.test(s);
+}
+function carriesSubject(s: string) {
+  return ANAPHORA.test(s) || isUntilReturnHold(s) || returnNotGiven(s) || hasCustodyPlace(s)
+    || hasHold(s) || hasLocTransfer(s) || hasTimeOrReturn(s)
+    || /wapas|rakhenge|rakh diye|dena hai|jab tak|locker|vault|तिजोरी/i.test(s);
+}
+function isStrongCustody(s: string) {
+  return /\b(?:retain(?:s|ed|ing)?|deposit(?:s|ed|ing)?|surrender(?:s|ed|ing)?|stor(?:e|es|ed|ing)|impound(?:s|ed|ing)?|withhold(?:s|ing)?|withheld)\b|\bjama\b|\brakhwaayi|\brakh(?:waane|wane)|जमा|रखवाई|ठेवली|ठेवले|\bveidunga\b|\bdeposit\s+panni\b/i.test(s);
+}
+function isUnambiguousHold(s: string, subj: boolean) {
+  if (!subj || isConditionalHold(s) || isCameraHold(s)) return false;
+  if (isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSameSittingVerify(s)) return false;
+  if (negCancelsHold(s)) return false;
+  if (isUntilReturnHold(s) || returnNotGiven(s)) return true;
+  const transfer = hasHold(s) || hasLocTransfer(s);
+  if (transfer && isRetentionOrReturn(s)) return true;
+  if (isStrongCustody(s)) return true;
+  return false;
+}
+/** Three-tier documents rule. Clean only via same-sitting verification, a clear denial, or copy-only — and never when a custody place or bond/until bound is in this sentence or the next. */
 export function docsHeldRisk(text: string): DocsTier {
   const sentences = offerClauses(text || '');
   let prevSubj = false, amber = false;
-  for (const s of sentences) {
-    const subj = hasOrig(s) || (prevSubj && ANAPHORA.test(s));
-    const loc = hasLocTransfer(s);
-    const hold = hasHold(s) || loc || !!(subj && /\bjab\s+tak\b|जब तक/i.test(s));
-    const time = hasTimeOrReturn(s) && !isVerifyWindow(s);
-    prevSubj = hasOrig(s) || prevSubj;
+  for (let i = 0; i < sentences.length; i++) {
+    const s = sentences[i];
+    const next = sentences[i + 1] || '';
+    const subj = hasOrig(s) || (prevSubj && carriesSubject(s));
+    if (hasOrig(s)) prevSubj = true;
     if (isKeepQuestion(s)) continue;
-    // 1. Orig + durable time/return marker is never clean. Verification-window tails on a self-noun do not count.
-    if (subj && time) {
-      if (isConditionalHold(s)) { amber = true; continue; }
-      if (isUntilReturnHold(s) || returnNotGiven(s)) return 'red';
-      if (isWhitelistSelf(s) || (holdNegatedCleanly(s) && !mixedException(s) && !returnNotGiven(s)) || isCameraHold(s) || isPlainVerify(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s) || isSoftSubmit(s)) {
-        if (isWhitelistSelf(s) && !isHostileTimeBound(s)) continue;
-        amber = true;
-        continue;
-      }
-      if (isPersonalInstructionAmber(s) || isHarmlessOrgTail(s)) { amber = true; continue; }
-      if (subj && hold && !negCancelsHold(s)) return 'red';
-      amber = true;
-      continue;
-    }
-    // 2. whether / if / will say whether / may be about a later hold: amber, never red.
-    if (isConditionalHold(s) && (subj || hold)) { amber = true; continue; }
-    // 3. Clean only via (a) a whole-phrase possession match, (b) a clear denial, (c) plain verification / camera, or strict copy-only.
-    if (isWhitelistSelf(s)) continue;
-    if (holdNegatedCleanly(s) && !mixedException(s) && !returnNotGiven(s)) continue;
-    if (isCameraHold(s)) continue;
-    if (isPlainVerify(s)) continue;
-    if (copyOnlyHold(s) || copiesKeptOriginalsReturned(s)) continue;
-    if (isSoftSubmit(s)) { amber = true; continue; }
-    if (isPersonalInstructionAmber(s) || isHarmlessOrgTail(s)) { amber = true; continue; }
-    if (isUntilReturnHold(s) && subj) return 'red';
-    if (returnNotGiven(s) && subj) return 'red';
-    if (subj && hold && !negCancelsHold(s)) return 'red';
-    if ((subj && hold) || hold) amber = true;
+    if (isUnambiguousHold(s, subj)) return 'red';
+    if (isConditionalHold(s) && (subj || hasHold(s) || hasLocTransfer(s))) { amber = true; continue; }
+    const prev = sentences[i - 1] || '';
+    const blocked = hasBlockingBound(s) || hasBlockingBound(next)
+      || (hasCustodyPlace(s) && !isClearDenial(s) && !copyOnlyHold(s))
+      || (hasCustodyPlace(next) && !isClearDenial(next) && !copyOnlyHold(next));
+    if (!blocked && (isSameSittingVerify(s, next, prev) || isCameraHold(s) || isClearDenial(s) || copyOnlyHold(s) || copiesKeptOriginalsReturned(s))) continue;
+    if (subj && (hasLocTransfer(s) || hasHold(s) || hasTimeOrReturn(s) || hasCustodyPlace(s))) amber = true;
   }
   return amber ? 'amber' : null;
 }
@@ -315,7 +383,7 @@ const RULES: { kind: string; re: RegExp; hit?: (s: string) => boolean; why: stri
   { kind: 'Notice period', re: /\b(notice period|(\d+|one|two|three|six)\s*(days?|months?)['’]?\s*(written )?notice|notice of (\d+|one|two|three))/i, why: 'Long notice periods make it harder to join your next job. 30 to 60 days is common; 90 days is long.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d >= 90 ? 'red' : d != null && d > 60 ? 'amber' : 'info'; } },
   { kind: 'Clawback / repayment', re: /\b(claw ?back|repay|refund (the|any)|recover(y|ed)? (of|from)|reimburse the company|joining bonus|relocation (assistance|bonus|allowance)|sign[- ]on bonus)\b/i, why: 'Money you may have to return if you leave early. Ask for the exact amount and time period in writing.', risk: (s) => (/repay|claw|recover|refund|reimburse/i.test(s) ? 'amber' : 'info') },
   { kind: 'Training cost recovery', re: /\btraining (cost|fee|expense|charges)/i, why: 'Some employers recover training costs if you leave. Ask what the real cost is and how it is calculated.', risk: () => 'amber' },
-  { kind: 'Original documents held', re: /\b(originals?|original educational|retain (your|the) (original|certificates))|मूल/i, hit: docsHeldHit, whole: true, why: (s) => docsHeldRisk(s) === 'amber' ? 'Check: confirm whether originals are kept' : 'Holding original certificates is a serious warning sign. Offer only copies, and ask for this in writing.', risk: (s) => docsHeldRisk(s) === 'amber' ? 'amber' : 'red' },
+  { kind: 'Original documents held', re: /\b(originals?|original educational|retain (your|the) (original|certificates))|मूल/i, hit: docsHeldHit, whole: true, why: (s) => docsHeldRisk(s) === 'amber' ? 'Ask about it: confirm whether originals are kept' : 'Holding original certificates is a serious warning sign. Offer only copies, and ask for this in writing.', risk: (s) => docsHeldRisk(s) === 'amber' ? 'amber' : 'red' },
   { kind: 'Pay depends on project allocation / bench', re: /\b(bench|billable|deploy(?:ed|ment)|allocat(?:ed|ion))\b/i, hit: benchPayHit, why: 'Pay may stop, or start only, when you are assigned to a billable project (including time on the bench). Ask in writing whether you are paid between projects, and from which date salary starts.', risk: (s) => (NO_PAY.test(s) ? 'red' : 'amber') },
   { kind: 'Liquidated damages', re: /\b(liquidated damages|penalty of|pay (a )?penalty|damages of)\b/i, why: 'A fixed sum payable if you break the terms. Ask how the figure was set.', risk: () => 'red' },
   { kind: 'Probation', re: /\bprobation/i, why: 'During probation notice is often shorter and confirmation is not automatic. Check the length and notice.', risk: (s) => { const d = toDays(s.match(DUR)); return d != null && d > 180 ? 'amber' : 'info'; } },
@@ -326,11 +394,11 @@ const RULES: { kind: string; re: RegExp; hit?: (s: string) => boolean; why: stri
 const sentences = (t: string) => t.replace(/\r/g, '').replace(/([.;!?:])?[ \t]*\n{2,}/g, (_m, p) => (p ? p + ' ' : '. ')).replace(/(?<!\.)\.\s*\.(?!\.)/g, '.').replace(/\s+/g, ' ').split(/(?<=[.;!?])\s+(?=[A-Z0-9(•-])/).map((s) => s.trim()).filter((s) => s.length > 15);
 export function scanOffer(text: string): Clause[] {
   const out: Clause[] = [];
-  const chunks = (r: (typeof RULES)[number]) => r.whole ? [(text || '').replace(/\s+/g, ' ').trim()].filter((s) => s.length > 15) : sentences(text || '');
+  const chunks = (r: (typeof RULES)[number]) => r.whole ? [(text || '').trim()].filter((s) => s.replace(/\s+/g, ' ').length > 15) : sentences(text || '');
   for (const r of RULES) for (const s of chunks(r)) if (r.hit ? r.hit(s) : r.re.test(s)) {
     if (out.some((c) => c.kind === r.kind && c.sentence === s)) continue;
     const d = s.match(DUR), a = s.match(AMT);
-    out.push({ kind: r.kind, risk: r.risk(s), sentence: s.slice(0, 400), why: typeof r.why === 'function' ? r.why(s) : r.why, detail: [a?.[0], d?.[0]].filter(Boolean).join(' · ') || undefined });
+    out.push({ kind: r.kind, risk: r.risk(s), sentence: s.replace(/\s+/g, ' ').slice(0, 400), why: typeof r.why === 'function' ? r.why(s) : r.why, detail: [a?.[0], d?.[0]].filter(Boolean).join(' · ') || undefined });
   }
   const order = { red: 0, amber: 1, info: 2 } as const;
   return out.sort((x, y) => order[x.risk] - order[y.risk]);
